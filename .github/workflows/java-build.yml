@@ -112,7 +112,7 @@ jobs:
       permissions:
         contents: write
       env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GH_TOKEN}}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
       needs: [Build, Docker_Push]
       steps:
       - uses: actions/checkout@v4
