@@ -12,7 +12,10 @@ on:
       # GH_TOKEN:
       #   required: true       
 
-defaults:
+env:
+  RUNNER_DEFAULT: ubuntu-latest
+
+  defaults:
   run:
     shell: bash
       # runs-on:
@@ -27,18 +30,14 @@ env:
 jobs:
     Build:
       name: Build
-      runs-on: ubuntu-24.04
+      runs-on: ${{ env.RUNNER_DEFAULT }}
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       container:
-        image: gradle:9.2.0-jdk17
+        image: gradle:jdk21
       steps:
       - name: Checkout
         uses: actions/checkout@v4
-      # - name: Dump GitHub context
-      #   env:
-      #     GITHUB_CONTEXT: ${{ toJson(github) }}
-        # run: echo "$GITHUB_CONTEXT"
       - name: Set APP_VERSION Output 
         id: app_version
         run: echo "APP_VERSION=$(cat ./gradle.properties | grep version | cut -d "=" -f 2)" >> "$GITHUB_OUTPUT"
@@ -69,7 +68,7 @@ jobs:
           reporter: jest-junit              # Format of test results
     Push:
       name: Push
-      runs-on: ubuntu-24.04
+      runs-on: ${{ env.RUNNER_DEFAULT }}
       # runs-on:
       #   group: Build 
       #   labels: ubuntu
@@ -136,7 +135,12 @@ jobs:
     #       github_token: ${{ env.GITHUB_TOKEN }}
     #       custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}
   #   - uses: tiacsys/clean-after-action@v3        
-      
+
+
+  # - name: Dump GitHub context
+      #   env:
+      #     GITHUB_CONTEXT: ${{ toJson(github) }}
+        # run: echo "$GITHUB_CONTEXT" 
 
 
 
