@@ -44,28 +44,24 @@ jobs:
         run: gradle build test
         # - name: Simulating Gradle Build
       #   run: echo "hello" && mkdir -p app/build/libs/ && touch app/build/libs/java_application.jar
-      - name: Build with Gradle
-        run: gradle build test
       - name: Listing Files
         run: find . -type f
       - name: Upload build files
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.build-artifact-key }}
-          path: app/build/libs
-      - name: Copy Sample Junit Report 
-        run: cp -p app/junit-example.xml app/build/test-results/test/
+          path: build/
       - name: Upload Test Report files
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-report
-          path: app/build/test-results/test/
+          path: build/reports/tests/test
       - name: Publish Test Report To GitHub
         uses: dorny/test-reporter@v2
         with:
           artifact: unit-test-report  # artifact name
           name: unit-test-report                  # Name of the check run which will be created
-          path: 'junit-example.xml'                     # Path to test results (inside artifact .zip)
+          path: '*.xml'                     # Path to test results (inside artifact .zip)
           reporter: jest-junit              # Format of test results
     Push:
       name: Push
