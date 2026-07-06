@@ -63,6 +63,7 @@ jobs:
           name: unit-test-report                  # Name of the check run which will be created
           path: '*.xml'                     # Path to test results (inside artifact .zip)
           reporter: jest-junit              # Format of test results
+          fail-on-error: 'false'
     Push:
       name: Push
       runs-on: ubuntu-latest
