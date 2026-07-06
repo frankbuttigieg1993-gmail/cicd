@@ -15,6 +15,10 @@ on:
 defaults:
   run:
     shell: bash
+      # runs-on: ubuntu-24.04
+      # runs-on:
+      #   group: Build 
+      #   labels: ubuntu
 
 env:
   AWS_REGION: ap-southeast-2                   # set this to your preferred AWS region, e.g. us-west-1
@@ -24,10 +28,6 @@ env:
 jobs:
     Build:
       name: Build
-      runs-on: ubuntu-24.04
-      # runs-on:
-      #   group: Build 
-      #   labels: ubuntu
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       container:
