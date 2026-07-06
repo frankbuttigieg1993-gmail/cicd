@@ -19,7 +19,7 @@ defaults:
 
 env:
   AWS_REGION: ap-southeast-2   
-  EKS_CLUSTER_NAME: github-training
+  EKS_CLUSTER_NAME: EKS-DEV
   HELM_RELEASE_NAME: java-application 
   HELM_CHART_PATH: ./helm/java-application
 
@@ -52,8 +52,14 @@ jobs:
         uses: azure/setup-helm@v4
         with:
           version: 'v3.12.0'
+      - name: Sign into cluster and install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest' # Or a specific version like 'v1.28.0'
+        id: install
       - name: Deploy Helm Chart
         run: |
+          kubectl get ns
           helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
             --namespace default \
             --set image.tag=${{ env.IMAGE_TAG }} \
