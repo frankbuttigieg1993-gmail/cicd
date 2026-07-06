@@ -27,28 +27,28 @@ env:
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
 jobs:
-    Build:
-      name: Build
-      runs-on: ubuntu-latest
-      outputs:
-        APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
-      container:
-        image: gradle:9.6.1-jdk21
-      steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set APP_VERSION Output 
-        id: app_version
-        run: echo "APP_VERSION=$(cat ./build.gradle | grep version | cut -d "=" -f 2)" >> "$GITHUB_OUTPUT"
-      - name: Build with Gradle
-        run: gradle bootJar test --no-daemon
-      - name: Listing Files
-        run: find . -type f
-      - name: Upload build files
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.build-artifact-key }}
-          path: build/
+    # Build:
+    #   name: Build
+    #   runs-on: ubuntu-latest
+    #   outputs:
+    #     APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
+    #   container:
+    #     image: gradle:jdk21
+    #   steps:
+    #   - name: Checkout
+    #     uses: actions/checkout@v4
+    #   - name: Set APP_VERSION Output 
+    #     id: app_version
+    #     run: echo "APP_VERSION=$(cat ./gradle.properties | grep version | cut -d "=" -f 2)" >> "$GITHUB_OUTPUT"
+    #   - name: Build with Gradle
+    #     run: gradle build test
+    #   - name: Listing Files
+    #     run: find . -type f
+    #   - name: Upload build files
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: ${{ env.build-artifact-key }}
+    #       path: build/
     #   - name: Copy Sample Test Report 
     #     run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
     #   - name: Upload Test Report files
@@ -64,16 +64,26 @@ jobs:
     #       path: '*.xml'                     # Path to test results (inside artifact .zip)
     #       reporter: jest-junit              # Format of test results
     #       fail-on-error: 'false'
-    Docker_Push:
-      name: Docker Push
+    Push:
+      name: Push
       runs-on: ubuntu-latest
+      # runs-on:
+      #   group: Build 
+      #   labels: ubuntu
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
-      needs: Build
+      # needs: Build
       steps:
       - name: Checkout
         uses: actions/checkout@v4
+#         #################### Setup with OIDC. Refer to 1 hour in of the 3 hour lecturer
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v1
+      #   with:
+      #     aws-access-key-id: ${{ secrets.aws-access-key-id || secrets.aws-access-key-id }}
+      #     aws-secret-access-key: ${{ secrets.aws-secret-access-key || secrets.aws-secret-access-key}}
+      #     aws-region: ${{ env.AWS_REGION }
       - name: "Configure AWS Credentials - Action for GitHub Actions"
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -83,29 +93,30 @@ jobs:
         run: |
           aws sts get-caller-identity
           aws s3 ls
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.build-artifact-key }}
-          path: build-artefact/
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-      - name: Docker Build 
-        id: Docker-Build 
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
-        run: |
-          echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG 
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
-        working-directory: build-artefact/
+    #   - name: Download build artifact
+    #     uses: actions/download-artifact@v4
+    #     with:
+    #       name: ${{ env.build-artifact-key }}
+    #       path: app/build/libs
+    #   # - name: Show folder structure
+    #   #   run: ls -R app/build
+    #   - name: Login to Amazon ECR
+    #     id: login-ecr
+    #     uses: aws-actions/amazon-ecr-login@v1
+    #   - name: Docker Build 
+    #     id: Docker-Build 
+    #     env:
+    #       ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+    #       IMAGE_TAG: ${{ github.sha }}
+    #       GITHUB_REF_NAME: ${{ github.ref_name }}
+    #       APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
+    #     run: |
+    #       echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
+    #       docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
+    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
+    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG 
+    #       echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
     # # Tag:
     #   name: Tag
     #   runs-on: ubuntu-24.04
