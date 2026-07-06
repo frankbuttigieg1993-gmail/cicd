@@ -15,7 +15,7 @@ on:
 env:
   RUNNER_DEFAULT: ubuntu-latest
 
-  defaults:
+defaults:
   run:
     shell: bash
       # runs-on:
