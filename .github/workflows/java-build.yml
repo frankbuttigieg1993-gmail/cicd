@@ -50,7 +50,7 @@ jobs:
           name: ${{ env.build-artifact-key }}
           path: build/
       - name: Copy Sample Test Report 
-        run: cp -a junit-example.xml build/test-results/sample/
+        run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
       - name: Upload Test Report files
         uses: actions/upload-artifact@v4
         with:
