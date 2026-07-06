@@ -63,7 +63,7 @@ jobs:
           helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
             --namespace default \
             --set image.tag=${{ env.IMAGE_TAG }} \
-            --set env.runtime-env-name="development"
+            --set env.runtime-env-name="development" \
             --atomic \
             --timeout 5m0s
     Tag:
