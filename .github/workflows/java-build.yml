@@ -55,13 +55,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-report
-          path: build/reports/tests/test
+          path: build/test-results/test
       - name: Publish Test Report To GitHub
         uses: dorny/test-reporter@v2
         with:
           artifact: unit-test-report  # artifact name
           name: unit-test-report                  # Name of the check run which will be created
-          path: 'build/reports/tests/test/*.xml'                     # Path to test results (inside artifact .zip)
+          path: '*.xml'                     # Path to test results (inside artifact .zip)
           reporter: jest-junit              # Format of test results
     Push:
       name: Push
