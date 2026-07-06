@@ -61,7 +61,7 @@ jobs:
         with:
           artifact: unit-test-report  # artifact name
           name: unit-test-report                  # Name of the check run which will be created
-          path: '*.xml'                     # Path to test results (inside artifact .zip)
+          path: 'build/reports/tests/test/*.xml'                     # Path to test results (inside artifact .zip)
           reporter: jest-junit              # Format of test results
     Push:
       name: Push
