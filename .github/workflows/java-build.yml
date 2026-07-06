@@ -29,7 +29,7 @@ env:
 jobs:
     Build:
       name: Build
-      runs-on: ${{ secrets.runner_default }}
+      runs-on: ubuntu-latest
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       container:
@@ -67,7 +67,7 @@ jobs:
           reporter: jest-junit              # Format of test results
     Push:
       name: Push
-      runs-on: ${{ secrets.runner_default }}
+      runs-on: ubuntu-latest
       # runs-on:
       #   group: Build 
       #   labels: ubuntu
