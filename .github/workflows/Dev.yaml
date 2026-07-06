@@ -27,8 +27,6 @@ jobs:
     deploy:
       name: Deploy
       runs-on: ubuntu-latest
-      container:
-        image: gradle:9.6.1-jdk21
       steps:
       - name: Checkout
         uses: actions/checkout@v4
