@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Set APP_VERSION Output 
         id: app_version
-        run: echo "APP_VERSION=$(cat ./build.gradle | grep version | cut -d "=" -f 2)" >> "$GITHUB_OUTPUT"
+        run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2)" >> "$GITHUB_OUTPUT"
       - name: Build with Gradle
         run: gradle bootJar test --no-daemon
       - name: Listing Files
