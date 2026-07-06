@@ -48,7 +48,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.build-artifact-key }}
-          path: build/
+          path: |
+            build/
+            Dockerfile
     #   - name: Copy Sample Test Report 
     #     run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
     #   - name: Upload Test Report files
