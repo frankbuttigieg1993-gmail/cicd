@@ -52,6 +52,7 @@ jobs:
           helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
             --namespace default \
             --set image.tag=${{ env.IMAGE_TAG }} \
+            --set env.runtime-env-name="development"
             --atomic \
             --timeout 5m0s
     Tag:
@@ -59,8 +60,6 @@ jobs:
       runs-on: ubuntu-24.04
       permissions:
         contents: write
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GH_TOKEN}}
       needs: deploy
       steps:
       - uses: actions/checkout@v4
@@ -69,6 +68,5 @@ jobs:
         uses: mathieudutour/github-tag-action@v6.2
         with:
           release_branches: "release.*"
-          github_token: ${{ env.GITHUB_TOKEN }}
           custom_tag: dev
       - uses: tiacsys/clean-after-action@v3
