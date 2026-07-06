@@ -9,6 +9,8 @@ on:
         required: true
       aws-secret-access-key:
         required: true
+      runner_default: 
+        required: true
       # GH_TOKEN:
       #   required: true       
 
