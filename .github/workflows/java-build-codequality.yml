@@ -28,6 +28,10 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: 'java'
       - name: Set APP_VERSION Output 
         id: app_version
         run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
@@ -43,10 +47,6 @@ jobs:
             build/
             src/
             Dockerfile
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: 'java'
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
     # Unit_Test:
