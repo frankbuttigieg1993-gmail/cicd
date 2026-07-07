@@ -83,8 +83,10 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag dev
-          git push origin dev
+          GIT_SHA=$(git rev-parse HEAD)
+          git tag -d dev
+          git tag -f dev ${GIT_SHA}
+          git push -f --tags
       # - name: Git Tag 
       #   id: tag_version
       #   uses: mathieudutour/github-tag-action@v6.2
