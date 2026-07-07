@@ -41,6 +41,7 @@ jobs:
           name: ${{ env.build-artifact-key }}
           path: |
             build/
+            src/
             Dockerfile
     # Unit_Test:
     #   name: Unit_Test
@@ -90,8 +91,12 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: 'java'
+          # Points CodeQL to the root directory containing the source code
+          source-root: 'build-artefact' 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+        with:
+          checkout_path: 'build-artefact' 
     # Docker_Push:
     #   name: Docker Push
     #   runs-on: ubuntu-latest
