@@ -1,5 +1,5 @@
 name: Dev Deployment Workflow
-run-name: ${{ github.ref_name }}-${{ github.run_number }}
+run-name: ${{ inputs.docker_tag }}
 
 on:
   workflow_dispatch:
