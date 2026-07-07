@@ -64,7 +64,7 @@ jobs:
             --set image.tag=${{ env.IMAGE_TAG }} \
             --set env.APP_RUNTIME_VALUE="development" \
             --atomic \
-            --timeout 2m0s
+            --timeout 2m0s \
             --debug
     Tag:
       name: Tag
