@@ -69,7 +69,7 @@ jobs:
             --timeout 2m0s 
     Tag:
       name: Tag
-      runs-on: ubuntu-24.04
+      runs-on: ubuntu-latest
       permissions:
         contents: write
       env:
