@@ -59,13 +59,12 @@ jobs:
           kubectl auth can-i get nodes
       - name: Deploy Helm Chart
         run: |
-          kubectl get ns
           helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
             --namespace default \
             --set image.tag=${{ env.IMAGE_TAG }} \
             --set env.APP_RUNTIME_VALUE="development" \
             --atomic \
-            --timeout 5m0s
+            --timeout 2m0s
             --debug
     Tag:
       name: Tag
