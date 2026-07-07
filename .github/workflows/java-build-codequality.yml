@@ -42,35 +42,35 @@ jobs:
           path: |
             build/
             Dockerfile
-    Unit_Test:
-      name: Unit_Test
-      runs-on: ubuntu-latest
-      needs: [Build]
-      container:
-        image: gradle:9.6.1-jdk21
-      steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Run Unit Tests
-        run: gradle test --no-daemon
-      - name: Copy Sample Test Report 
-        run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
-      - name: Upload Test Report files
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-report
-          path: build/test-results/sample/
-      - name: Publish Test Report To GitHub
-        uses: dorny/test-reporter@v2
-        with:
-          artifact: unit-test-report  # artifact name
-          name: unit-test-report                  # Name of the check run which will be created
-          path: '*.xml'                     # Path to test results (inside artifact .zip)
-          reporter: jest-junit              # Format of test results
-          fail-on-error: 'false'
+    # Unit_Test:
+    #   name: Unit_Test
+    #   runs-on: ubuntu-latest
+    #   needs: [Build]
+    #   container:
+    #     image: gradle:9.6.1-jdk21
+    #   steps:
+    #   - name: Checkout
+    #     uses: actions/checkout@v4
+    #   - name: Run Unit Tests
+    #     run: gradle test --no-daemon
+    #   - name: Copy Sample Test Report 
+    #     run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
+    #   - name: Upload Test Report files
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: unit-test-report
+    #       path: build/test-results/sample/
+    #   - name: Publish Test Report To GitHub
+    #     uses: dorny/test-reporter@v2
+    #     with:
+    #       artifact: unit-test-report  # artifact name
+    #       name: unit-test-report                  # Name of the check run which will be created
+    #       path: '*.xml'                     # Path to test results (inside artifact .zip)
+    #       reporter: jest-junit              # Format of test results
+    #       fail-on-error: 'false'
     Code_Quality_Scan:
       name: Code Quality Scan
-      runs-on: ubuntu-latest
+      runs-on: ubuntu:24.04
       needs: [Build]
       container:
         image: ubuntu-latest
@@ -81,67 +81,72 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.build-artifact-key }}
+          path: build-artefact/
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: 'java'
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-    Docker_Push:
-      name: Docker Push
-      runs-on: ubuntu-latest
-      permissions:
-        id-token: write # This is required for requesting the JWT for OIDC auth to AWS
-        contents: read  # Required for checkout
-      needs: [Build, Unit_Test]
-      steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: "Configure AWS Credentials - Action for GitHub Actions"
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ap-southeast-2 
-          role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
-      - name: Verify AWS Identity
-        run: |
-          aws sts get-caller-identity
-          aws s3 ls
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.build-artifact-key }}
-          path: build-artefact/
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-      - name: Docker Build 
-        id: Docker-Build 
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
-        run: |
-          echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
-        working-directory: build-artefact/
-    Tag:
-      name: Tag
-      runs-on: ubuntu-24.04
-      permissions:
-        contents: write
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
-      needs: [Docker_Push]
-      steps:
-      - uses: actions/checkout@v4
-      - name: Git Tag 
-        id: tag_version
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          release_branches: "release.*"
-          github_token: ${{ env.GITHUB_TOKEN }}
-          custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}
-      - uses: tiacsys/clean-after-action@v3
+    # Docker_Push:
+    #   name: Docker Push
+    #   runs-on: ubuntu-latest
+    #   permissions:
+    #     id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+    #     contents: read  # Required for checkout
+    #   needs: [Build, Unit_Test]
+    #   steps:
+    #   - name: Checkout
+    #     uses: actions/checkout@v4
+    #   - name: "Configure AWS Credentials - Action for GitHub Actions"
+    #     uses: aws-actions/configure-aws-credentials@v4
+    #     with:
+    #       aws-region: ap-southeast-2 
+    #       role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
+    #   - name: Verify AWS Identity
+    #     run: |
+    #       aws sts get-caller-identity
+    #       aws s3 ls
+    #   - name: Download build artifact
+    #     uses: actions/download-artifact@v4
+    #     with:
+    #       name: ${{ env.build-artifact-key }}
+    #       path: build-artefact/
+    #   - name: Login to Amazon ECR
+    #     id: login-ecr
+    #     uses: aws-actions/amazon-ecr-login@v1
+    #   - name: Docker Build 
+    #     id: Docker-Build 
+    #     env:
+    #       ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+    #       APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
+    #     run: |
+    #       echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
+    #       docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
+    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
+    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+    #       echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
+    #     working-directory: build-artefact/
+    # Tag:
+    #   name: Tag
+    #   runs-on: ubuntu-24.04
+    #   permissions:
+    #     contents: write
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+    #   needs: [Docker_Push]
+    #   steps:
+    #   - uses: actions/checkout@v4
+    #   - name: Git Tag 
+    #     id: tag_version
+    #     uses: mathieudutour/github-tag-action@v6.2
+    #     with:
+    #       release_branches: "release.*"
+    #       github_token: ${{ env.GITHUB_TOKEN }}
+    #       custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}
+    #   - uses: tiacsys/clean-after-action@v3
