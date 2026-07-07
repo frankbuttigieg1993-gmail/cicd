@@ -71,6 +71,8 @@ jobs:
       runs-on: ubuntu-24.04
       permissions:
         contents: write
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
       needs: deploy
       steps:
       - uses: actions/checkout@v4
@@ -78,6 +80,6 @@ jobs:
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
         with:
-          release_branches: "release.*"
           custom_tag: dev
+          github_token: ${{ env.GITHUB_TOKEN }}
       - uses: tiacsys/clean-after-action@v3
