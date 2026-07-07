@@ -4,9 +4,6 @@ run-name: ${{ github.ref_name }}-${{ github.run_number }}
 on:
   workflow_dispatch:
   workflow_call:
-    secrets:
-      runner_default: 
-        required: true    
 
 defaults:
   run:
