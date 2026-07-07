@@ -1,4 +1,4 @@
-name: Java Application - Build
+name: Java Application - Code Quality
 run-name: ${{ github.ref_name }}-${{ github.run_number }}
 
 on:
