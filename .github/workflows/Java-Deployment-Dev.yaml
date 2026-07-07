@@ -66,6 +66,7 @@ jobs:
             --set env.APP_RUNTIME_VALUE="development" \
             --atomic \
             --timeout 5m0s
+            --debug
     Tag:
       name: Tag
       runs-on: ubuntu-24.04
