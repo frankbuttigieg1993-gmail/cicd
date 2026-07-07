@@ -57,6 +57,9 @@ jobs:
       - name: Update Kubeconfig
         run: |
           aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+          # Verify the kubeconfig was created successfully
+          kubectl cluster-info
+          kubectl auth can-i get nodes
       - name: Deploy Helm Chart
         run: |
           kubectl get ns
