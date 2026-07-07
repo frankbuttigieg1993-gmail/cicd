@@ -48,8 +48,6 @@ jobs:
     Unit_Test:
       name: Unit_Test
       runs-on: ubuntu-latest
-      outputs:
-        APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       container:
         image: gradle:9.6.1-jdk21
       steps:
@@ -72,6 +70,24 @@ jobs:
           path: '*.xml'                     # Path to test results (inside artifact .zip)
           reporter: jest-junit              # Format of test results
           fail-on-error: 'false'
+    Code_Quality_Scan:
+      name: Code Quality Scan
+      runs-on: ubuntu-latest
+      container:
+        image: ubuntu-latest
+      permissions:
+        actions: read
+        contents: read
+        security-events: write # Required to upload results to the Security tab
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: 'java'
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
     Docker_Push:
       name: Docker Push
       runs-on: ubuntu-latest
