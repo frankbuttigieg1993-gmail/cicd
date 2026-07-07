@@ -2,16 +2,13 @@ name: Dev Deployment Workflow
 run-name: ${{ github.ref_name }}-${{ github.run_number }}
 
 on:
-  push:
-    branches:
-      - main
-      - 'release/**'
   workflow_dispatch:
     inputs:
       docker_tag:
         description: 'Docker image tag to deploy'
         required: true
         default: 'latest'
+  workflow_call:
 
 defaults:
   run:
