@@ -31,7 +31,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with: 
-          ref: "${{ github.event.inputs.docker_tag }}"
+          ref: "v${{ github.event.inputs.docker_tag }}"
       - name: Set Docker Tag Env Variable
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
