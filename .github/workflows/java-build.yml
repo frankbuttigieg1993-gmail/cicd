@@ -5,14 +5,8 @@ on:
   workflow_dispatch:
   workflow_call:
     secrets:
-      aws-access-key-id:
-        required: true
-      aws-secret-access-key:
-        required: true
       runner_default: 
-        required: true
-      GH_TOKEN:
-        required: true       
+        required: true    
 
 defaults:
   run:
