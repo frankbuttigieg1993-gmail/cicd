@@ -48,6 +48,7 @@ jobs:
     Unit_Test:
       name: Unit_Test
       runs-on: ubuntu-latest
+      needs: [Build]
       container:
         image: gradle:9.6.1-jdk21
       steps:
@@ -73,6 +74,7 @@ jobs:
     Code_Quality_Scan:
       name: Code Quality Scan
       runs-on: ubuntu-latest
+      needs: [Build]
       container:
         image: ubuntu-latest
       permissions:
