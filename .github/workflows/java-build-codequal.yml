@@ -94,7 +94,7 @@ jobs:
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
-      needs: [Build, Unit Test]
+      needs: [Build, Unit_Test]
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -135,7 +135,7 @@ jobs:
         contents: write
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
-      needs: [Build, Docker_Push]
+      needs: [Docker_Push]
       steps:
       - uses: actions/checkout@v4
       - name: Git Tag 
