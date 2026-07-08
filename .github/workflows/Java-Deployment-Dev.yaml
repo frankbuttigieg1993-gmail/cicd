@@ -76,10 +76,13 @@ jobs:
         with: 
           ref: "v${{ github.event.inputs.docker_tag }}"
           fetch-depth: 0
-          ssh-key: ${{ secrets.GH_PRIVATE_SSH_KEY }}
+          token: ${{ secrets.GH_PAT_TOKEN }} 
+          # ssh-key: ${{ secrets.GH_PRIVATE_SSH_KEY }}
           persist-credentials: true
       - name: Create and Push Tag
         run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           GIT_SHA=$(git rev-parse HEAD)
           git tag -d dev || true
           git tag -f dev ${GIT_SHA}
