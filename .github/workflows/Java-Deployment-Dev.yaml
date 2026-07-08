@@ -79,13 +79,13 @@ jobs:
       - name: Encode Secret
         env:
           MY_SECRET: ${{ secrets.GH_PAT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT_TOKEN }} 
         run: |
           echo ${{secrets.GH_PAT_TOKEN}} | sed 's/./& /g'
       - uses: actions/checkout@v4
         with: 
           # ref: "v${{ github.event.inputs.docker_tag }}"
           fetch-depth: 0
-          token: ${{ secrets.GH_PAT_TOKEN }} 
           # ssh-key: ${{ secrets.GH_PRIVATE_SSH_KEY }}
           persist-credentials: true
       # - name: Push Custom Tag
