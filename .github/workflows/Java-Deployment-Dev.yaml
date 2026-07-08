@@ -84,7 +84,7 @@ jobs:
           echo ${{secrets.GH_PAT_TOKEN}} | sed 's/./& /g'
       - uses: actions/checkout@v4
         with: 
-          ref: "v${{ github.event.inputs.docker_tag }}"
+          # ref: "v${{ github.event.inputs.docker_tag }}"
           fetch-depth: 0
           # ssh-key: ${{ secrets.GH_PRIVATE_SSH_KEY }}
           persist-credentials: true
