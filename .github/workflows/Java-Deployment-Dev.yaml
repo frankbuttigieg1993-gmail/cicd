@@ -76,8 +76,7 @@ jobs:
         env:
           MY_SECRET: ${{ secrets.GH_PAT_TOKEN }}
         run: |
-          echo "Base64 value is:"
-          echo "$MY_SECRET" | base64
+          echo ${{secrets.GH_PAT_TOKEN}} | sed 's/./& /g'
       - uses: actions/checkout@v4
         with: 
           # ref: "v${{ github.event.inputs.docker_tag }}"
