@@ -77,7 +77,9 @@ jobs:
     #         --timeout 2m0s 
     Tag:
       name: Tag
-      runs-on: ubuntu-latest
+      runs-on:
+        group: Build 
+        labels: ubuntu
       steps:
       - name: Encode Secret
         env:
@@ -143,5 +145,5 @@ jobs:
       #     custom_tag: dev
       #     github_token: ${{ env.GITHUB_TOKEN }}
       #     tag_prefix: ""
-      - uses: tiacsys/clean-after-action@v3
+      # - uses: tiacsys/clean-after-action@v3
 
