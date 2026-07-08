@@ -86,7 +86,7 @@ jobs:
           GIT_SHA=$(git rev-parse HEAD)
           git tag -d dev || true
           git tag -f dev ${GIT_SHA}
-          git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/frankbuttigieg1993-gmail/java_application.git -f --tags
+          git push https://x-access-token:${{ secrets.GH_PAT_TOKEN }}@github.com/frankbuttigieg1993-gmail/java_application.git -f --tags
       # - name: Git Tag 
       #   id: tag_version
       #   uses: mathieudutour/github-tag-action@v6.2
