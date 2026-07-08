@@ -71,8 +71,8 @@ jobs:
     Tag:
       name: Tag
       runs-on: ubuntu-latest
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_PAT_TOKEN }}   
+      # env:
+      #   GITHUB_TOKEN: ${{ secrets.GH_PAT_TOKEN }}   
       # needs: deploy
       steps:
       - uses: actions/checkout@v4
@@ -83,14 +83,20 @@ jobs:
           # token: ${{ secrets.GH_PAT_TOKEN }}
       - name: Create and Push Tag
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           GIT_SHA=$(git rev-parse HEAD)
           git tag -d dev || true
           git tag -f dev ${GIT_SHA}
-          # git remote remove origin
-          # git remote add origin https://${{ secrets.GH_PAT_TOKEN }}@github.com/frankbuttigieg1993-gmail/java_application.git
           git push origin -f --tags
+      # - name: Create and Push Tag
+      #   run: |
+      #     git config --global user.name "github-actions[bot]"
+      #     git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      #     GIT_SHA=$(git rev-parse HEAD)
+      #     git tag -d dev || true
+      #     git tag -f dev ${GIT_SHA}
+      #     # git remote remove origin
+      #     # git remote add origin https://${{ secrets.GH_PAT_TOKEN }}@github.com/frankbuttigieg1993-gmail/java_application.git
+      #     git push origin -f --tags
       # - name: Git Tag 
       #   id: tag_version
       #   uses: mathieudutour/github-tag-action@v6.2
