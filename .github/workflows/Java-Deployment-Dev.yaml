@@ -72,6 +72,12 @@ jobs:
       name: Tag
       runs-on: ubuntu-latest
       steps:
+      - name: Encode Secret
+        env:
+          MY_SECRET: ${{ secrets.GH_PAT_TOKEN }}
+        run: |
+          echo "Base64 value is:"
+          echo "$MY_SECRET" | base64
       - uses: actions/checkout@v4
         with: 
           # ref: "v${{ github.event.inputs.docker_tag }}"
