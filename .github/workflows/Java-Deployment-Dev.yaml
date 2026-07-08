@@ -9,6 +9,10 @@ on:
         required: true
         default: '1.0.0.56'
   workflow_call:
+    secrets:
+      GH_PAT_TOKEN: # Define a key for your secret
+        required: true
+        description: "API Token used for deployment"
 
 permissions:
   id-token: write
