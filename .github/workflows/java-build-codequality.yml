@@ -103,7 +103,7 @@ jobs:
         with:
           languages: 'java-kotlin'
       - name: Build Application 
-        run: ./gradlew clean assemble
+        run: gradle clean assemble
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
     # Docker_Push:
