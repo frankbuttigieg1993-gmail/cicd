@@ -10,6 +10,11 @@ on:
         default: '1.0.0.56'
   workflow_call:
 
+permissions:
+  id-token: write
+  contents: write
+  workflows: write
+
 defaults:
   run:
     shell: bash
@@ -24,9 +29,6 @@ jobs:
     deploy:
       name: Deploy
       runs-on: ubuntu-latest
-      permissions:
-        id-token: write
-        contents: write 
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,8 +72,6 @@ jobs:
     Tag:
       name: Tag
       runs-on: ubuntu-latest
-      permissions:
-        contents: write
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
       needs: deploy
