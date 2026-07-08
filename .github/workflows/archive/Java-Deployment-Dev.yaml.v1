@@ -106,7 +106,7 @@ jobs:
           git tag -d env_dev || true
           git tag -f env_dev v${{ github.event.inputs.docker_tag }}
           git push origin -f --tags
-#         git remote set-url origin https://${{ secrets.GH_PAT_TOKEN }}@github.com/frankbuttigieg1993-gmail/java_application.git
+
     # Tag:
     #   name: Tag
     #   runs-on: ubuntu-latest

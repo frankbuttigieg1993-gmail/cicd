@@ -23,7 +23,7 @@ env:
 jobs:
     Build:
       name: Build
-      runs-on: ubuntu-latest
+      runs-on: [self-hosted, linux, x64] 
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       container:
@@ -63,7 +63,7 @@ jobs:
     #       fail-on-error: 'false'
     Docker_Push:
       name: Docker Push
-      runs-on: ubuntu-latest
+      runs-on: [self-hosted, linux, x64] 
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
