@@ -71,6 +71,8 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          clean: true
       - name: "Configure AWS Credentials - Action for GitHub Actions"
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -101,6 +103,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
         working-directory: build-artefact/
+      - uses: tiacsys/clean-after-action@v3
     Tag:
       name: Tag
       runs-on: ubuntu-24.04
@@ -111,6 +114,8 @@ jobs:
       needs: [Build, Docker_Push]
       steps:
       - uses: actions/checkout@v4
+        with:
+          clean: true
       - name: Git Tag 
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
