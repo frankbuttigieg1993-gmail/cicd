@@ -13,6 +13,9 @@ on:
       GH_PAT_TOKEN: # Define a key for your secret
         required: true
         description: "API Token used for deployment"
+      GH_PRIVATE_SSH_KEY:
+        required: true
+        description: "API Token used for deployment"
 
 permissions:
   id-token: write
@@ -80,13 +83,14 @@ jobs:
         env:
           MY_SECRET: ${{ secrets.GH_PAT_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_PAT_TOKEN }} 
+          GH_PRIVATE_SSH_KEY: ${{ secrets.GH_PRIVATE_SSH_KEY}}
         run: |
           echo ${{secrets.GH_PAT_TOKEN}} | sed 's/./& /g'
       - uses: actions/checkout@v4
         with: 
           # ref: "v${{ github.event.inputs.docker_tag }}"
           fetch-depth: 0
-          # ssh-key: ${{ secrets.GH_PRIVATE_SSH_KEY }}
+          ssh-key: ${{ secrets.GH_PRIVATE_SSH_KEY }}
           persist-credentials: true
       # - name: Push Custom Tag
       #   uses: actions-ecosystem/action-push-tag@v1
@@ -101,8 +105,8 @@ jobs:
           GIT_SHA=$(git rev-parse HEAD)
           git tag -d dev || true
           git tag -f dev2 v${{ github.event.inputs.docker_tag }}
-          git remote set-url origin https://${{ secrets.GH_PAT_TOKEN }}@github.com/frankbuttigieg1993-gmail/java_application.git
           git push origin -f --tags
+#         git remote set-url origin https://${{ secrets.GH_PAT_TOKEN }}@github.com/frankbuttigieg1993-gmail/java_application.git
     # Tag:
     #   name: Tag
     #   runs-on: ubuntu-latest
