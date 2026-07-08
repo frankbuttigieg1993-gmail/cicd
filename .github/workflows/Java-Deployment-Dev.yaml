@@ -25,72 +25,72 @@ env:
   HELM_CHART_PATH: ./helm/java-application
 
 jobs:
-    deploy:
-      name: Deploy
-      runs-on: ubuntu-latest
-      steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with: 
-          ref: "v${{ github.event.inputs.docker_tag }}"
-      - name: Set Docker Tag Env Variable
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "IMAGE_TAG=${{ github.event.inputs.docker_tag }}" >> $GITHUB_ENV
-          else
-            echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
-          fi
-      - name: Set up Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: 'v3.12.0'
-      - name: Sign into cluster and install kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: 'latest' # Or a specific version like 'v1.28.0'
-        id: install
-      - name: "Configure AWS Credentials"
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ap-southeast-2 
-          role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
-      - name: Update Kubeconfig
-        run: |
-          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
-          # Verify the kubeconfig was created successfully
-          kubectl cluster-info
-          kubectl auth can-i get nodes
-      - name: Deploy Helm Chart
-        run: |
-          helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
-            --namespace default \
-            --set image.tag=${{ env.IMAGE_TAG }} \
-            --set env.APP_RUNTIME_VALUE="development" \
-            --atomic \
-            --timeout 2m0s 
+    # deploy:
+    #   name: Deploy
+    #   runs-on: ubuntu-latest
+    #   steps:
+    #   - name: Checkout
+    #     uses: actions/checkout@v4
+    #     with: 
+    #       ref: "v${{ github.event.inputs.docker_tag }}"
+    #   - name: Set Docker Tag Env Variable
+    #     run: |
+    #       if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+    #         echo "IMAGE_TAG=${{ github.event.inputs.docker_tag }}" >> $GITHUB_ENV
+    #       else
+    #         echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+    #       fi
+    #   - name: Set up Helm
+    #     uses: azure/setup-helm@v4
+    #     with:
+    #       version: 'v3.12.0'
+    #   - name: Sign into cluster and install kubectl
+    #     uses: azure/setup-kubectl@v4
+    #     with:
+    #       version: 'latest' # Or a specific version like 'v1.28.0'
+    #     id: install
+    #   - name: "Configure AWS Credentials"
+    #     uses: aws-actions/configure-aws-credentials@v4
+    #     with:
+    #       aws-region: ap-southeast-2 
+    #       role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
+    #   - name: Update Kubeconfig
+    #     run: |
+    #       aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+    #       # Verify the kubeconfig was created successfully
+    #       kubectl cluster-info
+    #       kubectl auth can-i get nodes
+    #   - name: Deploy Helm Chart
+    #     run: |
+    #       helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
+    #         --namespace default \
+    #         --set image.tag=${{ env.IMAGE_TAG }} \
+    #         --set env.APP_RUNTIME_VALUE="development" \
+    #         --atomic \
+    #         --timeout 2m0s 
     Tag:
       name: Tag
       runs-on: ubuntu-latest
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
-      needs: deploy
+      # needs: deploy
       steps:
       - uses: actions/checkout@v4
         with: 
           ref: "v${{ github.event.inputs.docker_tag }}"
-      - name: Create and Push Tag
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          GIT_SHA=$(git rev-parse HEAD)
-          git tag -d dev || true
-          git tag -f dev ${GIT_SHA}
-          git push -f --tags
-      # - name: Git Tag 
-      #   id: tag_version
-      #   uses: mathieudutour/github-tag-action@v6.2
-      #   with:
-      #     custom_tag: dev
-      #     github_token: ${{ env.GITHUB_TOKEN }}
-      #     tag_prefix: ""
+      # - name: Create and Push Tag
+      #   run: |
+      #     git config --global user.name "github-actions[bot]"
+      #     git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      #     GIT_SHA=$(git rev-parse HEAD)
+      #     if ! git rev-parse -q --verify "refs/tags/dev" >/dev/null; then git tag -a dev -m "create dev tag" fi git push origin dev --tags
+      #     # git tag -f dev ${GIT_SHA}
+      #     # git push -f --tags
+      - name: Git Tag 
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          custom_tag: dev
+          github_token: ${{ env.GITHUB_TOKEN }}
+          tag_prefix: ""
       - uses: tiacsys/clean-after-action@v3
