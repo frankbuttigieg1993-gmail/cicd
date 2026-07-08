@@ -77,9 +77,7 @@ jobs:
     #         --timeout 2m0s 
     Tag:
       name: Tag
-      runs-on:
-        group: Build 
-        labels: ubuntu
+      runs-on: self-hosted
       steps:
       - name: Encode Secret
         env:
