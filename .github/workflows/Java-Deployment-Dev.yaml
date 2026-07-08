@@ -104,7 +104,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           GIT_SHA=$(git rev-parse HEAD)
           git tag -d dev || true
-          git tag -f dev2 v${{ github.event.inputs.docker_tag }}
+          git tag -f dev v${{ github.event.inputs.docker_tag }}
           git push origin -f --tags
 #         git remote set-url origin https://${{ secrets.GH_PAT_TOKEN }}@github.com/frankbuttigieg1993-gmail/java_application.git
     # Tag:
