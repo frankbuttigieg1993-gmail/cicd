@@ -71,8 +71,8 @@ jobs:
     Tag:
       name: Tag
       runs-on: ubuntu-latest
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+      # env:
+      #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
       # needs: deploy
       steps:
       - uses: actions/checkout@v4
