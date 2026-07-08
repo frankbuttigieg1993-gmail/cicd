@@ -36,9 +36,21 @@ jobs:
         id: app_version
         run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
       - name: Gradle Build 
-        run: gradle bootJar test --no-daemon
+        run: gradle clean test build jacocoTestReport jacocoTestCoverageVerification
       - name: Listing Files
         run: find . -type f
+      - name: Upload JaCoCo HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-report
+          path: build/reports/jacoco/test/html
+      - name: Upload Test Results 
+        uses: actions/upload-artifact@v4 
+        if: always() 
+        with: 
+          name: junit-test-results
+          path: build/test-results/test
       - name: Upload build files
         uses: actions/upload-artifact@v4
         with:
@@ -75,34 +87,27 @@ jobs:
     #       path: '*.xml'                     # Path to test results (inside artifact .zip)
     #       reporter: jest-junit              # Format of test results
     #       fail-on-error: 'false'
-    # Code_Quality_Scan:
-    #   name: Code Quality Scan
-    #   runs-on: ubuntu-latest
-    #   needs: [Build]
-    #   container:
-    #     image: ubuntu:24.04
-    #   permissions:
-    #     actions: read
-    #     contents: read
-    #     security-events: write # Required to upload results to the Security tab
-    #   steps:
-    #   - name: Checkout
-    #     uses: actions/checkout@v4
-    #   - name: Download build artifact
-    #     uses: actions/download-artifact@v4
-    #     with:
-    #       name: ${{ env.build-artifact-key }}
-    #       path: build-artefact/
-    #   - name: Initialize CodeQL
-    #     uses: github/codeql-action/init@v3
-    #     with:
-    #       languages: 'java'
-    #       # Points CodeQL to the root directory containing the source code
-    #       source-root: 'build-artefact' 
-    #   - name: Perform CodeQL Analysis
-    #     uses: github/codeql-action/analyze@v3
-    #     with:
-    #       checkout_path: 'build-artefact' 
+    Code_Quality_Scan:
+      name: Code Quality Scan
+      runs-on: ubuntu-latest
+      needs: [Build]
+      container:
+        image: ubuntu:24.04
+      permissions:
+        actions: read
+        contents: read
+        security-events: write # Required to upload results to the Security tab
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: 'java-kotlin'
+      - name: Build Application 
+        run: ./gradlew clean assemble
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
     # Docker_Push:
     #   name: Docker Push
     #   runs-on: ubuntu-latest
