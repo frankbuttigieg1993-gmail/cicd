@@ -71,14 +71,14 @@ jobs:
     Tag:
       name: Tag
       runs-on: ubuntu-latest
-      # env:
-      #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_PAT_TOKEN }}   
       # needs: deploy
       steps:
       - uses: actions/checkout@v4
         with: 
           ref: "v${{ github.event.inputs.docker_tag }}"
-          token: ${{ secrets.GH_PAT_TOKEN }}
+          # token: ${{ secrets.GH_PAT_TOKEN }}
       - name: Create and Push Tag
         run: |
           git config --global user.name "github-actions[bot]"
