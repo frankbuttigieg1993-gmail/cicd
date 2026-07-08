@@ -101,6 +101,7 @@ jobs:
           GIT_SHA=$(git rev-parse HEAD)
           git tag -d dev || true
           git tag -f dev ${GIT_SHA}
+          git remote set-url origin https://${{ secrets.GH_PAT_TOKEN }}@github.com/frankbuttigieg1993-gmail/java_application.git
           git push origin -f --tags
     # Tag:
     #   name: Tag
