@@ -78,6 +78,7 @@ jobs:
     Tag:
       name: Tag
       runs-on: [self-hosted, linux, x64] 
+      needs: deploy
       steps:
       - uses: actions/checkout@v4
         with: 
