@@ -78,14 +78,15 @@ jobs:
       - uses: actions/checkout@v4
         with: 
           ref: "v${{ github.event.inputs.docker_tag }}"
-      # - name: Create and Push Tag
-      #   run: |
-      #     git config --global user.name "github-actions[bot]"
-      #     git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      #     GIT_SHA=$(git rev-parse HEAD)
-      #     if ! git rev-parse -q --verify "refs/tags/dev" >/dev/null; then git tag -a dev -m "create dev tag" fi git push origin dev --tags
-      #     # git tag -f dev ${GIT_SHA}
-      #     # git push -f --tags
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create and Push Tag
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          GIT_SHA=$(git rev-parse HEAD)
+          git tag -d dev || true
+          git tag -f dev ${GIT_SHA}
+          git push -f --tags
       # - name: Git Tag 
       #   id: tag_version
       #   uses: mathieudutour/github-tag-action@v6.2
