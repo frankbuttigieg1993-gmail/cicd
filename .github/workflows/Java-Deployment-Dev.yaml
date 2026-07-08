@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v4
         with: 
           ref: "v${{ github.event.inputs.docker_tag }}"
-          persist-credentials: false
+          token: ${{ secrets.GH_PAT_TOKEN }}
       - name: Create and Push Tag
         run: |
           git config --global user.name "github-actions[bot]"
