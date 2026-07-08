@@ -25,13 +25,13 @@ jobs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       container:
         image: gradle:9.6.1-jdk21
+      permissions:
+        actions: read
+        contents: read
+        security-events: write # Required to upload results to the Security tab
       steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: 'java'
       - name: Set APP_VERSION Output 
         id: app_version
         run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
@@ -57,10 +57,7 @@ jobs:
           name: ${{ env.build-artifact-key }}
           path: |
             build/
-            src/
             Dockerfile
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
     # Unit_Test:
     #   name: Unit_Test
     #   runs-on: ubuntu-latest
