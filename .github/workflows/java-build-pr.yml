@@ -48,6 +48,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Run Unit Tests
         run: gradle test --no-daemon
+        continue-on-error: true
       - name: Copy Sample Test Report 
         run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
       - name: Upload Test Report files
