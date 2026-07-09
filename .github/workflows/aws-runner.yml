@@ -82,6 +82,7 @@ jobs:
     Build:
       name: Build
       runs-on: ${{ github.run_id }}   
+      needs: start-runner
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       # container:
