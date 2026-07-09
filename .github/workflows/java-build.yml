@@ -25,7 +25,7 @@ env:
 jobs:
     Build:
       name: Build
-      runs-on: ${{ inputs.target-runner }}
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       container:
@@ -67,7 +67,7 @@ jobs:
     # - uses: tiacsys/clean-after-action@v3
     # Unit_Test:
     #   name: Unit_Test
-    #   runs-on: ${{ inputs.target-runner }}
+    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
     #   needs: [Build]
     #   container:
     #     image: gradle:9.6.1-jdk21
@@ -94,7 +94,7 @@ jobs:
     # - uses: tiacsys/clean-after-action@v3
     Docker_Push:
       name: Docker Push
-      runs-on: ${{ inputs.target-runner }}
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
