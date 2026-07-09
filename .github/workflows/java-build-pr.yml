@@ -1,0 +1,63 @@
+name: Java Application - PR Pipeline
+run-name: ${{ github.ref_name }}-${{ github.run_number }}
+
+on:
+  pull_request:
+    branches: [ main, release/*, develop ]
+    types: [ opened, synchronize, reopened ] 
+  workflow_call:
+    inputs:
+      target-runner:
+        required: true
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+    Build:
+      name: Build
+      runs-on: ${{ inputs.target-runner }}
+      outputs:
+        APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
+      container:
+        image: gradle:9.6.1-jdk21
+        options: --user 1000:1000
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set APP_VERSION Output 
+        id: app_version
+        run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
+      - name: Build with Gradle
+        run:  gradle clean test build 
+        continue-on-error: true
+      - name: Listing Files
+        run: find . -type f
+    Unit_Test:
+      name: Unit_Test
+      runs-on: ${{ inputs.target-runner }}
+      needs: [Build]
+      container:
+        image: gradle:9.6.1-jdk21
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run Unit Tests
+        run: gradle test --no-daemon
+      - name: Copy Sample Test Report 
+        run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
+      - name: Upload Test Report files
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: build/test-results/sample/
+      - name: Publish Test Report To GitHub
+        uses: dorny/test-reporter@v2
+        with:
+          artifact: unit-test-report  # artifact name
+          name: unit-test-report                  # Name of the check run which will be created
+          path: '*.xml'                     # Path to test results (inside artifact .zip)
+          reporter: jest-junit              # Format of test results
+          fail-on-error: 'false'
