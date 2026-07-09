@@ -1,5 +1,5 @@
 name: Java Application - PR Pipeline
-run-name: ${{ github.ref_name }}-${{ github.run_number }}
+run-name: PR-${{ github.event.pull_request.number }}-${{ github.event.pull_request.title }}
 
 on:
   pull_request:
@@ -18,7 +18,7 @@ defaults:
 jobs:
     Build:
       name: Build
-      runs-on: ${{ inputs.target-runner }}
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       container:
@@ -27,6 +27,8 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Dump GitHub PR Context
+        run: echo "${{ toJson(github.event.pull_request) }}"
       - name: Set APP_VERSION Output 
         id: app_version
         run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
@@ -37,7 +39,7 @@ jobs:
         run: find . -type f
     Unit_Test:
       name: Unit_Test
-      runs-on: ${{ inputs.target-runner }}
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
       needs: [Build]
       container:
         image: gradle:9.6.1-jdk21
