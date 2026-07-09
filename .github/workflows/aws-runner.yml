@@ -56,9 +56,7 @@ jobs:
     start-runner:
         timeout-minutes: 5              # normally it only takes 1-2 minutes
         name: Start self-hosted EC2 runner   
-        runs-on: ubuntu-latest
-        permissions:
-          actions: write        
+        runs-on: ubuntu-latest   
         steps:      
           - name: Start EC2 runner
             id: start-ec2-runner
