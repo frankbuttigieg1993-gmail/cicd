@@ -64,6 +64,7 @@ jobs:
             with:
               github_token: ${{ secrets.GH_PAT_TOKEN }}
               aws_access_key_id: ${{ secrets.AWS_GITHUB_ACCESS_KEY_ID }}
+              repo_url: https://github.com/frankbuttigieg1993-gmail/java_application   # force registration target
               aws_secret_access_key: ${{ secrets.AWS_GITHUB_SECRET_ACCESS_KEY_ID }}
               aws_region: "ap-southeast-2"
               ec2_instance_type: t3.medium
