@@ -71,6 +71,7 @@ jobs:
     #   needs: [Build]
     #   container:
     #     image: gradle:9.6.1-jdk21
+        # options: --user 1000:1000
     #   steps:
     #   - name: Checkout
     #     uses: actions/checkout@v4
