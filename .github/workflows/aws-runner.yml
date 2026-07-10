@@ -93,7 +93,7 @@ jobs:
         project: 'MyProjectName'
         path: '.'
         format: 'SARIF'
-        out: 'owasp.sarif'
+        out: "${{github.workspace}}/owasp-results.sarif"
     - name: Upload OWASP scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v4
       if: always()
