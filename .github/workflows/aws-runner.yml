@@ -142,9 +142,6 @@ jobs:
     permissions:
       id-token: write # This is required for requesting the JWT for OIDC auth to AWS
       contents: read  # Required for checkout
-    env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
     needs: [start-runner, Build]
     steps:
     - name: Checkout
@@ -188,6 +185,9 @@ jobs:
         version: v0.72.0
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@v0.36.0
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
       with:
         image-ref: '$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}'
         format: 'sarif'
