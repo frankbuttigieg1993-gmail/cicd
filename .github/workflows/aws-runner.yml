@@ -92,6 +92,24 @@ jobs:
         path: '.'
         format: 'HTML'
         out: 'reports'
+    - name: OWASP Report
+      id: html_preview
+      uses: pavi2410/html-preview-action@v2
+      with:
+        html_file: '/github/workspace/reports/dependency-check-report.html'
+    - name: Publish OWASP Report To GitHub
+      uses: dorny/test-reporter@v2
+      with:
+        artifact: owasp-report  # artifact name
+        name: owasp-report                  # Name of the check run which will be created
+        path: '/github/workspace/reports/dependency-check-report.html                     # Path to test results (inside artifact .zip)
+        reporter: jest-junit              # Format of test results
+        fail-on-error: 'false'
+    - name: OWASP Test Report files
+      uses: actions/upload-artifact@v4
+      with:
+        name: owasp-test-report
+        path: /github/workspace/reports/dependency-check-report.html
     - name: Build Overview
       run: |
         # Generate your HTML block
