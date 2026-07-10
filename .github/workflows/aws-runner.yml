@@ -78,7 +78,7 @@ jobs:
       id: app_version
       run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
     - name: Build with Gradle
-      run:  gradle clean test build 
+      run:  gradle clean build 
       continue-on-error: true
     - name: Upload build files
       uses: actions/upload-artifact@v4
@@ -93,7 +93,7 @@ jobs:
         project: 'MyProjectName'
         path: '.'
         format: 'SARIF'
-        out: "${{github.workspace}}/owasp-results.sarif"
+        out: "owasp-results.sarif"
     - name: Upload OWASP scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v4
       if: always()
@@ -104,11 +104,11 @@ jobs:
     #   uses: pavi2410/html-preview-action@v2
     #   with:
     #     html_file: ${{github.workspace}}/reports/dependency-check-report.html
-    - name: Upload Test results
-      uses: actions/upload-artifact@master
-      with:
-          name: Depcheck report
-          path: ${{github.workspace}}/reports/dependency-check-report.html
+    # - name: Upload Test results
+    #   uses: actions/upload-artifact@master
+    #   with:
+    #       name: Depcheck report
+    #       path: ${{github.workspace}}/reports/dependency-check-report.html
 
     - name: Build Overview
       run: |
