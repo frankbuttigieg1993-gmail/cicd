@@ -25,6 +25,40 @@ env:
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
 jobs:
+  start-runner:
+    name: Start self-hosted EC2 runner
+    runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.start-ec2-runner.outputs.label }}
+      ec2-instance-id: ${{ steps.start-ec2-runner.outputs.ec2-instance-id }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_GITHUB_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_GITHUB_SECRET_ACCESS_KEY_ID }}
+          aws-region: 'ap-southeast-2'
+      - name: Start EC2 runner
+        id: start-ec2-runner
+        uses: machulav/ec2-github-runner@v2
+        with:
+          mode: start
+          github-token: ${{ secrets.AWS_GITHUB_RUNNER_TOKEN }}
+          ec2-image-id: ami-040585fab7b70b6c7
+          ec2-instance-type: t3.medium
+          subnet-id: subnet-0b38821d605af3a64
+          security-group-id: sg-004bf88b5a89e74ea
+          iam-role-name: arn:aws:iam::865983312994:role/github-actions-role
+          use-jit: true
+          aws-resource-tags: > # optional, requires additional permissions
+            [
+              {"Key": "Name", "Value": "ec2-github-runner"},
+              {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
+            ]
+          block-device-mappings: > # optional, to customize EBS volumes
+            [
+              {"DeviceName": "/dev/sda1", "Ebs": {"VolumeSize": 30, "VolumeType": "gp3"}}
+            ]
     # start-runner:
     #     timeout-minutes: 5              # normally it only takes 1-2 minutes
     #     name: Start self-hosted EC2 runner   
@@ -49,166 +83,38 @@ jobs:
     #                           [
     #                             {"Key": "Owner", "Value": "Github-Runner"}
     #                           ]
-    start-runner:
-      runs-on: ubuntu-latest
-      steps:
-        - id: deploy
-          uses: bitovi/github-actions-deploy-github-runner-to-ec2@v0.1.4
-          with:
-            aws_access_key_id: ${{ secrets.AWS_GITHUB_ACCESS_KEY_ID }}
-            aws_secret_access_key: ${{ secrets.AWS_GITHUB_SECRET_ACCESS_KEY_ID }}
-            aws_default_region: ap-southeast-2
-            additional_tags: '{\"Name\":\"GitHub-Runner\",\"key2\":\"value2\"}'
-            aws_ec2_ami_id: 'ami-06259b63260eddc13'
-            aws_ec2_instance_root_vol_size: 30
-            aws_ec2_iam_instance_profile: arn:aws:iam::865983312994:instance-profile/github-actions-role
-            aws_ec2_security_group_name: "GitHub-Runner" 
+    # start-runner:
+    #   runs-on: ubuntu-latest
+    #   steps:
+    #     - id: deploy
+    #       uses: bitovi/github-actions-deploy-github-runner-to-ec2@v0.1.4
+    #       with:
+    #         aws_access_key_id: ${{ secrets.AWS_GITHUB_ACCESS_KEY_ID }}
+    #         aws_secret_access_key: ${{ secrets.AWS_GITHUB_SECRET_ACCESS_KEY_ID }}
+    #         aws_default_region: ap-southeast-2
+    #         additional_tags: '{\"Name\":\"GitHub-Runner\",\"key2\":\"value2\"}'
+    #         aws_ec2_ami_id: 'ami-040585fab7b70b6c7'
+    #         aws_ec2_instance_root_vol_size: 30
+    #         aws_ec2_iam_instance_profile: github-actions-role
+    #         aws_ec2_security_group_name: "GitHub-Runner" 
 
-            aws_vpc_id: vpc-0cc923593f8d9050f
-            aws_vpc_subnet_id: subnet-0b38821d605af3a64
+    #         aws_vpc_id: vpc-0cc923593f8d9050f
+    #         aws_vpc_subnet_id: subnet-0b38821d605af3a64
 
-            ec2_instance_type: t3.medium
-            ec2_instance_public_ip: false
-            ec2_additional_tags: '{\"key3\":\"value3\",\"key4\":\"value4\"}'
+    #         ec2_instance_type: t3.medium
+    #         ec2_instance_public_ip: false
+    #         ec2_additional_tags: '{\"key3\":\"value3\",\"key4\":\"value4\"}'
             
-            repo_url: https://github.com/frankbuttigieg1993-gmail/java_application
-            repo_access_token: ${{ secrets.AWS_GITHUB_RUNNER_TOKEN }}
+    #         repo_url: https://github.com/frankbuttigieg1993-gmail/java_application
+    #         repo_access_token: ${{ secrets.AWS_GITHUB_RUNNER_TOKEN }}
 
-            stack_destroy: false
-            tf_state_bucket_destroy: true
-            tf_state_bucket: terraform-frankbuttigieg1993-github-runners
-    Build:
-      name: Build
-      runs-on: ${{ github.run_id }}   
-      needs: start-runner
-      outputs:
-        APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
-      # container:
-      #   image: gradle:9.6.1-jdk21
-      #   options: --user 1000:1000
-      steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set APP_VERSION Output 
-        id: app_version
-        run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
-      - name: Printing AWS Version
-        run: cat /etc/os-release
-      # - name: Build with Gradle
-      #   run:  gradle clean test build 
-      #   continue-on-error: true
-      - name: Listing Files
-        run: find . -type f
-      # - name: Upload build files
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: ${{ env.build-artifact-key }}
-      #     path: |
-      #       Dockerfile
-    #   - name: Copy Sample Test Report 
-    #     run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
-    #   - name: Upload Test Report files
-    #     uses: actions/upload-artifact@v4
-    #     with:
-    #       name: unit-test-report
-    #       path: build/test-results/sample/
-    #   - name: Publish Test Report To GitHub
-    #     uses: dorny/test-reporter@v2
-    #     with:
-    #       artifact: unit-test-report  # artifact name
-    #       name: unit-test-report                  # Name of the check run which will be created
-    #       path: '*.xml'                     # Path to test results (inside artifact .zip)
-    #       reporter: jest-junit              # Format of test results
-    #       fail-on-error: 'false'
-    # - uses: tiacsys/clean-after-action@v3
-    # Unit_Test:
-    #   name: Unit_Test
-    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
-    #   needs: [Build]
-    #   container:
-    #     image: gradle:9.6.1-jdk21
-        # options: --user 1000:1000
-    #   steps:
-    #   - name: Checkout
-    #     uses: actions/checkout@v4
-    #   - name: Run Unit Tests
-    #     run: gradle test --no-daemon
-    #   - name: Copy Sample Test Report 
-    #     run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
-    #   - name: Upload Test Report files
-    #     uses: actions/upload-artifact@v4
-    #     with:
-    #       name: unit-test-report
-    #       path: build/test-results/sample/
-    #   - name: Publish Test Report To GitHub
-    #     uses: dorny/test-reporter@v2
-    #     with:
-    #       artifact: unit-test-report  # artifact name
-    #       name: unit-test-report                  # Name of the check run which will be created
-    #       path: '*.xml'                     # Path to test results (inside artifact .zip)
-    #       reporter: jest-junit              # Format of test results
-    #       fail-on-error: 'false'
-    # - uses: tiacsys/clean-after-action@v3
-    # Docker_Push:
-    #   name: Docker Push
-    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
-    #   permissions:
-    #     id-token: write # This is required for requesting the JWT for OIDC auth to AWS
-    #     contents: read  # Required for checkout
-    #   needs: Build
-    #   steps:
-    #   - name: Checkout
-    #     uses: actions/checkout@v4
-    #     with:
-    #       clean: true
-    #   - name: "Configure AWS Credentials - Action for GitHub Actions"
-    #     uses: aws-actions/configure-aws-credentials@v4
-    #     with:
-    #       aws-region: ap-southeast-2 
-    #       role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
-    #   - name: Verify AWS Identity
-    #     run: |
-    #       aws sts get-caller-identity
-    #       aws s3 ls
-    #   - name: Download build artifact
-    #     uses: actions/download-artifact@v4
-    #     with:
-    #       name: ${{ env.build-artifact-key }}
-    #       path: build-artefact/
-    #   - name: Login to Amazon ECR
-    #     id: login-ecr
-    #     uses: aws-actions/amazon-ecr-login@v1
-    #   - name: Docker Build 
-    #     id: Docker-Build 
-    #     env:
-    #       ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-    #       APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
-    #     run: |
-    #       echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-    #       docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
-    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
-    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
-    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-    #       echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
-    #     working-directory: build-artefact/
-    #   - uses: tiacsys/clean-after-action@v3
-    # Tag:
-    #   name: Tag
-    #   runs-on: ubuntu-24.04
-    #   permissions:
-    #     contents: write
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
-    #   needs: [Build, Docker_Push]
-    #   steps:
-    #   - uses: actions/checkout@v4
-    #     with:
-    #       clean: true
-    #   - name: Git Tag 
-    #     id: tag_version
-    #     uses: mathieudutour/github-tag-action@v6.2
-    #     with:
-    #       release_branches: "release.*"
-    #       github_token: ${{ env.GITHUB_TOKEN }}
-    #       custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}
-    #   - uses: tiacsys/clean-after-action@v3
+    #         stack_destroy: false
+    #         tf_state_bucket_destroy: true
+    #         tf_state_bucket: terraform-frankbuttigieg1993-github-runners
+  do-the-job:
+    name: Do the job on the runner
+    needs: start-runner # required to start the main job when the runner is ready
+    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
+    steps:
+      - name: Hello World
+        run: echo 'Hello World!'
