@@ -22,7 +22,7 @@ defaults:
 concurrency:
   group: aws-runner-${{ github.ref }}
   cancel-in-progress: false
-  
+
 env:
   AWS_REGION: ap-southeast-2                   # set this to your preferred AWS region, e.g. us-west-1
   build-artifact-key: app-${{ github.sha }}
@@ -94,7 +94,7 @@ jobs:
       with:
         project: 'MyProjectName'
         path: '.'
-        format: 'sarif'
+        format: 'SARIF'
         out: 'owasp.sarif'
     - name: Upload OWASP scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v4
