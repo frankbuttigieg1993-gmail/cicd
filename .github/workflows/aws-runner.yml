@@ -49,7 +49,6 @@ jobs:
           subnet-id: subnet-0b38821d605af3a64
           security-group-id: sg-004bf88b5a89e74ea
           iam-role-name: github-actions-role
-          use-jit: true
           aws-resource-tags: > # optional, requires additional permissions
             [
               {"Key": "Name", "Value": "ec2-github-runner"},
