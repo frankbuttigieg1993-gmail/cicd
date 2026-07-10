@@ -85,6 +85,11 @@ jobs:
         path: |
           build/
           Dockerfile
+    - name: Build Overview
+      run: |
+        # Generate your HTML block
+        echo "<h3>🚀 Build Overview </h3>" >> $GITHUB_STEP_SUMMARY
+        echo "<table border='1'><tr><th>Item</th><th>Description</th></tr><tr><td>Git Commit </td><td>${{ github.sha }}</td></tr><tr><td>Branch</td><td>${{ github.ref_name }}</td></tr></table>" >> $GITHUB_STEP_SUMMARY
   Unit_Test:
     name: Unit_Test
     runs-on: ${{ needs.start-runner.outputs.label }}
@@ -113,11 +118,6 @@ jobs:
         path: '*.xml'                     # Path to test results (inside artifact .zip)
         reporter: jest-junit              # Format of test results
         fail-on-error: 'false'
-    - name: Generate and Append Report
-      run: |
-        # Generate your HTML block
-        echo "<h3>🚀 Test Suite Execution Summary</h3>" >> $GITHUB_STEP_SUMMARY
-        echo "<table border='1'><tr><th>Test</th><th>Status</th></tr><tr><td>Auth Validation</td><td>🟢 Passed</td></tr><tr><td>API Endpoint</td><td>🔴 Failed</td></tr></table>" >> $GITHUB_STEP_SUMMARY
   Docker_Push:
     name: Docker Push
     runs-on: ${{ needs.start-runner.outputs.label }}
