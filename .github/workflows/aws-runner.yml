@@ -101,7 +101,7 @@ jobs:
       uses: actions/upload-artifact@master
       with:
           name: Depcheck report
-          path: ${{github.workspace}}/reports
+          path: ${{github.workspace}}/reports/dependency-check-report.html
 
     - name: Build Overview
       run: |
