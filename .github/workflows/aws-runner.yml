@@ -96,12 +96,13 @@ jobs:
       id: html_preview
       uses: pavi2410/html-preview-action@v2
       with:
-        html_file: ${{github.workspace}}/reports/dependency-check-report.htm
+        html_file: ${{github.workspace}}/reports/dependency-check-report.html
     - name: Upload Test results
       uses: actions/upload-artifact@master
       with:
           name: Depcheck report
           path: ${{github.workspace}}/reports
+
     - name: Build Overview
       run: |
         # Generate your HTML block
