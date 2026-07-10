@@ -19,6 +19,10 @@ defaults:
     #   group: Build 
     #   labels: ubuntu
 
+concurrency:
+  group: aws-runner-${{ github.ref }}
+  cancel-in-progress: false
+  
 env:
   AWS_REGION: ap-southeast-2                   # set this to your preferred AWS region, e.g. us-west-1
   build-artifact-key: app-${{ github.sha }}
@@ -90,13 +94,18 @@ jobs:
       with:
         project: 'MyProjectName'
         path: '.'
-        format: 'HTML'
-        out: 'reports'
-    - name: OWASP Report
-      id: html_preview
-      uses: pavi2410/html-preview-action@v2
+        format: 'sarif'
+        out: 'owasp.sarif'
+    - name: Upload OWASP scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v4
+      if: always()
       with:
-        html_file: ${{github.workspace}}/reports/dependency-check-report.html
+        sarif_file: 'owasp-results.sarif'
+    # - name: OWASP Report
+    #   id: html_preview
+    #   uses: pavi2410/html-preview-action@v2
+    #   with:
+    #     html_file: ${{github.workspace}}/reports/dependency-check-report.html
     - name: Upload Test results
       uses: actions/upload-artifact@master
       with:
