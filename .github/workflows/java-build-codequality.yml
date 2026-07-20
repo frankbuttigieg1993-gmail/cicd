@@ -17,6 +17,10 @@ env:
   build-artifact-key: app-${{ github.sha }}
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
+  concurrency:
+  group: code-quality-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
     Build:
       name: Build
