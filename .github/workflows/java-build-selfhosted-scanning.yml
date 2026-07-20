@@ -87,7 +87,7 @@ jobs:
           skipSignatureVerification: true
       - name: SonarQube Quality Gate Check
         id: sonarqube-quality-gate-check
-        uses: sonarsource/sonarqube-quality-gate-action@v2.0.0
+        uses: sonarsource/sonarqube-quality-gate-action@v1.2.0
         if: always()
         with:
           sonar-project-key: "java-application" # Replace with your project key
