@@ -101,8 +101,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           NODE_TLS_REJECT_UNAUTHORIZED: "0" 
+          SONAR_HOST_URL: "http://127.0.0.1:9300"
+          #          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           skipSignatureVerification: true
       - name: SonarQube Quality Gate Check
@@ -112,8 +113,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           NODE_TLS_REJECT_UNAUTHORIZED: "0" 
+          SONAR_HOST_URL: "http://127.0.0.1:9300"
+          #          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           pollingTimeoutSec: 600
       - name: Show Report Summary in Run Log
