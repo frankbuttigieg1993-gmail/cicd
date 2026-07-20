@@ -76,7 +76,7 @@ jobs:
             build/
             Dockerfile
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v4.1.0 # Ex: v4.1.0 or sha1, See the latest version at https://github.com/marketplace/actions/official-sonarqube-scan
+        uses: SonarSource/sonarqube-scan-action@v8.2.1 # Ex: v4.1.0 or sha1, See the latest version at https://github.com/marketplace/actions/official-sonarqube-scan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
