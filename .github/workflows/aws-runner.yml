@@ -195,7 +195,7 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
       with:
-        image-ref: '$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}'
+        image-ref: "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
         format: 'sarif'
         output: "${{github.workspace}}/trivy-results.sarif"
 
@@ -228,6 +228,8 @@ jobs:
     needs:
       - start-runner # required to get output from the start-runner job
       - Tag 
+      - Unit_Test
+      - Docker_Push
     runs-on: ubuntu-latest
     if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
     steps:
