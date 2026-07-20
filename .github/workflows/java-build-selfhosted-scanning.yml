@@ -54,7 +54,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: gradle clean build jacocoTestReport jacocoTestCoverageVerification sonar -x test --info --scan
+        run: gradle clean build jacocoTestReport jacocoTestCoverageVerification -x test --info --scan
         continue-on-error: true
       - name: Upload JaCoCo HTML report
         uses: actions/upload-artifact@v4
