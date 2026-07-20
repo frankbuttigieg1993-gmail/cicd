@@ -120,6 +120,21 @@ jobs:
         run: |
           echo "Quality Gate Status: ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-result }}"
           echo "Project Status Details: ${{ steps.sonarqube-quality-gate-check.outputs.project-status }}"
+          echo "${{ steps.sonarqube-quality-gate-check.outputs.project-status }}" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-result }}" >> $GITHUB_STEP_SUMMARY
+      - uses: phwt/sonarqube-quality-gate-action@v1
+        id: quality-gate-check
+        with:
+          sonar-project-key: 'java-application'
+          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Output result
+        run: |
+          echo "${{ steps.quality-gate-check.outputs.project-status }}"
+          echo "${{ steps.quality-gate-check.outputs.quality-gate-result }}"
+          echo "${{ steps.quality-gate-check.outputs.project-status }}" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.quality-gate-check.outputs.quality-gate-result }}" >> $GITHUB_STEP_SUMMARY
       # - name: Perform CodeQL Analysis
       #   if: always()
       #   uses: github/codeql-action/analyze@v3
