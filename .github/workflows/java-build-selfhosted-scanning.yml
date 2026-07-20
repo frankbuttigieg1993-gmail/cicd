@@ -37,24 +37,24 @@ jobs:
       - name: Set APP_VERSION Output 
         id: app_version
         run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
-      # - name: Cache SonarQube packages
-      #   uses: actions/cache@v5
-      #   with:
-      #     path: ~/.sonar/cache
-      #     key: ${{ runner.os }}-sonar
-      #     restore-keys: ${{ runner.os }}-sonar
-      # - name: Cache Gradle packages
-      #   uses: actions/cache@v5
-      #   with:
-      #     path: ~/.gradle/caches
-      #     key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-      #     restore-keys: ${{ runner.os }}-gradle
+      - name: Cache SonarQube packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      - name: Cache Gradle packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
       - name: Build and Analyse
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: gradle clean build jacocoTestReport jacocoTestCoverageVerification -x test --info --scan
+        run: gradle clean build jacocoTestReport jacocoTestCoverageVerification -info --scan
         continue-on-error: true
       - name: Upload JaCoCo HTML report
         uses: actions/upload-artifact@v4
@@ -77,6 +77,7 @@ jobs:
             Dockerfile
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v8.2.1 # Ex: v4.1.0 or sha1, See the latest version at https://github.com/marketplace/actions/official-sonarqube-scan
+        if: always()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -84,6 +85,21 @@ jobs:
           NODE_TLS_REJECT_UNAUTHORIZED: "0" 
         with:
           skipSignatureVerification: true
+      - name: SonarQube Quality Gate Check
+        id: sonarqube-quality-gate-check
+        uses: sonarsource/sonarqube-quality-gate-action@v2.0.0
+        if: always()
+        with:
+          sonar-project-key: "java-application" # Replace with your project key
+          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        # Optional: Set a timeout (in seconds) to avoid hanging if the server is slow
+        timeout-minutes: 5 
+      - name: Show Report Summary in Run Log
+        run: |
+          echo "Quality Gate Status: ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-result }}"
+          echo "Project Status Details: ${{ steps.sonarqube-quality-gate-check.outputs.project-status }}"
     Code_Quality_Scan:
       name: Code Quality Scan
       runs-on: ubuntu-latest
@@ -102,8 +118,9 @@ jobs:
         with:
           languages: 'java-kotlin'
       - name: Build Application 
-        run: gradle clean assemble -x test
+        run: gradle clean assemble test
       - name: Perform CodeQL Analysis
+        if: always()
         uses: github/codeql-action/analyze@v3
     #   - name: Copy Sample Test Report 
     #     run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
