@@ -110,12 +110,12 @@ jobs:
         # allowing the HTML generation step to actually execute.
         - name: Execute Semgrep Scan
           run: |
-            semgrep scan --config=auto ./src --json --output=semgrep-results.json || true
+            semgrep scan --config=auto ./webgoat/src --json --output=semgrep-results.json || true
 
         # # Step 5: Convert the JSON payload into a visual HTML dashboard
         - name: Generate HTML Report
           run: |
-            python3 trivy/parse-semgrep.py --input semgrep-results.json --output semgrep-report.html --project-name "Java-Application" --only INFO,WARNING,ERROR
+            python3 trivy/parse-semgrep.py --input semgrep-results.json --output semgrep-report.html --project-name "Webgoat" --only INFO,WARNING,ERROR
           #            semgrep2html --input semgrep-results.json --output semgrep-report.html
 
         # Step 6: Upload the generated HTML file to GitHub Actions artifacts
