@@ -181,7 +181,7 @@ jobs:
         APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
       run: |
         echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
+        docker build -t java-application:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
@@ -195,7 +195,7 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
       with:
-        image-ref: "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
+        image-ref: "java-application:${{ github.sha }}"
         format: 'sarif'
         output: "results.sarif"
     - name: Upload Trivy scan results to GitHub Security tab
@@ -203,6 +203,24 @@ jobs:
       if: always()
       with:
         sarif_file: "results.sarif"
+    - name: Run Trivy vulnerability scanner HTML
+      uses: aquasecurity/trivy-action@master
+      with:
+        # Change to 'fs' if scanning source code instead of a container image
+        scan-type: 'image' 
+        image-ref: 'java-application:${{ github.sha }}'
+        format: 'template'
+        template: '@trivy/html_template.tpl'
+        output: 'trivy-report.html'
+      # Ensures the pipeline continues even if vulnerabilities are found
+      continue-on-error: true 
+
+    - name: Upload HTML Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-security-report
+        path: trivy-report.html
+        retention-days: 30
   Tag:
     name: Tag
     runs-on: ${{ needs.start-runner.outputs.label }}
