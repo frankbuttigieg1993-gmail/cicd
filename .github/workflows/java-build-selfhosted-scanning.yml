@@ -105,6 +105,15 @@ jobs:
             pip install semgrep
             pip3 install jinja2
 
+            
+        # # Step 3: Build App 
+        -   name: Set up JDK
+            uses: ./.github/actions/java-setup
+            with:
+                cache: 'maven'
+        -   name: Build with Maven
+            run: cd webgoat && mvn --no-transfer-progress verify
+
         # # Step 4: Run Semgrep scan and force it to export JSON
         # The '|| true' ensures the pipeline doesn't break instantly if vulnerabilities are found,
         # allowing the HTML generation step to actually execute.
