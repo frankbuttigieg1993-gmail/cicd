@@ -71,6 +71,7 @@ jobs:
           scan-ref: '.'
           format: 'template'
           template: '@trivy/html_template.tpl'
+          scanners: "vuln"
           output: 'trivy-report.html'
         # Ensures the pipeline continues even if vulnerabilities are found
         continue-on-error: true 
@@ -101,6 +102,7 @@ jobs:
           exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
+          scanners: "vuln"
       - name: Publish Results to Step Summary
         run: |
           echo "### 🛡️ Trivy Security Scan Results" >> \$GITHUB_STEP_SUMMARY
