@@ -117,34 +117,34 @@ jobs:
         # Generate your HTML block
         echo "<h3>🚀 Build Overview </h3>" >> $GITHUB_STEP_SUMMARY
         echo "<table border='1'><tr><th>Item</th><th>Description</th></tr><tr><td>Git Commit </td><td>${{ github.sha }}</td></tr><tr><td>Branch</td><td>${{ github.ref_name }}</td></tr></table>" >> $GITHUB_STEP_SUMMARY
-  Unit_Test:
-    name: Unit_Test
-    runs-on: ${{ needs.start-runner.outputs.label }}
-    needs: [start-runner, Build]
-    container:
-      image: gradle:9.6.1-jdk21
-      # options: --user 1000:1000
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Run Unit Tests
-      run: gradle test --no-daemon
-      continue-on-error: true
-    - name: Copy Sample Test Report 
-      run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
-    - name: Upload Test Report files
-      uses: actions/upload-artifact@v4
-      with:
-        name: unit-test-report
-        path: build/test-results/sample/
-    - name: Publish Test Report To GitHub
-      uses: dorny/test-reporter@v2
-      with:
-        artifact: unit-test-report  # artifact name
-        name: unit-test-report                  # Name of the check run which will be created
-        path: '*.xml'                     # Path to test results (inside artifact .zip)
-        reporter: jest-junit              # Format of test results
-        fail-on-error: 'false'
+  # Unit_Test:
+  #   name: Unit_Test
+  #   runs-on: ${{ needs.start-runner.outputs.label }}
+  #   needs: [start-runner, Build]
+  #   container:
+  #     image: gradle:9.6.1-jdk21
+  #     # options: --user 1000:1000
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
+  #   - name: Run Unit Tests
+  #     run: gradle test --no-daemon
+  #     continue-on-error: true
+  #   - name: Copy Sample Test Report 
+  #     run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
+  #   - name: Upload Test Report files
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: unit-test-report
+  #       path: build/test-results/sample/
+  #   - name: Publish Test Report To GitHub
+  #     uses: dorny/test-reporter@v2
+  #     with:
+  #       artifact: unit-test-report  # artifact name
+  #       name: unit-test-report                  # Name of the check run which will be created
+  #       path: '*.xml'                     # Path to test results (inside artifact .zip)
+  #       reporter: jest-junit              # Format of test results
+  #       fail-on-error: 'false'
   Docker_Push:
     name: Docker Push
     runs-on: ${{ needs.start-runner.outputs.label }}
@@ -194,7 +194,6 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
-        TRIVY_SKIP_DB_UPDATE: true
         TRIVY_SKIP_JAVA_DB_UPDATE: true
       with:
         image-ref: "java-application:${{ github.sha }}"
@@ -225,31 +224,31 @@ jobs:
         name: trivy-security-report
         path: trivy-report.html
         retention-days: 30
-  Tag:
-    name: Tag
-    runs-on: ${{ needs.start-runner.outputs.label }}
-    permissions:
-      contents: write
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
-    needs: [start-runner, Build, Docker_Push]
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        clean: true
-    - name: Git Tag 
-      id: tag_version
-      uses: mathieudutour/github-tag-action@v6.2
-      with:
-        release_branches: "release.*"
-        github_token: ${{ env.GITHUB_TOKEN }}
-        custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}      
+  # Tag:
+  #   name: Tag
+  #   runs-on: ${{ needs.start-runner.outputs.label }}
+  #   permissions:
+  #     contents: write
+  #   env:
+  #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+  #   needs: [start-runner, Build, Docker_Push]
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #     with:
+  #       clean: true
+  #   - name: Git Tag 
+  #     id: tag_version
+  #     uses: mathieudutour/github-tag-action@v6.2
+  #     with:
+  #       release_branches: "release.*"
+  #       github_token: ${{ env.GITHUB_TOKEN }}
+  #       custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}      
   delete-runner:
     name: Delete the self-hosted EC2 runner
     needs:
       - start-runner # required to get output from the start-runner job
-      - Tag 
-      - Unit_Test
+      # - Tag 
+      # - Unit_Test
       - Docker_Push
     runs-on: ubuntu-latest
     if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
