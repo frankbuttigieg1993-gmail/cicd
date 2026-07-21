@@ -42,7 +42,7 @@ jobs:
       steps:
         # Fetch project source with GitHub Actions Checkout.
         - name: Checkout repository
-          uses: actions/checkout@v3
+          uses: actions/checkout@v4
         - name: Perform Semgrep Analysis
         # @NOTE: This is the actual semgrep command to scan your code.
         # Modify the --config option to 'r/all' to scan using all rules,
@@ -51,124 +51,124 @@ jobs:
           run: semgrep scan -q --sarif --config auto ./vulnerable-source-code > semgrep-results.sarif
         # upload the results for the CodeQL GitHub app to annotate the code
         - name: Save SARIF results as artifact
-          uses: actions/upload-artifact@v3
+          uses: actions/upload-artifact@v4
           with:
             name: semgrep-scan-results
             path: semgrep-results.sarif
         # Upload SARIF file generated in previous step
         - name: Upload SARIF result to the GitHub Security Dashboard
-          uses: github/codeql-action/upload-sarif@v2
+          uses: github/codeql-action/upload-sarif@v4
           with:
             sarif_file: semgrep-results.sarif
           if: always()
-    Build:
-      name: Build
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
-      outputs:
-        APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
-      container:
-        image: gradle:9.6.1-jdk21
-        options: --user 1000:1000
-      steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set APP_VERSION Output 
-        id: app_version
-        run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
-      - name: Cache SonarQube packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-      - name: Cache Gradle packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-          restore-keys: ${{ runner.os }}-gradle
-      - name: Build and Analyse
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: gradle clean build -info --scan
-        continue-on-error: true
-      - name: Upload JaCoCo HTML report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: jacoco-report
-          path: build/reports/jacoco/test/html
-      - name: Upload Test Results 
-        uses: actions/upload-artifact@v4 
-        if: always() 
-        with: 
-          name: junit-test-results
-          path: build/test-results/test
-      - name: Upload build files
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.build-artifact-key }}
-          path: |
-            build/
-            Dockerfile
-    Code_Quality_Scan:
-      name: Code Quality Scan
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
-      needs: [Build]
-      permissions:
-        actions: read
-        contents: read
-        security-events: write # Required to upload results to the Security tab
-      steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      # - name: Initialize CodeQL
-      #   uses: github/codeql-action/init@v3
-      #   with:
-      #     languages: 'java-kotlin'
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.build-artifact-key }}
-          path: build-artefact/
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v8.2.1 # Ex: v4.1.0 or sha1, See the latest version at https://github.com/marketplace/actions/official-sonarqube-scan
-        if: always()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-          SONAR_HOST_URL: "http://10.0.2.15:9300"
-          #          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          skipSignatureVerification: true
-      - name: SonarQube Quality Gate Check
-        id: sonarqube-quality-gate-check
-        uses: sonarsource/sonarqube-quality-gate-action@v1.2.0
-        if: always()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-          SONAR_HOST_URL: "http://10.0.2.15:9300"
-          #          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          pollingTimeoutSec: 600
-      - name: Show Report Summary in Run Log
-        run: |
-          echo "Quality Gate Status: ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-result }}"
-          echo "Project Status Details: ${{ steps.sonarqube-quality-gate-check.outputs.project-status }}"
-          echo "${{ steps.sonarqube-quality-gate-check.outputs.project-status }}" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-result }}" >> $GITHUB_STEP_SUMMARY
-      - uses: phwt/sonarqube-quality-gate-action@v1
-        id: quality-gate-check
-        with:
-          sonar-project-key: 'java-application'
-          sonar-host-url: "http://10.0.2.15:9300"
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+    # Build:
+    #   name: Build
+    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
+    #   outputs:
+    #     APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
+    #   container:
+    #     image: gradle:9.6.1-jdk21
+    #     options: --user 1000:1000
+    #   steps:
+    #   - name: Checkout
+    #     uses: actions/checkout@v4
+    #   - name: Set APP_VERSION Output 
+    #     id: app_version
+    #     run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
+    #   - name: Cache SonarQube packages
+    #     uses: actions/cache@v5
+    #     with:
+    #       path: ~/.sonar/cache
+    #       key: ${{ runner.os }}-sonar
+    #       restore-keys: ${{ runner.os }}-sonar
+    #   - name: Cache Gradle packages
+    #     uses: actions/cache@v5
+    #     with:
+    #       path: ~/.gradle/caches
+    #       key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+    #       restore-keys: ${{ runner.os }}-gradle
+    #   - name: Build and Analyse
+    #     env:
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+    #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    #       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    #     run: gradle clean build -info --scan
+    #     continue-on-error: true
+    #   - name: Upload JaCoCo HTML report
+    #     uses: actions/upload-artifact@v4
+    #     if: always()
+    #     with:
+    #       name: jacoco-report
+    #       path: build/reports/jacoco/test/html
+    #   - name: Upload Test Results 
+    #     uses: actions/upload-artifact@v4 
+    #     if: always() 
+    #     with: 
+    #       name: junit-test-results
+    #       path: build/test-results/test
+    #   - name: Upload build files
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: ${{ env.build-artifact-key }}
+    #       path: |
+    #         build/
+    #         Dockerfile
+    # Code_Quality_Scan:
+    #   name: Code Quality Scan
+    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
+    #   needs: [Build]
+    #   permissions:
+    #     actions: read
+    #     contents: read
+    #     security-events: write # Required to upload results to the Security tab
+    #   steps:
+    #   - name: Checkout
+    #     uses: actions/checkout@v4
+    #   # - name: Initialize CodeQL
+    #   #   uses: github/codeql-action/init@v3
+    #   #   with:
+    #   #     languages: 'java-kotlin'
+    #   - name: Download build artifact
+    #     uses: actions/download-artifact@v4
+    #     with:
+    #       name: ${{ env.build-artifact-key }}
+    #       path: build-artefact/
+    #   - name: SonarQube Scan
+    #     uses: SonarSource/sonarqube-scan-action@v8.2.1 # Ex: v4.1.0 or sha1, See the latest version at https://github.com/marketplace/actions/official-sonarqube-scan
+    #     if: always()
+    #     env:
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+    #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    #       NODE_TLS_REJECT_UNAUTHORIZED: "0" 
+    #       SONAR_HOST_URL: "http://10.0.2.15:9300"
+    #       #          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    #     with:
+    #       skipSignatureVerification: true
+    #   - name: SonarQube Quality Gate Check
+    #     id: sonarqube-quality-gate-check
+    #     uses: sonarsource/sonarqube-quality-gate-action@v1.2.0
+    #     if: always()
+    #     env:
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+    #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    #       NODE_TLS_REJECT_UNAUTHORIZED: "0" 
+    #       SONAR_HOST_URL: "http://10.0.2.15:9300"
+    #       #          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+    #     with:
+    #       pollingTimeoutSec: 600
+    #   - name: Show Report Summary in Run Log
+    #     run: |
+    #       echo "Quality Gate Status: ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-result }}"
+    #       echo "Project Status Details: ${{ steps.sonarqube-quality-gate-check.outputs.project-status }}"
+    #       echo "${{ steps.sonarqube-quality-gate-check.outputs.project-status }}" >> $GITHUB_STEP_SUMMARY
+    #       echo "${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-result }}" >> $GITHUB_STEP_SUMMARY
+    #   - uses: phwt/sonarqube-quality-gate-action@v1
+    #     id: quality-gate-check
+    #     with:
+    #       sonar-project-key: 'java-application'
+    #       sonar-host-url: "http://10.0.2.15:9300"
+    #       sonar-token: ${{ secrets.SONAR_TOKEN }}
+    #       github-token: ${{ secrets.GITHUB_TOKEN }}
       # - name: Output result
       #   run: |
       #     echo "${{ steps.quality-gate-check.outputs.project-status }}"
