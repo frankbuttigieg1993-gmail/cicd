@@ -194,6 +194,8 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
+        TRIVY_SKIP_DB_UPDATE: true
+        TRIVY_SKIP_JAVA_DB_UPDATE: true
       with:
         image-ref: "java-application:${{ github.sha }}"
         format: 'sarif'
@@ -203,6 +205,8 @@ jobs:
       if: always()
       with:
         sarif_file: "results.sarif"
+    - name: Listing Files
+      run: find . -type f
     - name: Run Trivy vulnerability scanner HTML
       uses: aquasecurity/trivy-action@master
       with:
