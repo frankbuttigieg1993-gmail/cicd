@@ -25,7 +25,7 @@ env:
 jobs:
     Trivy:
       name: Trivy
-      runs-on: ubuntu-22.04 ##### it fails on self hosted runners and aws runners due to certificate checks. 
+      runs-on: ubuntu-latest ##### it fails on self hosted runners and aws runners due to certificate checks. 
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
@@ -63,16 +63,13 @@ jobs:
       #     sarif_file: "results.sarif"
       - name: Listing Files
         run: find . -type f
-      - name: Cache Setup
-        run: | 
-         mvn dependency:resolve
-         cache ~/.m2
       - name: Run Trivy vulnerability scanner HTML
         uses: aquasecurity/trivy-action@master
         with:
           # Change to 'fs' if scanning source code instead of a container image
           scan-type: 'fs' 
           scan-ref: '.'
+          skip-dirs: 'webgoat,juice_shop'
           format: 'template'
           template: '@trivy/html_template.tpl'
           scanners: "vuln"
