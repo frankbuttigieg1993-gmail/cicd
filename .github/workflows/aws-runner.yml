@@ -263,6 +263,7 @@ jobs:
     name: Delete the self-hosted EC2 runner
     needs:
       - start-runner # required to get output from the start-runner job
+      - Build
       # - Tag 
       # - Unit_Test
       # - Docker_Push
