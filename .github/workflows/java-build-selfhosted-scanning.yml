@@ -25,7 +25,7 @@ env:
 jobs:
     Trivy:
       name: Trivy
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      runs-on: ubuntu-latest ##### it fails on self hosted runners and aws runners due to certificate checks. 
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
@@ -38,24 +38,24 @@ jobs:
         run: |
           mkdir -p build-artefact 
           cp -pr build_artefact_poc/* build-artefact/
-      - name: Docker Build 
-        id: Docker-Build 
-        run: |
-          echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-          docker build -t java-application:${{ github.sha }} .
+      # - name: Docker Build 
+      #   id: Docker-Build 
+      #   run: |
+      #     echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
+      #     docker build -t java-application:${{ github.sha }} .
   #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
   #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
   #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
   #        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
-        working-directory: build-artefact/
-      - name: Install Trivy
-        uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: "java-application:${{ github.sha }}"
-          format: 'sarif'
-          output: "results.sarif"
+        # working-directory: build-artefact/
+      # - name: Install Trivy
+      #   uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241
+      # - name: Run Trivy vulnerability scanner
+      #   uses: aquasecurity/trivy-action@v0.36.0
+      #   with:
+      #     image-ref: "java-application:${{ github.sha }}"
+      #     format: 'sarif'
+      #     output: "results.sarif"
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
         if: always()
@@ -68,19 +68,52 @@ jobs:
         with:
           # Change to 'fs' if scanning source code instead of a container image
           scan-type: 'image' 
-          image-ref: 'java-application:${{ github.sha }}'
+          scan-ref: '.'
           format: 'template'
           template: '@trivy/html_template.tpl'
           output: 'trivy-report.html'
         # Ensures the pipeline continues even if vulnerabilities are found
         continue-on-error: true 
-
+      # - name: Run Trivy vulnerability scanner HTML
+      #   uses: aquasecurity/trivy-action@master
+      #   with:
+      #     # Change to 'fs' if scanning source code instead of a container image
+      #     scan-type: 'image' 
+      #     image-ref: 'java-application:${{ github.sha }}'
+      #     format: 'template'
+      #     template: '@trivy/html_template.tpl'
+      #     output: 'trivy-report.html'
+      #   # Ensures the pipeline continues even if vulnerabilities are found
+      #   continue-on-error: true 
       - name: Upload HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-security-report
           path: trivy-report.html
           retention-days: 30
+      - name: Run Trivy vulnerability scanner table
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'src'
+          format: 'table'
+          output: 'trivy-report.txt'
+          exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+      - name: Publish Results to Step Summary
+        run: |
+          echo "### 🛡️ Trivy Security Scan Results" >> \$GITHUB_STEP_SUMMARY
+          echo '```text' >> \$GITHUB_STEP_SUMMARY
+          cat trivy-report.txt >> \$GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # # Optional: Fail the build manually if the report contains vulnerabilities
+      # - name: Check for vulnerabilities and fail build
+      #   run: |
+      #     if grep -q "CRITICAL\|HIGH" trivy-report.txt; then
+      #       echo "Vulnerabilities detected!" && exit 1
+      #     fi
     webgoat-semgrep-scan:
       name: Run Semgrep and Generate HTML
       runs-on: ubuntu-latest
@@ -195,6 +228,9 @@ jobs:
             name: juiceshop-semgrep-security-report
             path: juiceshop-semgrep-report.html
             retention-days: 30
+ 
+
+
     # semgrep_scan:
     #   # User definable name of this GitHub Actions job.
     #   name: semgrep/ci
