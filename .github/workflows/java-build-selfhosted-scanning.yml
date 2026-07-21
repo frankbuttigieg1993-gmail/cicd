@@ -42,7 +42,7 @@ jobs:
         id: Docker-Build 
         run: |
           echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-          docker build -t java-application:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} .
+          docker build -t java-application:${{ github.sha }} .
   #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
   #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
   #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}

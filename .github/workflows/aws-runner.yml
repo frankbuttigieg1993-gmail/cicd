@@ -92,15 +92,30 @@ jobs:
       with:
         project: 'MyProjectName'
         path: '.'
-        format: 'SARIF'
-        out: "owasp-results.sarif"
-    - name: Listing Files
-      run: find . -type f
-    - name: Upload OWASP scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v4
-      if: always()
+        format: 'html'
+        out: "owasp-report.html"
+    - name: Upload HTML Report Artifact 
+      uses: actions/upload-artifact@v4
       with:
-        sarif_file: "${{github.workspace}}/owasp-results.sarif"
+        name: owasp-report
+        path: owasp-report.html
+        retention-days: 30
+    # - name: Run OWASP Dependency-Check
+    #   uses: dependency-check/Dependency-Check_Action@main
+    #   with:
+    #     project: 'MyProjectName'
+    #     path: '.'
+    #     format: 'SARIF'
+    #     out: "owasp-results.sarif"
+    # - name: Listing Files
+    #   run: find . -type f
+    # - name: Upload OWASP scan results to GitHub Security tab
+    #   uses: github/codeql-action/upload-sarif@v4
+    #   if: always()
+    #   with:
+    #     sarif_file: "${{github.workspace}}/owasp-results.sarif"
+    #      # Step 2: Set up Python environment
+
     # - name: OWASP Report
     #   id: html_preview
     #   uses: pavi2410/html-preview-action@v2
@@ -145,86 +160,86 @@ jobs:
   #       path: '*.xml'                     # Path to test results (inside artifact .zip)
   #       reporter: jest-junit              # Format of test results
   #       fail-on-error: 'false'
-  Docker_Push:
-    name: Docker Push
-    runs-on: ${{ needs.start-runner.outputs.label }}
-    permissions:
-      id-token: write # This is required for requesting the JWT for OIDC auth to AWS
-      contents: read  # Required for checkout
-    needs: [start-runner, Build]
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        clean: true
-    - name: "Configure AWS Credentials - Action for GitHub Actions"
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-region: ap-southeast-2 
-        role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
-    - name: Verify AWS Identity
-      run: |
-        aws sts get-caller-identity
-        aws s3 ls
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: ${{ env.build-artifact-key }}
-        path: build-artefact/
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
-    - name: Docker Build 
-      id: Docker-Build 
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
-      run: |
-        echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-        docker build -t java-application:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
-#        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
-#        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
-#        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-#        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
-      working-directory: build-artefact/
-    - name: Install Trivy
-      uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@v0.36.0
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
-        # TRIVY_SKIP_DB_UPDATE: true
-#        TRIVY_SKIP_JAVA_DB_UPDATE: true
-      with:
-        image-ref: "java-application:${{ github.sha }}"
-        format: 'sarif'
-        output: "results.sarif"
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v4
-      if: always()
-      with:
-        sarif_file: "results.sarif"
-    - name: Listing Files
-      run: find . -type f
-    - name: Run Trivy vulnerability scanner HTML
-      uses: aquasecurity/trivy-action@master
-      with:
-        # Change to 'fs' if scanning source code instead of a container image
-        scan-type: 'image' 
-        image-ref: 'java-application:${{ github.sha }}'
-        format: 'template'
-        template: '@trivy/html_template.tpl'
-        output: 'trivy-report.html'
-      # Ensures the pipeline continues even if vulnerabilities are found
-      continue-on-error: true 
+#   Docker_Push:
+#     name: Docker Push
+#     runs-on: ${{ needs.start-runner.outputs.label }}
+#     permissions:
+#       id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+#       contents: read  # Required for checkout
+#     needs: [start-runner, Build]
+#     steps:
+#     - name: Checkout
+#       uses: actions/checkout@v4
+#       with:
+#         clean: true
+#     - name: "Configure AWS Credentials - Action for GitHub Actions"
+#       uses: aws-actions/configure-aws-credentials@v4
+#       with:
+#         aws-region: ap-southeast-2 
+#         role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
+#     - name: Verify AWS Identity
+#       run: |
+#         aws sts get-caller-identity
+#         aws s3 ls
+#     - name: Download build artifact
+#       uses: actions/download-artifact@v4
+#       with:
+#         name: ${{ env.build-artifact-key }}
+#         path: build-artefact/
+#     - name: Login to Amazon ECR
+#       id: login-ecr
+#       uses: aws-actions/amazon-ecr-login@v1
+#     - name: Docker Build 
+#       id: Docker-Build 
+#       env:
+#         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+#         APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
+#       run: |
+#         echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
+#         docker build -t java-application:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
+# #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
+# #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+# #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+# #        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
+#       working-directory: build-artefact/
+#     - name: Install Trivy
+#       uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241
+#     - name: Run Trivy vulnerability scanner
+#       uses: aquasecurity/trivy-action@v0.36.0
+#       env:
+#         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+#         APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
+#         # TRIVY_SKIP_DB_UPDATE: true
+# #        TRIVY_SKIP_JAVA_DB_UPDATE: true
+#       with:
+#         image-ref: "java-application:${{ github.sha }}"
+#         format: 'sarif'
+#         output: "results.sarif"
+#     - name: Upload Trivy scan results to GitHub Security tab
+#       uses: github/codeql-action/upload-sarif@v4
+#       if: always()
+#       with:
+#         sarif_file: "results.sarif"
+#     - name: Listing Files
+#       run: find . -type f
+#     - name: Run Trivy vulnerability scanner HTML
+#       uses: aquasecurity/trivy-action@master
+#       with:
+#         # Change to 'fs' if scanning source code instead of a container image
+#         scan-type: 'image' 
+#         image-ref: 'java-application:${{ github.sha }}'
+#         format: 'template'
+#         template: '@trivy/html_template.tpl'
+#         output: 'trivy-report.html'
+#       # Ensures the pipeline continues even if vulnerabilities are found
+#       continue-on-error: true 
 
-    - name: Upload HTML Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: trivy-security-report
-        path: trivy-report.html
-        retention-days: 30
+#     - name: Upload HTML Report
+#       uses: actions/upload-artifact@v4
+#       with:
+#         name: trivy-security-report
+#         path: trivy-report.html
+#         retention-days: 30
   # Tag:
   #   name: Tag
   #   runs-on: ${{ needs.start-runner.outputs.label }}
@@ -250,7 +265,7 @@ jobs:
       - start-runner # required to get output from the start-runner job
       # - Tag 
       # - Unit_Test
-      - Docker_Push
+      # - Docker_Push
     runs-on: ubuntu-latest
     if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
     steps:
