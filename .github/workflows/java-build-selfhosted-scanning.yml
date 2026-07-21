@@ -111,7 +111,7 @@ jobs:
             with:
                 cache: 'maven'
         -   name: Build with Maven
-            run: cd webgoat && mvn --no-transfer-progress verify
+            run: cd webgoat && mvn clean install -DskipTests --no-transfer-progress verify
 
         # # Step 4: Run Semgrep scan and force it to export JSON
         # The '|| true' ensures the pipeline doesn't break instantly if vulnerabilities are found,
@@ -120,18 +120,33 @@ jobs:
           run: |
             semgrep scan --config=auto ./webgoat/src --json --output=semgrep-results.json || true
 
+      # 4. Run Semgrep with Supply Chain enabled
+        - name: Run Semgrep CI
+          env:
+            SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+          run: |
+            # --allow-local-builds lets Semgrep query Maven for the full dependency tree
+            semgrep ci --allow-local-builds --config=auto ./webgoat/src --json --output=semgrep-web-results.json || true
+              
         # # Step 5: Convert the JSON payload into a visual HTML dashboard
         - name: Generate HTML Report Webgoat
           run: |
             python3 trivy/parse-semgrep.py --input semgrep-results.json --output semgrep-report.html --project-name "Webgoat" --only INFO,WARNING,ERROR
+            python3 trivy/parse-semgrep.py --input semgrep-web-results.json --output webgoat-web-semgrep-report.html --project-name "Webgoat" --only INFO,WARNING,ERROR
           #            semgrep2html --input semgrep-results.json --output semgrep-report.html
 
         # Step 6: Upload the generated HTML file to GitHub Actions artifacts
         - name: Upload HTML Report Artifact Webgoat
           uses: actions/upload-artifact@v4
           with:
-            name: semgrep-security-report
+            name: webgoat-semgrep-security-report
             path: semgrep-report.html
+            retention-days: 30
+        - name: Upload HTML Report Artifact Webgoat
+          uses: actions/upload-artifact@v4
+          with:
+            name: webgoat-web-semgrep-security-report
+            path: webgoat-web-semgrep-report.html
             retention-days: 30
     juiceshop-semgrep-scan:
       name: Run Semgrep and Generate HTML
