@@ -23,44 +23,156 @@ env:
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
 jobs:
-    semgrep_scan:
-      # User definable name of this GitHub Actions job.
-      name: semgrep/ci
-      # If you are self-hosting, change the following `runs-on` value:
-      runs-on: ubuntu-latest
-      container:
-        # A Docker image with Semgrep installed. Do not change this.
-        image: returntocorp/semgrep
-      # Skip any PR created by dependabot to avoid permission issues:
-      if: (github.actor != 'dependabot[bot]')
+    Trivy:
+      name: Trivy
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
       permissions:
-        # required for all workflows
-        security-events: write
-        # only required for workflows in private repositories
-        actions: read
-        contents: read
+        id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+        contents: read  # Required for checkout
       steps:
-        # Fetch project source with GitHub Actions Checkout.
-        - name: Checkout repository
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
+      - name: "Configure AWS Credentials - Action for GitHub Actions"
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ap-southeast-2 
+          role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
+      - name: Verify AWS Identity
+        run: |
+          aws sts get-caller-identity
+          aws s3 ls
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: POC Build Artefact
+        run: |
+          mkdir -p build-artefact 
+          cp -pr build_artefact_poc/* build-artefact/
+          aws s3 ls
+      - name: Docker Build 
+        id: Docker-Build 
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
+          docker build -t java-application:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} .
+  #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
+  #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+  #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+  #        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
+        working-directory: build-artefact/
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "java-application:${{ github.sha }}"
+          format: 'sarif'
+          output: "results.sarif"
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: "results.sarif"
+      - name: Listing Files
+        run: find . -type f
+      - name: Run Trivy vulnerability scanner HTML
+        uses: aquasecurity/trivy-action@master
+        with:
+          # Change to 'fs' if scanning source code instead of a container image
+          scan-type: 'image' 
+          image-ref: 'java-application:${{ github.sha }}'
+          format: 'template'
+          template: '@trivy/html_template.tpl'
+          output: 'trivy-report.html'
+        # Ensures the pipeline continues even if vulnerabilities are found
+        continue-on-error: true 
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-security-report
+          path: trivy-report.html
+          retention-days: 30
+    semgrep-scan:
+      name: Run Semgrep and Generate HTML
+      runs-on: ubuntu-latest
+
+      steps:
+        # Step 1: Check out the repository source code
+        - name: Checkout Code
           uses: actions/checkout@v4
-        - name: Perform Semgrep Analysis
-        # @NOTE: This is the actual semgrep command to scan your code.
-        # Modify the --config option to 'r/all' to scan using all rules,
-        # or use multiple flags to specify particular rules, such as
-        # --config r/all --config custom/rules
-          run: semgrep scan -q --sarif --config auto ./src > semgrep-results.sarif
-        # upload the results for the CodeQL GitHub app to annotate the code
-        - name: Save SARIF results as artifact
+
+        # Step 2: Set up Python environment
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-state: '3.11'
+
+        # Step 3: Install Semgrep and the semgrep2html converter
+        - name: Install Dependencies
+          run: |
+            pip install semgrep semgrep2html
+
+        # Step 4: Run Semgrep scan and force it to export JSON
+        # The '|| true' ensures the pipeline doesn't break instantly if vulnerabilities are found,
+        # allowing the HTML generation step to actually execute.
+        - name: Execute Semgrep Scan
+          run: |
+            semgrep scan --config=auto ./src --json --output=semgrep-results.json
+
+        # Step 5: Convert the JSON payload into a visual HTML dashboard
+        - name: Generate HTML Report
+          run: |
+            semgrep2html --input semgrep-results.json --output semgrep-report.html
+
+        # Step 6: Upload the generated HTML file to GitHub Actions artifacts
+        - name: Upload HTML Report Artifact
           uses: actions/upload-artifact@v4
           with:
-            name: semgrep-scan-results
-            path: semgrep-results.sarif
-        # Upload SARIF file generated in previous step
-        - name: Upload SARIF result to the GitHub Security Dashboard
-          uses: github/codeql-action/upload-sarif@v4
-          with:
-            sarif_file: semgrep-results.sarif
-          if: always()
+            name: semgrep-security-report
+            path: semgrep-report.html
+            retention-days: 30
+    # semgrep_scan:
+    #   # User definable name of this GitHub Actions job.
+    #   name: semgrep/ci
+    #   # If you are self-hosting, change the following `runs-on` value:
+    #   runs-on: ubuntu-latest
+    #   container:
+    #     # A Docker image with Semgrep installed. Do not change this.
+    #     image: returntocorp/semgrep
+    #   # Skip any PR created by dependabot to avoid permission issues:
+    #   if: (github.actor != 'dependabot[bot]')
+    #   permissions:
+    #     # required for all workflows
+    #     security-events: write
+    #     # only required for workflows in private repositories
+    #     actions: read
+    #     contents: read
+    #   steps:
+    #     # Fetch project source with GitHub Actions Checkout.
+    #     - name: Checkout repository
+    #       uses: actions/checkout@v4
+    #     - name: Perform Semgrep Analysis
+    #     # @NOTE: This is the actual semgrep command to scan your code.
+    #     # Modify the --config option to 'r/all' to scan using all rules,
+    #     # or use multiple flags to specify particular rules, such as
+    #     # --config r/all --config custom/rules
+    #       run: semgrep scan -q --sarif --config auto ./src > semgrep-results.sarif
+    #     # upload the results for the CodeQL GitHub app to annotate the code
+    #     - name: Save SARIF results as artifact
+    #       uses: actions/upload-artifact@v4
+    #       with:
+    #         name: semgrep-scan-results
+    #         path: semgrep-results.sarif
+    #     # Upload SARIF file generated in previous step
+    #     - name: Upload SARIF result to the GitHub Security Dashboard
+    #       uses: github/codeql-action/upload-sarif@v4
+    #       with:
+    #         sarif_file: semgrep-results.sarif
+    #       if: always()
     # Build:
     #   name: Build
     #   runs-on: ${{ fromJson(inputs.target-runner) }} 
