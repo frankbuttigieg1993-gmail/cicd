@@ -84,7 +84,7 @@ jobs:
           name: trivy-security-report
           path: trivy-report.html
           retention-days: 30
-    semgrep-scan:
+    webgoat-semgrep-scan:
       name: Run Semgrep and Generate HTML
       runs-on: ubuntu-latest
 
@@ -104,7 +104,6 @@ jobs:
           run: |
             pip install semgrep
             pip3 install jinja2
-
             
         # # Step 3: Build App 
         -   name: Set up JDK
@@ -117,22 +116,72 @@ jobs:
         # # Step 4: Run Semgrep scan and force it to export JSON
         # The '|| true' ensures the pipeline doesn't break instantly if vulnerabilities are found,
         # allowing the HTML generation step to actually execute.
-        - name: Execute Semgrep Scan
+        - name: Execute Semgrep Scan Webgoat
           run: |
             semgrep scan --config=auto ./webgoat/src --json --output=semgrep-results.json || true
 
         # # Step 5: Convert the JSON payload into a visual HTML dashboard
-        - name: Generate HTML Report
+        - name: Generate HTML Report Webgoat
           run: |
             python3 trivy/parse-semgrep.py --input semgrep-results.json --output semgrep-report.html --project-name "Webgoat" --only INFO,WARNING,ERROR
           #            semgrep2html --input semgrep-results.json --output semgrep-report.html
 
         # Step 6: Upload the generated HTML file to GitHub Actions artifacts
-        - name: Upload HTML Report Artifact
+        - name: Upload HTML Report Artifact Webgoat
           uses: actions/upload-artifact@v4
           with:
             name: semgrep-security-report
             path: semgrep-report.html
+            retention-days: 30
+    juiceshop-semgrep-scan:
+      name: Run Semgrep and Generate HTML
+      runs-on: ubuntu-latest
+
+      steps:
+        # Step 1: Check out the repository source code
+        - name: Checkout Code
+          uses: actions/checkout@v4
+
+        # Step 2: Set up Python environment
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-state: '3.11'
+
+        # # Step 3: Install Semgrep and the semgrep2html converter
+        - name: Install Dependencies
+          run: |
+            pip install semgrep
+            pip3 install jinja2
+            
+        - name: "Check out Git repository"
+          uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+        - name: "Use Node.js 24"
+          uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af #v4.1.0
+          with:
+            node-version: 24
+        - name: "Install application"
+          run: npm install
+          
+        # # Step 4: Run Semgrep scan and force it to export JSON
+        # The '|| true' ensures the pipeline doesn't break instantly if vulnerabilities are found,
+        # allowing the HTML generation step to actually execute.
+        - name: Execute Semgrep Scan 
+          run: |
+            semgrep scan --config=auto ./juice_shop --json --output=semgrep-results.json || true
+
+        # # Step 5: Convert the JSON payload into a visual HTML dashboard
+        - name: Generate HTML Report 
+          run: |
+            python3 trivy/parse-semgrep.py --input semgrep-results.json --output juiceshop-semgrep-report.html --project-name "JuiceShop" --only INFO,WARNING,ERROR
+          #            semgrep2html --input semgrep-results.json --output semgrep-report.html
+
+        # Step 6: Upload the generated HTML file to GitHub Actions artifacts
+        - name: Upload HTML Report Artifact 
+          uses: actions/upload-artifact@v4
+          with:
+            name: juiceshop-semgrep-security-report
+            path: juiceshop-semgrep-report.html
             retention-days: 30
     # semgrep_scan:
     #   # User definable name of this GitHub Actions job.
