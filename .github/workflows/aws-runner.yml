@@ -182,10 +182,10 @@ jobs:
       run: |
         echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
         docker build -t java-application:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
+#        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
+#        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+#        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+#        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
       working-directory: build-artefact/
     - name: Install Trivy
       uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241
@@ -194,7 +194,7 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
-        TRIVY_SKIP_DB_UPDATE: true
+        # TRIVY_SKIP_DB_UPDATE: true
 #        TRIVY_SKIP_JAVA_DB_UPDATE: true
       with:
         image-ref: "java-application:${{ github.sha }}"
