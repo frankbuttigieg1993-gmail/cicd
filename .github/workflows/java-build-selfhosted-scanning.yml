@@ -63,6 +63,10 @@ jobs:
       #     sarif_file: "results.sarif"
       - name: Listing Files
         run: find . -type f
+      - name: Cache Setup
+        run: | 
+         mvn dependency:resolve
+         cache ~/.m2
       - name: Run Trivy vulnerability scanner HTML
         uses: aquasecurity/trivy-action@master
         with:
@@ -74,7 +78,7 @@ jobs:
           scanners: "vuln"
           output: 'trivy-report.html'
         # Ensures the pipeline continues even if vulnerabilities are found
-        continue-on-error: true 
+        # continue-on-error: true 
       # - name: Run Trivy vulnerability scanner HTML
       #   uses: aquasecurity/trivy-action@master
       #   with:
