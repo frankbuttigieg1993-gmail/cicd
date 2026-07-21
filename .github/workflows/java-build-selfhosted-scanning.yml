@@ -102,7 +102,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-          SONAR_HOST_URL: "http://127.0.0.1:9300"
+          SONAR_HOST_URL: "http://10.0.2.15:9300"
           #          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           skipSignatureVerification: true
@@ -114,7 +114,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-          SONAR_HOST_URL: "http://127.0.0.1:9300"
+          SONAR_HOST_URL: "http://10.0.2.15:9300"
           #          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           pollingTimeoutSec: 600
@@ -128,7 +128,7 @@ jobs:
         id: quality-gate-check
         with:
           sonar-project-key: 'java-application'
-          sonar-host-url: "http://127.0.0.1:9300"
+          sonar-host-url: "http://10.0.2.15:9300"
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
       # - name: Output result
