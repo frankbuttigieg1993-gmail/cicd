@@ -67,7 +67,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           # Change to 'fs' if scanning source code instead of a container image
-          scan-type: 'image' 
+          scan-type: 'fs' 
           scan-ref: '.'
           format: 'template'
           template: '@trivy/html_template.tpl'
