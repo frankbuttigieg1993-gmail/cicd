@@ -107,7 +107,7 @@ jobs:
             
         # # Step 3: Build App 
         -   name: Set up JDK
-            uses: ./.github/actions/java-setup
+            uses: ./webgoat/.github/actions/java-setup
             with:
                 cache: 'maven'
         -   name: Build with Maven
@@ -161,7 +161,7 @@ jobs:
           with:
             node-version: 24
         - name: "Install application"
-          run: npm install
+          run: cd juice_shop && npm install
           
         # # Step 4: Run Semgrep scan and force it to export JSON
         # The '|| true' ensures the pipeline doesn't break instantly if vulnerabilities are found,
