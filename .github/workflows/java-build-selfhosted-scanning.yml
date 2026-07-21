@@ -126,7 +126,7 @@ jobs:
             SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
           run: |
             # --allow-local-builds lets Semgrep query Maven for the full dependency tree
-            semgrep ci --allow-local-builds --config=auto ./webgoat/src --json --output=semgrep-web-results.json || true
+            semgrep ci --allow-local-builds --config=auto --include=webgoat --json --output=semgrep-web-results.json || true
               
         # # Step 5: Convert the JSON payload into a visual HTML dashboard
         - name: Generate HTML Report Webgoat
