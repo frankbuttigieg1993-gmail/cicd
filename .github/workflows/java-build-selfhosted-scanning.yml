@@ -38,7 +38,6 @@ jobs:
             sbom
             --format template
             --template "@trivy/html_template.tpl"
-            --scanners license
             --output trivy-sbom-report.html
             trivy/cyclonedx-bom.json
       # - name: Scan CycloneDX SBOM
@@ -100,11 +99,11 @@ jobs:
  
         - name: Install Dependencies
           run: |
-            sbom2doc --input-file trivy/cyclonedxv2/bom.json --format html --output-file cyclonedx-bom-report.html
+            sbom2doc --input-file trivy/cyclonedxv2/bom.json --format csv --output-file cyclonedx-bom-report.csv
 
         - name: Upload Test results
           uses: actions/upload-artifact@master
           with:
               name: cyclonedx-bom-report
-              path: cyclonedx-bom-report.html
+              path: cyclonedx-bom-report.csv
  
