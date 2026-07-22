@@ -83,7 +83,7 @@ jobs:
           echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
       - name: Format JSON to Markdown Table
         run: |
-          JSON_FILE="trivy/bom.json"
+          JSON_FILE="./trivy/bom.json"
           
           # Extract the primary project name
           PROJECT_NAME=$(jq -r '.name' "$JSON_FILE")
