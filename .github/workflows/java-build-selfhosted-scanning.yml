@@ -53,12 +53,26 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          clean: true
       - name: POC Build Artefact
         run: |
           mkdir -p build-artefact 
           cp -pr build_artefact_poc/* build-artefact/
+      - name: Listing Files
+        run: | 
+         ls -alrt
+      - name: Generate SBOM
+        uses: advanced-security/sbom-generator-action@v0.0.1
+        id: sbom
+        env: 
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v3.1.0
+        with: 
+          path: ${{steps.sbom.outputs.fileName }}
+          name: "SBOM"
+      - name: Gradle List Dependency Locks
+        run: | 
+         ./gradlew dependencies --write-locks
       - name: Trivy Scan Source Code Table
         uses: aquasecurity/trivy-action@master
         with:
@@ -76,6 +90,13 @@ jobs:
           echo '```text' >> \$GITHUB_STEP_SUMMARY
           cat trivy-report.txt >> \$GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+      - name: Debug workspace 
+        run: | 
+          ls -alrt
+          ls -alrt trivy/
+          ls -alrt trivy/html_template.tpl
+          pwd ls -la ls -la trivy || true
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
       - name: Trivy Scan Source Code 
         uses: aquasecurity/trivy-action@v0.36.0
         with:
