@@ -50,6 +50,9 @@ jobs:
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
+      container:
+        image: aquasec/trivy:0.72.0
+        options: --user 1000:1000
       steps:
       - name: Checkout
         uses: actions/checkout@v4
