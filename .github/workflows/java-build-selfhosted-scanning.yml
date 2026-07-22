@@ -99,7 +99,7 @@ jobs:
           echo "| :--- | :--- | :--- | :--- |" >> report.md
           
           # Use jq to loop over packages and construct the table rows
-          jq -r '.packages[] | "|\( .name )|\( .versionInfo // "N/A" )|\( .SPDXID )|\( ((.externalRefs // [])[0].externalRefType // "N/A") )|"' "$JSON_FILE" >> report.md
+          jq -r '.packages[]? | select(. != null) | "|\(.name)|\(.versionInfo // "N/A")|\(.SPDXID)|\(((.externalRefs // [])[0].externalRefType // "N/A"))|"' "$JSON_FILE" >> report.md
 
       # 3. Create the CSS file locally
       - name: Create CSS Style Sheet
