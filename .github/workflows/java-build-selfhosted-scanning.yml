@@ -65,6 +65,62 @@ jobs:
         id: sbom
         env: 
           GITHUB_TOKEN: ${{ github.token }}
+      # 2. Extract JSON elements using jq and format into a Markdown file
+      - name: Format JSON to Markdown Table
+        run: |
+          JSON_FILE="${{ steps.sbom.outputs.fileName }}"
+          
+          # Extract the primary project name
+          PROJECT_NAME=$(jq -r '.name' "$JSON_FILE")
+          
+          # Initialize the Markdown document
+          echo "# Software Bill of Materials (SBOM)" > report.md
+          echo "### Project: $PROJECT_NAME" >> report.md
+          echo "Generated on: $(date +'%Y-%m-%d')" >> report.md
+          echo "" >> report.md
+          
+          # Create Markdown table headers
+          echo "| Package Component | Version | SPDX Identifier | ID / Type |" >> report.md
+          echo "| :--- | :--- | :--- | :--- |" >> report.md
+          
+          # Use jq to loop over packages and construct the table rows
+          jq -r '.packages[] | "|\( .name )|\( .versionInfo // "N/A" )|\( .SPDXID )|\( .externalRefs[0].externalRefType // "N/A" )|"' "$JSON_FILE" >> report.md
+
+      # 3. Convert Markdown to a standalone HTML file using Pandoc
+      - name: Convert Markdown to HTML via Pandoc
+        uses: docker://pandoc/core:3.1
+        with:
+          args: >-
+            --standalone 
+            --metadata title="Project SBOM Report" 
+            --to=html5 
+            report.md 
+            -o sbom.md.html
+
+      # 4. (Optional) Inject custom CSS to make the HTML look modern
+      - name: Apply CSS Styling to HTML
+        run: |
+          cat << 'EOF' > style.css
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #24292e; line-height: 1.5; }
+          h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+          th { background-color: #f6f8fa; font-weight: 600; }
+          tr:hover { background-color: #f1f1f1; }
+          EOF
+          
+          # Inject style block right before the closing </head> tag
+          sed -i '/<\/head>/i <style>'$(cat style.css)'</style>' sbom.md.html
+          # Standardize naming convention
+          mv sbom.md.html sbom.html
+
+      # 5. Upload the resulting HTML document as a build artifact
+      - name: Upload HTML SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTML-SBOM-Report
+          path: sbom.html
+          
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with: 
@@ -88,6 +144,7 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           scanners: "vuln"
+          args: --include-dev-deps
       - name: Publish Results to Step Summary
         run: |
           echo "### 🛡️ Trivy Security Scan Results" >> \$GITHUB_STEP_SUMMARY
@@ -111,22 +168,24 @@ jobs:
           scanners: "vuln"
           ignore-unfixed: true
           output: 'trivy-srccode-report.html'
+          args: --include-dev-deps
       - name: Trivy Scan Source Code HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-srccode-report
           path: trivy-srccode-report.html
           retention-days: 30
+          args: --include-dev-deps
       - name: Debug workspace 
         run: | 
-          ls -alrt build_artefact
-          ls -alrt build_artefact/build/
-          ls -alrt build_artefact/build/libs/
+          ls -alrt build-artefact
+          ls -alrt build-artefact/build/
+          ls -alrt build-artefact/build/libs/
       - name: Trivy Scan JAR 
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'rootfs'
-          scan-ref: 'build_artefact/build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
+          scan-ref: 'build-artefact/build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
           format: 'template'
           template: '@trivy/html_template.tpl'
           scanners: "vuln"
