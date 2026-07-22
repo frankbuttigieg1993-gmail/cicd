@@ -60,6 +60,7 @@ jobs:
       - name: Listing Files
         run: | 
          ls -alrt
+         ls -alrt trivy/
       # - name: Generate SBOM
       #   uses: advanced-security/sbom-generator-action@v0.0.1
       #   id: sbom
@@ -73,6 +74,13 @@ jobs:
       #     # gradle dependencies --write-locks --scan
       #     # gradle cyclonedxBom   
       # 2. Extract JSON elements using jq and format into a Markdown file
+      - name: Debug workspace 
+        run: | 
+          ls -alrt
+          ls -alrt trivy/
+          ls -alrt trivy/html_template.tpl
+          pwd ls -la ls -la trivy || true
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
       - name: Format JSON to Markdown Table
         run: |
           JSON_FILE="trivy/bom.json"
@@ -149,13 +157,6 @@ jobs:
           echo '```text' >> \$GITHUB_STEP_SUMMARY
           cat reports/trivy-report.txt >> \$GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-      - name: Debug workspace 
-        run: | 
-          ls -alrt
-          ls -alrt trivy/
-          ls -alrt trivy/html_template.tpl
-          pwd ls -la ls -la trivy || true
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
       - name: Trivy Scan Source Code 
         uses: aquasecurity/trivy-action@v0.36.0
         env: 
