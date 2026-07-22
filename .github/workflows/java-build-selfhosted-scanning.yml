@@ -22,37 +22,38 @@ env:
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
 jobs:
-    # Trivy_SBOM:
-    #   name: Trivy_SBOM
-    #   runs-on: ubuntu-latest ##### trivy fails to install on self hosted runners and aws runners due to certificate checks. 
-    #   permissions:
-    #     id-token: write # This is required for requesting the JWT for OIDC auth to AWS
-    #     contents: read  # Required for checkout
-    #   steps:
-    #   - name: Checkout
-    #     uses: actions/checkout@v4
-    #   - name: Trivy Convert CycloneDX SBOM to HTML
-    #     uses: docker://aquasec/trivy:0.72.0
-    #     with:
-    #       args: >-
-    #         sbom
-    #         --format template
-    #         --template "@trivy/html_template.tpl"
-    #         --output trivy-sbom-report.html
-    #         trivy/cyclonedx-bom.json
-    #   # - name: Scan CycloneDX SBOM
-    #   #   run: |
-    #   #     # trivy sbom \
-    #   #     #   --format template \
-    #   #     #   --template "@trivy/html_template.tpl" \
-    #   #     #   --output trivy-sbom-report.html \
-    #   #     #   build/reports/cyclonedx/bom.json
-    #   - name: Upload Trivy HTML Report
-    #     if: always()
-    #     uses: actions/upload-artifact@v4
-    #     with:
-    #       name: trivy-sbom-report
-    #       path: trivy-sbom-report.html
+    Trivy_SBOM:
+      name: Trivy_SBOM
+      runs-on: ubuntu-latest ##### trivy fails to install on self hosted runners and aws runners due to certificate checks. 
+      permissions:
+        id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+        contents: read  # Required for checkout
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Trivy Convert CycloneDX SBOM to HTML
+        uses: docker://aquasec/trivy:0.72.0
+        with:
+          args: >-
+            sbom
+            --format template
+            --template "@trivy/html_template.tpl"
+            --vuln-type none --scanners none
+            --output trivy-sbom-report.html
+            trivy/cyclonedx-bom.json
+      # - name: Scan CycloneDX SBOM
+      #   run: |
+      #     # trivy sbom \
+      #     #   --format template \
+      #     #   --template "@trivy/html_template.tpl" \
+      #     #   --output trivy-sbom-report.html \
+      #     #   build/reports/cyclonedx/bom.json
+      - name: Upload Trivy HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sbom-report
+          path: trivy-sbom-report.html
     DependencyCheck:
       name: DependencyCheck
       runs-on: ubuntu-latest ##### trivy fails to install on self hosted runners and aws runners due to certificate checks. 
@@ -116,7 +117,7 @@ jobs:
                    # Step 4: Clone the sbom-parser repository into a subdirectory
         - name: Clone sbom-parser Utility
           run: |
-            git clone https://github.com sbom-parser-tool
+            git clone https://github.com/sbom-tool/sbom-tools
 
         # Step 5: Install Node.js dependencies for the parser tool
         - name: Set up Node.js & Install Dependencies
