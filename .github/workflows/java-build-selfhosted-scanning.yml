@@ -55,20 +55,27 @@ jobs:
         uses: actions/checkout@v4
       - name: POC Build Artefact
         run: |
-          mkdir -p build-artefact 
+          mkdir -p build-artefact reports/
           cp -pr build_artefact_poc/* build-artefact/
       - name: Listing Files
         run: | 
          ls -alrt
-      - name: Generate SBOM
-        uses: advanced-security/sbom-generator-action@v0.0.1
-        id: sbom
-        env: 
-          GITHUB_TOKEN: ${{ github.token }}
+      # - name: Generate SBOM
+      #   uses: advanced-security/sbom-generator-action@v0.0.1
+      #   id: sbom
+      #   env: 
+      #     GITHUB_TOKEN: ${{ github.token }}
+      # - name: Gradle List Dependency Locks
+      #   run: | 
+      #    cp -pr trivy/bom.json .
+      # - name: Gradle List Dependency Locks
+      #   run: | 
+      #     # gradle dependencies --write-locks --scan
+      #     # gradle cyclonedxBom   
       # 2. Extract JSON elements using jq and format into a Markdown file
       - name: Format JSON to Markdown Table
         run: |
-          JSON_FILE="${{ steps.sbom.outputs.fileName }}"
+          JSON_FILE="trivy/bom.json"
           
           # Extract the primary project name
           PROJECT_NAME=$(jq -r '.name' "$JSON_FILE")
@@ -109,43 +116,38 @@ jobs:
             --embed-resources
             --to=html5 
             report.md 
-            -o sbom.html 
+            -o reports/sbom.html 
 
       # 5. Upload the resulting HTML document as a build artifact
       - name: Upload HTML SBOM
         uses: actions/upload-artifact@v4
         with:
           name: HTML-SBOM-Report
-          path: sbom.html
+          path: reports/sbom.html
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with: 
-          path: ${{steps.sbom.outputs.fileName }}
+          path: 'trivy/bom.json'
           name: "SBOM"
-      - name: Gradle List Dependency Locks
-        run: | 
-         cp -pr trivy/bom.json .
-      # - name: Gradle List Dependency Locks
-      #   run: | 
-      #     gradle dependencies --write-locks --scan
-      #   gradle cyclonedxBom   
+
       - name: Trivy Scan Source Code Table
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
         with:
           scan-type: 'fs'
           scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices
           format: 'table'
-          output: 'trivy-report.txt'
+          output: 'reports/trivy-report.txt'
 #          exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
-          scanners: "vuln"
-          args: --include-dev-deps
+          scanners: "vuln,misconfig,license"
       - name: Publish Results to Step Summary
         run: |
           echo "### 🛡️ Trivy Security Scan Results" >> \$GITHUB_STEP_SUMMARY
           echo '```text' >> \$GITHUB_STEP_SUMMARY
-          cat trivy-report.txt >> \$GITHUB_STEP_SUMMARY
+          cat reports/trivy-report.txt >> \$GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
       - name: Debug workspace 
         run: | 
@@ -156,22 +158,24 @@ jobs:
           echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
       - name: Trivy Scan Source Code 
         uses: aquasecurity/trivy-action@v0.36.0
+        env: 
+          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
         with:
           scan-type: 'fs' 
           scan-ref: '.'
           format: 'template'
           template: '@trivy/html_template.tpl'
-          scanners: "vuln"
+          scanners: "vuln,misconfig,license"
           ignore-unfixed: true
-          output: 'trivy-srccode-report.html'
-          args: --include-dev-deps
+          output: 'reports/trivy-srccode-report.html'
       - name: Trivy Scan Source Code HTML Report
         uses: actions/upload-artifact@v4
+        env: 
+          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
         with:
           name: trivy-srccode-report
-          path: trivy-srccode-report.html
+          path: reports/trivy-srccode-report.html
           retention-days: 30
-          args: --include-dev-deps
       - name: Debug workspace 
         run: | 
           ls -alrt build-artefact
@@ -184,14 +188,14 @@ jobs:
           scan-ref: 'build-artefact/build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
           format: 'template'
           template: '@trivy/html_template.tpl'
-          scanners: "vuln"
+          scanners: "vuln,misconfig,license"
           ignore-unfixed: true
-          output: 'trivy-jar-report.html'
+          output: 'reports/trivy-jar-report.html'
       - name: Trivy Scan JAR HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-jar-report
-          path: trivy-jar-report.html
+          path: reports/trivy-jar-report.html
           retention-days: 30
       - name: Docker Build 
         id: Docker-Build 
@@ -210,14 +214,14 @@ jobs:
           image-ref: 'java-application:${{ github.sha }}'
           format: 'template'
           template: '@trivy/html_template.tpl'
-          scanners: "vuln"
+          scanners: "vuln,misconfig,license"
           ignore-unfixed: true
-          output: 'trivy-dockerimage-report.html'
+          output: 'reports/trivy-dockerimage-report.html'
       - name: Trivy Scan Docker Image HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-dockerimage-report
-          path: trivy-dockerimage-report.html
+          path: reports/trivy-dockerimage-report.html
           retention-days: 30
       - name: Trivy Webgoat Docker Image SCan
         run: |
@@ -229,14 +233,20 @@ jobs:
           scan-ref: 'webgoat-2025.3.jar' # Explicit path to your JAR file
           format: 'template'
           template: '@trivy/html_template.tpl'
-          scanners: "vuln"
+          scanners: "vuln,misconfig,license"
           ignore-unfixed: true
-          output: 'trivy-webgoat-jar-report.html'
+          output: 'reports/trivy-webgoat-jar-report.html'
       - name: Trivy Scan JAR HTML Report - Webgoat
         uses: actions/upload-artifact@v4
         with:
           name: trivy-webgoat-jar-report
-          path: trivy-webgoat-jar-report.html
+          path: reports/trivy-webgoat-jar-report.html
+          retention-days: 30
+      - name: Scan Reports 
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-reports
+          path: reports/
           retention-days: 30
       # - name: Listing Files
       #   run: find . -type f
@@ -249,7 +259,7 @@ jobs:
       #     skip-dirs: 'webgoat,juice_shop'
       #     format: 'template'
       #     template: '@trivy/html_template.tpl'
-      #     scanners: "vuln"
+      #               scanners: "vuln,misconfig,license"
       #     output: 'trivy-report.html'
         # Ensures the pipeline continues even if vulnerabilities are found
         # continue-on-error: true 
