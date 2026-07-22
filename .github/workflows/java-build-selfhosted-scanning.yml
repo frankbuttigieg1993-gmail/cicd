@@ -99,7 +99,7 @@ jobs:
  
         - name: Install Dependencies
           run: |
-            sbom2doc --input-file trivy/cyclonedx-bom.json --format html --output-file cyclonedx-bom-report.html
+            sbom2doc --input-file trivy/cyclonedxv2/bom.json --format html --output-file cyclonedx-bom-report.html
 
         - name: Upload Test results
           uses: actions/upload-artifact@master
