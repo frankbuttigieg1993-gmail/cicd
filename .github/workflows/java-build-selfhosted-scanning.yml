@@ -75,7 +75,7 @@ jobs:
          cp -pr trivy/bom.json .
       # - name: Gradle List Dependency Locks
       #   run: | 
-      #    ./gradlew dependencies --write-locks
+      #     gradle dependencies --write-locks --scan
       #   gradle cyclonedxBom   
       - name: Trivy Scan Source Code Table
         uses: aquasecurity/trivy-action@master
@@ -117,6 +117,11 @@ jobs:
           name: trivy-srccode-report
           path: trivy-srccode-report.html
           retention-days: 30
+      - name: Debug workspace 
+        run: | 
+          ls -alrt build_artefact
+          ls -alrt build_artefact/build/
+          ls -alrt build_artefact/build/libs/
       - name: Trivy Scan JAR 
         uses: aquasecurity/trivy-action@v0.36.0
         with:
