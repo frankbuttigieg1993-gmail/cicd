@@ -1,0 +1,9 @@
+name: 'Container Compatible Composite Action'
+runs:
+  using: 'composite'
+  steps:
+    - name: Execute command
+      shell: bash
+      run: |
+        echo "This executing inside the container defined by the workflow."
+        node -v
