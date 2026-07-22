@@ -21,6 +21,28 @@ env:
   build-artifact-key: app-${{ github.sha }}
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
+# jobs:
+#     Trivy:
+#       name: Trivy
+#       runs-on: ubuntu-latest ##### trivy fails to install on self hosted runners and aws runners due to certificate checks. 
+#       permissions:
+#         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+#         contents: read  # Required for checkout
+#       container:
+#         image: aquasec/trivy:0.72.0
+#         options: --user 1000:1000
+#       steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+#         with:
+#           clean: true
+#       - name: POC Build Artefact
+#         run: |
+#           mkdir -p build-artefact 
+#           cp -pr build_artefact_poc/* build-artefact/
+#       - name: Trivy Scanner Source Code
+#         run: |
+#         trivy fs .
 jobs:
     Trivy_SBOM:
       name: Trivy_SBOM
@@ -28,25 +50,24 @@ jobs:
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
+      container:
+        image: aquasec/trivy:0.72.0
+        options: --user 1000:1000
       steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Convert Markdown to HTML via Pandoc
-        uses: docker://aquasec/trivy:0.72.0
-        with:
-          args: >-
-            trivy sbom \
-              --format template \
-              --template "@trivy/html_template.tpl" \
-              --output trivy-sbom-report.html \
-              trivy/cyclonedx-bom.json
-      # - name: Scan CycloneDX SBOM
-      #   run: |
-      #     # trivy sbom \
-      #     #   --format template \
-      #     #   --template "@trivy/html_template.tpl" \
-      #     #   --output trivy-sbom-report.html \
-      #     #   build/reports/cyclonedx/bom.json
+      - name: Scan CycloneDX SBOM
+        run: |
+          # trivy sbom \
+          #   --format template \
+          #   --template "@trivy/html_template.tpl" \
+          #   --output trivy-sbom-report.html \
+          #   build/reports/cyclonedx/bom.json
+          trivy sbom \
+            --format template \
+            --template "@trivy/html_template.tpl" \
+            --output trivy-sbom-report.html \
+            trivy/cyclonedx-bom.json
       - name: Upload Trivy HTML Report
         if: always()
         uses: actions/upload-artifact@v4
