@@ -44,6 +44,33 @@ env:
 #         run: |
 #         trivy fs .
 jobs:
+    Trivy_SBOM:
+      name: Trivy_SBOM
+      runs-on: ubuntu-latest ##### trivy fails to install on self hosted runners and aws runners due to certificate checks. 
+      permissions:
+        id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+        contents: read  # Required for checkout
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Scan CycloneDX SBOM
+        run: |
+          # trivy sbom \
+          #   --format template \
+          #   --template "@trivy/html_template.tpl" \
+          #   --output trivy-sbom-report.html \
+          #   build/reports/cyclonedx/bom.json
+          trivy sbom \
+            --format template \
+            --template "@trivy/html_template.tpl" \
+            --output trivy-sbom-report.html \
+            trivy/cyclonedx-bom.json
+      - name: Upload Trivy HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sbom-report
+          path: trivy-sbom-report.html
     Trivy:
       name: Trivy
       runs-on: ubuntu-latest ##### trivy fails to install on self hosted runners and aws runners due to certificate checks. 
@@ -81,62 +108,62 @@ jobs:
           ls -alrt trivy/html_template.tpl
           pwd ls -la ls -la trivy || true
           echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-      - name: Format JSON to Markdown Table
-        run: |
-          JSON_FILE="./trivy/bom.json"
+      # - name: Format JSON to Markdown Table
+      #   run: |
+      #     JSON_FILE="./trivy/bom.json"
           
-          # Extract the primary project name
-          PROJECT_NAME=$(jq -r '.name' "$JSON_FILE")
+      #     # Extract the primary project name
+      #     PROJECT_NAME=$(jq -r '.name' "$JSON_FILE")
           
-          # Initialize the Markdown document
-          echo "# Software Bill of Materials (SBOM)" > report.md
-          echo "### Project: $PROJECT_NAME" >> report.md
-          echo "Generated on: $(date +'%Y-%m-%d')" >> report.md
-          echo "" >> report.md
+      #     # Initialize the Markdown document
+      #     echo "# Software Bill of Materials (SBOM)" > report.md
+      #     echo "### Project: $PROJECT_NAME" >> report.md
+      #     echo "Generated on: $(date +'%Y-%m-%d')" >> report.md
+      #     echo "" >> report.md
           
-          # Create Markdown table headers
-          echo "| Package Component | Version | SPDX Identifier | ID / Type |" >> report.md
-          echo "| :--- | :--- | :--- | :--- |" >> report.md
+      #     # Create Markdown table headers
+      #     echo "| Package Component | Version | SPDX Identifier | ID / Type |" >> report.md
+      #     echo "| :--- | :--- | :--- | :--- |" >> report.md
           
-          # Use jq to loop over packages and construct the table rows
-          jq -r '.packages[]? | select(. != null) | "|\(.name)|\(.versionInfo // "N/A")|\(.SPDXID)|\(((.externalRefs // [])[0].externalRefType // "N/A"))|"' "$JSON_FILE" >> report.md
+      #     # Use jq to loop over packages and construct the table rows
+      #     jq -r '.packages[]? | select(. != null) | "|\(.name)|\(.versionInfo // "N/A")|\(.SPDXID)|\(((.externalRefs // [])[0].externalRefType // "N/A"))|"' "$JSON_FILE" >> report.md
 
-      # 3. Create the CSS file locally
-      - name: Create CSS Style Sheet
-        run: |
-          cat << 'EOF' > style.css
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #24292e; line-height: 1.5; }
-          h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-          th { background-color: #f6f8fa; font-weight: 600; }
-          tr:hover { background-color: #f1f1f1; }
-          EOF
+      # # 3. Create the CSS file locally
+      # - name: Create CSS Style Sheet
+      #   run: |
+      #     cat << 'EOF' > style.css
+      #     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #24292e; line-height: 1.5; }
+      #     h1 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+      #     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+      #     th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+      #     th { background-color: #f6f8fa; font-weight: 600; }
+      #     tr:hover { background-color: #f1f1f1; }
+      #     EOF
 
-      # 4. Convert Markdown to HTML and automatically embed the CSS file
-      - name: Convert Markdown to HTML via Pandoc
-        uses: docker://pandoc/core:3.1
-        with:
-          args: >-
-            --standalone 
-            --metadata title="Project SBOM Report" 
-            --css=style.css
-            --embed-resources
-            --to=html5 
-            report.md 
-            -o reports/sbom.html 
+      # # 4. Convert Markdown to HTML and automatically embed the CSS file
+      # - name: Convert Markdown to HTML via Pandoc
+      #   uses: docker://pandoc/core:3.1
+      #   with:
+      #     args: >-
+      #       --standalone 
+      #       --metadata title="Project SBOM Report" 
+      #       --css=style.css
+      #       --embed-resources
+      #       --to=html5 
+      #       report.md 
+      #       -o reports/sbom.html 
 
-      # 5. Upload the resulting HTML document as a build artifact
-      - name: Upload HTML SBOM
-        uses: actions/upload-artifact@v4
-        with:
-          name: HTML-SBOM-Report
-          path: reports/sbom.html
-      - name: Upload SBOM
-        uses: actions/upload-artifact@v4
-        with: 
-          path: 'trivy/bom.json'
-          name: "SBOM"
+      # # 5. Upload the resulting HTML document as a build artifact
+      # - name: Upload HTML SBOM
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: HTML-SBOM-Report
+      #     path: reports/sbom.html
+      # - name: Upload SBOM
+      #   uses: actions/upload-artifact@v4
+      #   with: 
+      #     path: 'trivy/bom.json'
+      #     name: "SBOM"
 
       - name: Trivy Scan Source Code Table
         uses: aquasecurity/trivy-action@master
@@ -146,17 +173,17 @@ jobs:
           scan-type: 'fs'
           scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices
           format: 'table'
-          output: 'reports/trivy-report.txt'
+          # output: 'reports/trivy-report.txt'
 #          exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           scanners: "vuln,misconfig,license"
-      - name: Publish Results to Step Summary
-        run: |
-          echo "### 🛡️ Trivy Security Scan Results" >> \$GITHUB_STEP_SUMMARY
-          echo '```text' >> \$GITHUB_STEP_SUMMARY
-          cat reports/trivy-report.txt >> \$GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+      # - name: Publish Results to Step Summary
+      #   run: |
+      #     echo "### 🛡️ Trivy Security Scan Results" >> \$GITHUB_STEP_SUMMARY
+      #     echo '```text' >> \$GITHUB_STEP_SUMMARY
+      #     cat reports/trivy-report.txt >> \$GITHUB_STEP_SUMMARY
+      #     echo '```' >> $GITHUB_STEP_SUMMARY
       - name: Trivy Scan Source Code 
         uses: aquasecurity/trivy-action@v0.36.0
         env: 
