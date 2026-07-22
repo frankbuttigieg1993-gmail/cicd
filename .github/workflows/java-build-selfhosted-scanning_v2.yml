@@ -21,28 +21,6 @@ env:
   build-artifact-key: app-${{ github.sha }}
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
-# jobs:
-#     Trivy:
-#       name: Trivy
-#       runs-on: ubuntu-latest ##### trivy fails to install on self hosted runners and aws runners due to certificate checks. 
-#       permissions:
-#         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
-#         contents: read  # Required for checkout
-#       container:
-#         image: aquasec/trivy:0.72.0
-#         options: --user 1000:1000
-#       steps:
-#       - name: Checkout
-#         uses: actions/checkout@v4
-#         with:
-#           clean: true
-#       - name: POC Build Artefact
-#         run: |
-#           mkdir -p build-artefact 
-#           cp -pr build_artefact_poc/* build-artefact/
-#       - name: Trivy Scanner Source Code
-#         run: |
-#         trivy fs .
 jobs:
     Trivy:
       name: Trivy
@@ -59,100 +37,29 @@ jobs:
         run: |
           mkdir -p build-artefact 
           cp -pr build_artefact_poc/* build-artefact/
-      - name: Trivy Scan Source Code Table
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices
-          format: 'table'
-          output: 'trivy-report.txt'
-#          exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
-          scanners: "vuln"
-      - name: Publish Results to Step Summary
-        run: |
-          echo "### 🛡️ Trivy Security Scan Results" >> \$GITHUB_STEP_SUMMARY
-          echo '```text' >> \$GITHUB_STEP_SUMMARY
-          cat trivy-report.txt >> \$GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-      - name: Trivy Scan Source Code 
+      # - name: Docker Build 
+      #   id: Docker-Build 
+      #   run: |
+      #     echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
+      #     docker build -t java-application:${{ github.sha }} .
+  #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
+  #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+  #        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+  #        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
+        # working-directory: build-artefact/
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          scan-type: 'fs' 
-          scan-ref: '.'
-          format: 'template'
-          template: '@trivy/html_template.tpl'
-          scanners: "vuln"
-          ignore-unfixed: true
-          output: 'trivy-srccode-report.html'
-      - name: Trivy Scan Source Code HTML Report
-        uses: actions/upload-artifact@v4
+          image-ref: "java-application:${{ github.sha }}"
+          format: 'sarif'
+          output: "results.sarif"
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
         with:
-          name: trivy-srccode-report
-          path: trivy-srccode-report.html
-          retention-days: 30
-      - name: Trivy Scan JAR 
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: 'rootfs'
-          scan-ref: 'build_artefact/build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
-          format: 'template'
-          template: '@trivy/html_template.tpl'
-          scanners: "vuln"
-          ignore-unfixed: true
-          output: 'trivy-jar-report.html'
-      - name: Trivy Scan JAR HTML Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-jar-report
-          path: trivy-jar-report.html
-          retention-days: 30
-      - name: Docker Build 
-        id: Docker-Build 
-        run: |
-          echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-          docker build -t java-application:${{ github.sha }} .
-        #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
-        #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
-        #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-        #  echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
-        working-directory: build-artefact/
-      - name: Trivy Docker Image 
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: 'image' 
-          image-ref: 'java-application:${{ github.sha }}'
-          format: 'template'
-          template: '@trivy/html_template.tpl'
-          scanners: "vuln"
-          ignore-unfixed: true
-          output: 'trivy-dockerimage-report.html'
-      - name: Trivy Scan Docker Image HTML Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-dockerimage-report
-          path: trivy-dockerimage-report.html
-          retention-days: 30
-      - name: Trivy Webgoat Docker Image SCan
-        run: |
-          curl -LO https://github.com/WebGoat/WebGoat/releases/download/v2025.3/webgoat-2025.3.jar
-      - name: Trivy Scan JAR - Webgoat 
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: 'rootfs'
-          scan-ref: 'webgoat-2025.3.jar' # Explicit path to your JAR file
-          format: 'template'
-          template: '@trivy/html_template.tpl'
-          scanners: "vuln"
-          ignore-unfixed: true
-          output: 'trivy-webgoat-jar-report.html'
-      - name: Trivy Scan JAR HTML Report - Webgoat
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-webgoat-jar-report
-          path: trivy-webgoat-jar-report.html
-          retention-days: 30
+          sarif_file: "results.sarif"
       # - name: Listing Files
       #   run: find . -type f
       # - name: Run Trivy vulnerability scanner HTML
@@ -179,6 +86,30 @@ jobs:
       #     output: 'trivy-report.html'
       #   # Ensures the pipeline continues even if vulnerabilities are found
       #   continue-on-error: true 
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-security-report
+          path: trivy-report.html
+          retention-days: 30
+      - name: Run Trivy vulnerability scanner table
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'src'
+          format: 'table'
+          output: 'trivy-report.txt'
+          exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+          scanners: "vuln"
+      - name: Publish Results to Step Summary
+        run: |
+          echo "### 🛡️ Trivy Security Scan Results" >> \$GITHUB_STEP_SUMMARY
+          echo '```text' >> \$GITHUB_STEP_SUMMARY
+          cat trivy-report.txt >> \$GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
       # # Optional: Fail the build manually if the report contains vulnerabilities
       # - name: Check for vulnerabilities and fail build
       #   run: |
