@@ -38,7 +38,7 @@ jobs:
             sbom
             --format template
             --template "@trivy/html_template.tpl"
-            --vuln-type none --scanners none
+            --scanners license
             --output trivy-sbom-report.html
             trivy/cyclonedx-bom.json
       # - name: Scan CycloneDX SBOM
@@ -107,48 +107,4 @@ jobs:
           with:
               name: cyclonedx-bom-report
               path: cyclonedx-bom-report.html
-
-        - name: Upload Raw SBOM Artifact
-          uses: actions/upload-artifact@v4
-          with:
-            name: raw-cyclonedx-sbom
-            path: trivy/cyclonedxv2/bom.json
-
-                   # Step 4: Clone the sbom-parser repository into a subdirectory
-        - name: Clone sbom-parser Utility
-          run: |
-            git clone https://github.com/sbom-tool/sbom-tools
-
-        # Step 5: Install Node.js dependencies for the parser tool
-        - name: Set up Node.js & Install Dependencies
-          uses: actions/setup-node@v4
-          with:
-            node-version: '18'
-            cache: 'npm'
-            cache-dependency-path: './sbom-parser-tool/package.json'
-        - run: |
-            cd sbom-parser-tool
-            npm install
-
-        # Step 6: Run the data pipeline to fetch and compile the dashboard
-        # Provide your GITHUB_TOKEN so the script can request the artifacts API
-        - name: Fetch and Parse SBOM to HTML Dashboard
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            GITHUB_REPOSITORY: ${{ github.repository }}
-          run: |
-            cd sbom-parser-tool
-            # 1. Fetch JSON files from your GitHub run artifacts
-            node scripts/fetch-artifacts.mjs
-            # 2. Parse the files and generate the snapshot dataset
-            node scripts/parse-sboms.mjs
-
-        # Step 7: Archive the completed interactive dashboard
-        - name: Upload HTML Dashboard
-          uses: actions/upload-artifact@v4
-          with:
-            name: sbom-interactive-dashboard
-            path: |
-              sbom-parser-tool/index.html
-              sbom-parser-tool/dist/
  
