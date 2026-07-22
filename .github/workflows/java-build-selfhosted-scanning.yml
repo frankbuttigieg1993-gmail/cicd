@@ -80,7 +80,7 @@ jobs:
           echo "<h3>🚀 Build Overview </h3>" >> $GITHUB_STEP_SUMMARY
           echo "<table border='1'><tr><th>Item</th><th>Description</th></tr><tr><td>Git Commit </td><td>${{ github.sha }}</td></tr><tr><td>Branch</td><td>${{ github.ref_name }}</td></tr></table>" >> $GITHUB_STEP_SUMMARY
     cyclonex-sbom-report:
-      name: Run Semgrep and Generate HTML
+      name: cyclonex-sbom-report
       runs-on: ubuntu-latest
       steps:
         # Step 1: Check out the repository source code
@@ -99,11 +99,11 @@ jobs:
  
         - name: Install Dependencies
           run: |
-            sbom2doc --input-file trivy/cyclonedxv2/bom.json --format html --output-file cyclonedx-bom-report.html
+            sbom2doc --input-file trivy/cyclonedxv2/bom.json --format pdf --output-file cyclonedx-bom-report.pdf
 
         - name: Upload Test results
           uses: actions/upload-artifact@master
           with:
               name: cyclonedx-bom-report
-              path: cyclonedx-bom-report.html
+              path: cyclonedx-bom-report.pdf
  
