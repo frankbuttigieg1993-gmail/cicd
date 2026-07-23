@@ -84,7 +84,7 @@ jobs:
         uses: actions/upload-artifact@master
         with:
             name: Depcheck report
-            path: ${{github.workspace}}/build/report/dependency-check-report.html
+            path: ${{github.workspace}}/build/reports/dependency-check-report.html
       - name: Build Overview
         run: |
           # Generate your HTML block
