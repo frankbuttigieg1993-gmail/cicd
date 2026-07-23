@@ -48,34 +48,34 @@ jobs:
           else
             echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
           fi
-      - name: Set up Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: 'v3.12.0'
-      - name: Sign into cluster and install kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: 'latest' # Or a specific version like 'v1.28.0'
-        id: install
-      - name: "Configure AWS Credentials"
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ap-southeast-2 
-          role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
-      - name: Update Kubeconfig
-        run: |
-          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
-          # Verify the kubeconfig was created successfully
-          kubectl cluster-info
-          kubectl auth can-i get nodes
-      - name: Deploy Helm Chart
-        run: |
-          helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
-            --namespace default \
-            --set image.tag=${{ env.IMAGE_TAG }} \
-            --set env.APP_RUNTIME_VALUE="development" \
-            --atomic \
-            --timeout 2m0s 
+      # - name: Set up Helm
+      #   uses: azure/setup-helm@v4
+      #   with:
+      #     version: 'v3.12.0'
+      # - name: Sign into cluster and install kubectl
+      #   uses: azure/setup-kubectl@v4
+      #   with:
+      #     version: 'latest' # Or a specific version like 'v1.28.0'
+      #   id: install
+      # - name: "Configure AWS Credentials"
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-region: ap-southeast-2 
+      #     role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
+      # - name: Update Kubeconfig
+      #   run: |
+      #     aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+      #     # Verify the kubeconfig was created successfully
+      #     kubectl cluster-info
+      #     kubectl auth can-i get nodes
+      # - name: Deploy Helm Chart
+      #   run: |
+      #     helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
+      #       --namespace default \
+      #       --set image.tag=${{ env.IMAGE_TAG }} \
+      #       --set env.APP_RUNTIME_VALUE="development" \
+      #       --atomic \
+      #       --timeout 2m0s 
     Tag:
       name: Tag
       runs-on: [self-hosted, linux, x64] 
