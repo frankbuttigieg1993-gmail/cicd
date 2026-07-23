@@ -62,18 +62,29 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Run OWASP Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@main
-        with:
-          project: 'MyProjectName'
-          path: '.'
-          format: 'HTML'
-          out: "dependency-check-report.html"
+      # - name: Run OWASP Dependency-Check
+      #   uses: dependency-check/Dependency-Check_Action@main
+      #   with:
+      #     project: 'MyProjectName'
+      #     path: '.'
+      #     format: 'HTML'
+      #     out: "dependency-check-report.html"
+      # - name: Upload Test results
+      #   uses: actions/upload-artifact@master
+      #   with:
+      #       name: Depcheck report
+      #       path: ${{github.workspace}}/dependency-check-report.html
+
+      # From ChatGPT: When running the OWASP Dependency-Check GitHub Action on a Gradle-based Java project, scanning the flat project path (.) with the generic CLI wrapper (what the github action uses above) will fail to parse your build file correctly. It will miss transitive dependencies entirely or only pick up flat JAR files.To ensure all transitive dependencies are included and correctly resolved, you must resolve the dependencies through Gradle itself using the official Gradle plugin
+      # https://github.com/dependency-check/DependencyCheck/issues/7713
+      - name: Run OWASP Dependency-Check 
+        run: | 
+          gradle dependencyCheckAnalyze -DdependencyCheck.project='MyProjectName' -DdependencyCheck.format='HTML' -DdependencyCheck.outputDirectory='.'
       - name: Upload Test results
         uses: actions/upload-artifact@master
         with:
             name: Depcheck report
-            path: ${{github.workspace}}/dependency-check-report.html
+            path: ${{github.workspace}}/build/report/dependency-check-report.html
       - name: Build Overview
         run: |
           # Generate your HTML block
