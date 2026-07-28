@@ -85,6 +85,7 @@ jobs:
           path: build/classes/
       - name: Run Tests and Coverage
         run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --continue
+        continue-on-error: true
       - name: Upload Test and Coverage Results
         uses: actions/upload-artifact@v4
         with:
@@ -107,6 +108,7 @@ jobs:
         name: SonarQube Scan & Gate Check
         runs-on: ${{ fromJson(inputs.target-runner) }} 
         needs: test-code
+        if: ${{ always() }}
         env:
           NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
           GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification

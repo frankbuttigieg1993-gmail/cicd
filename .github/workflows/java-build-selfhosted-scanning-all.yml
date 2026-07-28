@@ -53,17 +53,14 @@ jobs:
           SONAR_HOST_URL: "http://10.0.2.15:9300"
 #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
         run: ./gradlew clean compileJava compileTestJava build -x test cyclonedxBom dependencies dependencyCheckAnalyze -info --scan --write-locks
-      - name: Upload Compiled Classes
+      - name: Upload Build Artefact
         uses: actions/upload-artifact@v4
         with:
-          name: compiled-classes
-          path: build/classes/
-          retention-days: 1
-      - name: Upload Build Reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-reports
-          path: build/reports/
+          name: build
+          path: | 
+           build/
+           gradle.lockfile
+           Dockerfile
           retention-days: 1
       - name: Build Overview
         run: |
@@ -89,20 +86,20 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'gradle'
-      - name: Download Compiled Classes
+      - name: Download Build Artefact
         uses: actions/download-artifact@v4
         with:
-          name: compiled-classes
-          path: build/classes/
+          name: build
+          path: build/
       - name: Run Tests and Coverage
         run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --continue
-      - name: Upload Test and Coverage Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-and-coverage-reports
-          path: |
-            build/reports/jacoco/
-            build/test-results/
+      # - name: Upload Test and Coverage Results
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: test-and-coverage-reports
+      #     path: |
+      #       build/reports/jacoco/
+      #       build/test-results/
           retention-days: 1
       - name: Publish Test Report to GitHub
         uses: dorny/test-reporter@v1
@@ -132,15 +129,10 @@ jobs:
               java-version: '21'
               distribution: 'temurin'
               cache: 'gradle'
-          - name: Download Compiled Classes
+          - name: Download Build Artefact
             uses: actions/download-artifact@v4
             with:
-              name: compiled-classes
-              path: build/classes/
-          - name: Download Test and Coverage Results
-            uses: actions/download-artifact@v4
-            with:
-              name: test-and-coverage-reports
+              name: build
               path: build/
           - name: Cache SonarQube packages
             uses: actions/cache@v4
@@ -175,11 +167,16 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download Build Reports
+      # - name: Download Build Reports
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: build-reports
+      #     path: build/reports/
+      - name: Download Build Artefact
         uses: actions/download-artifact@v4
         with:
-          name: build-reports
-          path: build/reports/
+          name: build
+          path: build/
       - name: Publish Report
         uses: actions/upload-artifact@master
         with:
@@ -193,30 +190,160 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download Build Reports
+      - name: Download Build Artefact
         uses: actions/download-artifact@v4
         with:
-          name: build-reports
-          path: build/reports/
-      - name: Publish CycloneDX Bom.JSON
+          name: build
+          path: build/
+      # - name: Download Build Reports
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: build-reports
+      #     path: build/reports/
+      - name: Convert existing JSON to HTML via CycloneDX CLI
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/build/reports cyclonedx/cyclonedx-cli:latest convert --input-file /build/reports/cyclonedx/bom.json --output-file /build/reports/cyclonedx/bom.html --output-format html
+      - name: Publish CycloneDX BOM Files
         uses: actions/upload-artifact@master
         with:
-            name: CycloneDX Bom JSON
-            path: build/reports/cyclonedx/bom.json
+            name: cyclone-bom-reports
+            path: | 
+             build/reports/cyclonedx/bom.json
+             build/reports/cyclonedx/bom.html
             retention-days: 1
+    Trivy:
+      name: Trivy
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: Build
+      permissions:
+        id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+        contents: read  # Required for checkout
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download Build Artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: build/
+      # - name: Download Compiled Classes
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: compiled-classes
+      #     path: build/classes/
+      # # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
+      # - name: Download Gradle Lock File
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: gradle-lockfile
+      #     path: .
+      # - name: Download Build Libs
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: build-libs
+      #     path: build/libs/
+      #     retention-days: 1
+      - name: Trivy Scan Source Code Table
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
+        with:
+          scan-type: 'fs'
+          scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices
+          format: 'table'
+          # output: 'reports/trivy-report.txt'
+#          exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+          scanners: "vuln,misconfig,license"
+      - name: Trivy Scan Source Code 
+        uses: aquasecurity/trivy-action@v0.36.0
+        env: 
+          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
+        with:
+          scan-type: 'fs' 
+          scan-ref: '.'
+          format: 'template'
+          template: '@trivy/html_template.tpl'
+          scanners: "vuln,misconfig,license"
+          ignore-unfixed: true
+          output: 'reports/trivy-srccode-report.html'
+      - name: Publish Trivy Scan Source Code HTML Report
+        uses: actions/upload-artifact@v4
+        env: 
+          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
+        with:
+          name: trivy-srccode-report
+          path: reports/trivy-srccode-report.html
+          retention-days: 30
+      - name: Trivy Scan JAR 
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'rootfs'
+          scan-ref: 'build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
+          format: 'template'
+          template: '@trivy/html_template.tpl'
+          scanners: "vuln,misconfig,license"
+          ignore-unfixed: true
+          output: 'reports/trivy-jar-report.html'
+      - name: Publish Trivy Scan JAR HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-jar-report
+          path: reports/trivy-jar-report.html
+          retention-days: 30
+      - name: Docker Build 
+        id: Docker-Build 
+        run: |
+          echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
+          docker build -t java-application:${{ github.sha }} .
+        #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
+        #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+        #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+        #  echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
+      - name: Trivy Docker Image 
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'image' 
+          image-ref: 'java-application:${{ github.sha }}'
+          format: 'template'
+          template: '@trivy/html_template.tpl'
+          scanners: "vuln,misconfig,license"
+          ignore-unfixed: true
+          output: 'reports/trivy-dockerimage-report.html'
+      - name: Trivy Scan Docker Image HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-dockerimage-report
+          path: reports/trivy-dockerimage-report.html
+          retention-days: 30
+      - name: Trivy Webgoat Docker Image SCan
+        run: |
+          curl -LO https://github.com/WebGoat/WebGoat/releases/download/v2025.3/webgoat-2025.3.jar
+      - name: Trivy Scan JAR - Webgoat 
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'rootfs'
+          scan-ref: 'webgoat-2025.3.jar' # Explicit path to your JAR file
+          format: 'template'
+          template: '@trivy/html_template.tpl'
+          scanners: "vuln,misconfig,license"
+          ignore-unfixed: true
+          output: 'reports/trivy-webgoat-jar-report.html'
+      - name: Trivy Scan JAR HTML Report - Webgoat
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-webgoat-jar-report
+          path: reports/trivy-webgoat-jar-report.html
+          retention-days: 30
+      - name: Scan Reports 
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-reports
+          path: reports/
+          retention-days: 30
 
  
-
-
-
-
-
-
-
-
-
-
-
 
               
     # Unit_Test:
