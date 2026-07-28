@@ -28,6 +28,9 @@ jobs:
       runs-on: ${{ fromJson(inputs.target-runner) }} 
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
+      env:
+        NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
+        GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,10 +62,10 @@ jobs:
     test-code:
       name: Run Tests
       runs-on: ${{ fromJson(inputs.target-runner) }} 
-      container:
-        image: gradle:9.6.1-jdk21
-        options: --user 1000:1000
       needs: Build
+      env:
+        NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
+        GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,8 +105,11 @@ jobs:
           use-actions-summary: true
     sonar-scan:
         name: SonarQube Scan & Gate Check
-        runs-on: ubuntu-latest
+        runs-on: ${{ fromJson(inputs.target-runner) }} 
         needs: test-code
+        env:
+          NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
+          GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
         steps:
           - name: Check out repository
             uses: actions/checkout@v4
