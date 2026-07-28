@@ -342,10 +342,60 @@ jobs:
           name: scan-reports
           path: reports/
           retention-days: 30
-
- 
-
-              
+    semgrep_scan:
+      name: semgrep/ci
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: Build
+      env:
+        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
+      container:
+        # A Docker image with Semgrep installed. Do not change this.
+        image: returntocorp/semgrep
+      # Skip any PR created by dependabot to avoid permission issues:
+      if: (github.actor != 'dependabot[bot]')
+      permissions:
+        # required for all workflows
+        security-events: write
+        # only required for workflows in private repositories
+        actions: read
+        contents: read
+      steps:
+        # Fetch project source with GitHub Actions Checkout.
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          
+        - name: Semgrep AppSec Platform Analysis
+          run: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif
+        # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
+        # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
+        - name: Semgrep AppSec Platform Artefact
+          uses: actions/upload-artifact@v4
+          with:
+            name: semgrep-scan-results
+            path: semgrep.sarif
+        - name: Upload Semgrep AppSec Platform to the GitHub Security Dashboard
+          uses: github/codeql-action/upload-sarif@v4
+          with:
+            sarif_file: semgrep.sarif
+          if: always()
+        - name: Run Local Scan
+          run: semgrep scan --config auto --error --json --output=semgrep-local-scan-results.json
+        - name: Generate HTML Reports
+          run: |
+            python3 trivy/parse-semgrep.py --input semgrep.sarif --output semgrep-report.html --project-name "Java Application SemGrep AppSec" --only INFO,WARNING,ERROR
+            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
+        - name: Publish Semgrep AppSet HTML Report
+          uses: actions/upload-artifact@v4
+          with:
+            name: semgrep-appsec-report
+            path: semgrep-report.html
+            retention-days: 2
+        - name: Publish Semgrep Local Scan HTML Report
+          uses: actions/upload-artifact@v4
+          with:
+            name: semgrep-local-scan-report
+            path: semgrep-local-scan-report.html
+            retention-days: 2
     # Unit_Test:
     #   name: Unit_Test
     #   runs-on: ${{ fromJson(inputs.target-runner) }} 

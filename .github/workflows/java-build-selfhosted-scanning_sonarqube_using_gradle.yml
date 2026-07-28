@@ -98,7 +98,7 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           name: junit-test-results
-          path: build/test-results/test/*.xml
+          path: 'build/test-results/test/*.xml'
           reporter: junit
           fail-on-empty: false
           list-suites: all
