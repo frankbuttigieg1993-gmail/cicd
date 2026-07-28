@@ -1,0 +1,120 @@
+name: Java Application - Build
+run-name: ${{ github.ref_name }}-${{ github.run_number }}
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      target-runner:
+        required: true
+        type: string
+        
+defaults:
+  run:
+    shell: bash
+    # runs-on:
+    #   group: Build 
+    #   labels: ubuntu
+
+env:
+  AWS_REGION: ap-southeast-2                   # set this to your preferred AWS region, e.g. us-west-1
+  build-artifact-key: app-${{ github.sha }}
+  ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
+
+jobs:
+    Trivy_SBOM:
+      name: Trivy_SBOM
+      runs-on: ubuntu-latest ##### trivy fails to install on self hosted runners and aws runners due to certificate checks. 
+      permissions:
+        id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+        contents: read  # Required for checkout
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Trivy Convert CycloneDX SBOM to HTML
+        uses: docker://aquasec/trivy:0.72.0
+        with:
+          args: >-
+            sbom
+            --format template
+            --template "@trivy/html_template.tpl"
+            --output trivy-sbom-report.html
+            trivy/cyclonedx-bom.json
+      # - name: Scan CycloneDX SBOM
+      #   run: |
+      #     # trivy sbom \
+      #     #   --format template \
+      #     #   --template "@trivy/html_template.tpl" \
+      #     #   --output trivy-sbom-report.html \
+      #     #   build/reports/cyclonedx/bom.json
+      - name: Upload Trivy HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sbom-report
+          path: trivy-sbom-report.html
+    DependencyCheck:
+      name: DependencyCheck
+      runs-on: ubuntu-latest ##### trivy fails to install on self hosted runners and aws runners due to certificate checks. 
+      permissions:
+        id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+        contents: read  # Required for checkout
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # - name: Run OWASP Dependency-Check
+      #   uses: dependency-check/Dependency-Check_Action@main
+      #   with:
+      #     project: 'MyProjectName'
+      #     path: '.'
+      #     format: 'HTML'
+      #     out: "dependency-check-report.html"
+      # - name: Upload Test results
+      #   uses: actions/upload-artifact@master
+      #   with:
+      #       name: Depcheck report
+      #       path: ${{github.workspace}}/dependency-check-report.html
+
+      # From ChatGPT: When running the OWASP Dependency-Check GitHub Action on a Gradle-based Java project, scanning the flat project path (.) with the generic CLI wrapper (what the github action uses above) will fail to parse your build file correctly. It will miss transitive dependencies entirely or only pick up flat JAR files.To ensure all transitive dependencies are included and correctly resolved, you must resolve the dependencies through Gradle itself using the official Gradle plugin
+      # https://github.com/dependency-check/DependencyCheck/issues/7713
+      # - name: Run OWASP Dependency-Check 
+      #   run: | 
+      #     gradle dependencyCheckAnalyze -DdependencyCheck.project='MyProjectName' -DdependencyCheck.format='HTML' -DdependencyCheck.outputDirectory='.'
+      # - name: Upload Test results
+      #   uses: actions/upload-artifact@master
+      #   with:
+      #       name: Depcheck report
+      #       path: ${{github.workspace}}/build/reports/dependency-check-report.html
+      - name: Build Overview
+        run: |
+          # Generate your HTML block
+          echo "<h3>🚀 Build Overview </h3>" >> $GITHUB_STEP_SUMMARY
+          echo "<table border='1'><tr><th>Item</th><th>Description</th></tr><tr><td>Git Commit </td><td>${{ github.sha }}</td></tr><tr><td>Branch</td><td>${{ github.ref_name }}</td></tr></table>" >> $GITHUB_STEP_SUMMARY
+    cyclonex-sbom-report:
+      name: cyclonex-sbom-report
+      runs-on: ubuntu-latest
+      steps:
+        # Step 1: Check out the repository source code
+        - name: Checkout Code
+          uses: actions/checkout@v4
+
+        # Step 2: Set up Python environment
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-state: '3.11'
+ 
+        - name: Install Dependencies
+          run: |
+            pip install sbom2doc
+ 
+        - name: Install Dependencies
+          run: |
+            sbom2doc --input-file trivy/cyclonedxv2/bom.json --format excel --output-file cyclonedx-bom-report.xlsx
+
+        - name: Upload Test results
+          uses: actions/upload-artifact@master
+          with:
+              name: cyclonedx-bom-report
+              path: cyclonedx-bom-report.xlsx
+ 
