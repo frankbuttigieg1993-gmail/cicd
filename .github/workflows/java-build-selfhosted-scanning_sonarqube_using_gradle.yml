@@ -46,18 +46,13 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
       - name: Build and Analyse
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-          SONAR_HOST_URL: "http://10.0.2.15:9300"
 #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
         run: ./gradlew clean compileJava compileTestJava build -x test cyclonedxBom dependencies -info --scan --write-locks
-      - name: Upload Compiled Classes
+      - name: Upload Compiled Classes and Build Directory
         uses: actions/upload-artifact@v4
         with:
-          name: compiled-classes
-          path: build/classes/
+          name: compiled-project
+          path: build
           retention-days: 1
     test-code:
       name: Run Tests
@@ -78,11 +73,11 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'gradle'
-      - name: Download Compiled Classes
+      - name: Download Compiled Project
         uses: actions/download-artifact@v4
         with:
-          name: compiled-classes
-          path: build/classes/
+          name: compiled-project
+          path: build
       - name: Run Tests and Coverage
         run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --continue
         continue-on-error: true
@@ -90,9 +85,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-and-coverage-reports
-          path: |
-            build/reports/jacoco/
-            build/test-results/
+          path: build/
           retention-days: 1
       - name: Publish Test Report to GitHub
         uses: dorny/test-reporter@v1
@@ -105,7 +98,7 @@ jobs:
           list-tests: all
           use-actions-summary: true
     sonar-scan:
-        name: SonarQube Scan & Gate Check
+        name: SonarQube Scan
         runs-on: ${{ fromJson(inputs.target-runner) }} 
         needs: test-code
         if: ${{ always() }}
@@ -123,30 +116,16 @@ jobs:
               java-version: '21'
               distribution: 'temurin'
               cache: 'gradle'
-          - name: Download Compiled Classes
-            uses: actions/download-artifact@v4
-            with:
-              name: compiled-classes
-              path: build/classes/
-          - name: Download Test and Coverage Results
+          - name: Download Project Reports and Binaries
             uses: actions/download-artifact@v4
             with:
               name: test-and-coverage-reports
               path: build/
-          - name: Cache SonarQube packages
-            uses: actions/cache@v4
-            with:
-              path: ~/.sonar/cache
-              key: ${{ runner.os }}-sonar
-              restore-keys: ${{ runner.os }}-sonar
           - name: Execute Sonar Scan
             env:
               SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
             run: |
-              ./gradlew sonar \
-                -x compileJava \
-                -x compileTestJava \
-                -x test
+              ./gradlew sonar -info
           # The final standalone step that blocks the pipeline if rules fail
           - name: Verify SonarQube Quality Gate Status
             uses: sonarsource/sonarqube-quality-gate-action@v1.2.0

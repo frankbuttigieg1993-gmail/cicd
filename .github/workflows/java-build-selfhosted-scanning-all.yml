@@ -93,19 +93,12 @@ jobs:
           path: build/
       - name: Run Tests and Coverage
         run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --continue
-      # - name: Upload Test and Coverage Results
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: test-and-coverage-reports
-      #     path: |
-      #       build/reports/jacoco/
-      #       build/test-results/
-          retention-days: 1
+        continue-on-error: true
       - name: Publish Test Report to GitHub
         uses: dorny/test-reporter@v1
         with:
           name: junit-test-results
-          path: build/test-results/test/*.xml
+          path: 'build/test-results/test/*.xml'
           reporter: junit
           fail-on-empty: false
           list-suites: all
@@ -379,7 +372,12 @@ jobs:
             sarif_file: semgrep.sarif
           if: always()
         - name: Run Local Scan
-          run: semgrep scan --config auto --error --json --output=semgrep-local-scan-results.json
+          run: semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif 
+        - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
+          uses: github/codeql-action/upload-sarif@v4
+          with:
+            sarif_file: semgrep-local-scan-results.sarif 
+          if: always()
         - name: Generate HTML Reports
           run: |
             python3 trivy/parse-semgrep.py --input semgrep.sarif --output semgrep-report.html --project-name "Java Application SemGrep AppSec" --only INFO,WARNING,ERROR
