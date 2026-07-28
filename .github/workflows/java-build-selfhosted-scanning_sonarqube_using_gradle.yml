@@ -47,7 +47,7 @@ jobs:
           cache: 'gradle'
       - name: Build and Analyse
 #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
-        run: ./gradlew clean compileJava compileTestJava build -x test cyclonedxBom dependencies -info --scan --write-locks
+        run: ./gradlew clean compileJava compileTestJava build -x test cyclonedxBom dependencies -info --stacktrace --write-locks
       - name: Upload Compiled Classes and Build Directory
         uses: actions/upload-artifact@v4
         with:
@@ -79,24 +79,59 @@ jobs:
           name: compiled-project
           path: build
       - name: Run Tests and Coverage
-        run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --continue
+        run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue # 
         continue-on-error: true
-      - name: Upload Test and Coverage Results
+# HTML test report	build/reports/tests/test/index.html
+# JUnit XML results	build/test-results/test/
+# JaCoCo HTML coverage	build/reports/jacoco/test/html/index.html
+# JaCoCo XML coverage	build/reports/jacoco/test/jacocoTestReport.xml
+      - name: Upload Junit Test Results
         uses: actions/upload-artifact@v4
         with:
-          name: test-and-coverage-reports
-          path: build/
+          name: junit-test-results
+          path: build/test-results/test/
           retention-days: 1
       - name: Publish Test Report to GitHub
         uses: dorny/test-reporter@v1
         with:
           name: junit-test-results
-          path: 'build/test-results/test/*.xml'
+          path: '*.xml'
           reporter: jest-junit
           fail-on-empty: false
           list-suites: all
           list-tests: all
           use-actions-summary: true
+      - name: Upload JaCoCo HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: build/reports/jacoco/test/html
+          retention-days: 1
+      - name: Upload HTML Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: build/reports/jacoco/test/html
+          retention-days: 1
+      # - name: Copy Sample Test Report 
+      #   run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
+      # - name: Upload Test Report files
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: unit-test-report
+      #     path: build/test-results/sample/
+      # - name: Publish Test Report To GitHub
+      #   uses: dorny/test-reporter@v2
+      #   with:
+      #     artifact: unit-test-report  # artifact name
+      #     name: unit-test-report                  # Name of the check run which will be created
+      #     path: '*.xml'                     # Path to test results (inside artifact .zip)
+      #     reporter: jest-junit              # Format of test results
+      #     fail-on-error: 'false'
+
+
     sonar-scan:
         name: SonarQube Scan
         runs-on: ${{ fromJson(inputs.target-runner) }} 
