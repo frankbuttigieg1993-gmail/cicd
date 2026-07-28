@@ -65,6 +65,11 @@ jobs:
           name: build-reports
           path: build/reports/
           retention-days: 1
+      - name: Build Overview
+        run: |
+          # Generate your HTML block
+          echo "<h3>🚀 Build Overview </h3>" >> $GITHUB_STEP_SUMMARY
+          echo "<table border='1'><tr><th>Item</th><th>Description</th></tr><tr><td>Git Commit </td><td>${{ github.sha }}</td></tr><tr><td>Branch</td><td>${{ github.ref_name }}</td></tr></table>" >> $GITHUB_STEP_SUMMARY
     test-code:
       name: Run Tests
       runs-on: ${{ fromJson(inputs.target-runner) }} 
@@ -170,16 +175,37 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Upload Test results
+      - name: Download Build Reports
+        uses: actions/download-artifact@v4
+        with:
+          name: build-reports
+          path: build/reports/
+      - name: Publish Report
         uses: actions/upload-artifact@master
         with:
             name: Depcheck report
-            path: ${{github.workspace}}/dependency-check-report.html
-      - name: Build Overview
-        run: |
-          # Generate your HTML block
-          echo "<h3>🚀 Build Overview </h3>" >> $GITHUB_STEP_SUMMARY
-          echo "<table border='1'><tr><th>Item</th><th>Description</th></tr><tr><td>Git Commit </td><td>${{ github.sha }}</td></tr><tr><td>Branch</td><td>${{ github.ref_name }}</td></tr></table>" >> $GITHUB_STEP_SUMMARY
+            path: build/reports/dependency-check-report.html
+            retention-days: 1
+    CycloneDX_SBOM:
+      name: CycloneDX_SBOM
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: Build
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download Build Reports
+        uses: actions/download-artifact@v4
+        with:
+          name: build-reports
+          path: build/reports/
+      - name: Publish CycloneDX Bom.JSON
+        uses: actions/upload-artifact@master
+        with:
+            name: CycloneDX Bom JSON
+            path: build/reports/cyclonedx/bom.json
+            retention-days: 1
+
+ 
 
 
 
