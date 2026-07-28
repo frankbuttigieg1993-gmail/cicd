@@ -71,14 +71,16 @@ jobs:
         with: 
           name: junit-test-results
           path: build/test-results/test
-      - name: Publish Test Report To GitHub
-        uses: dorny/test-reporter@v2
+      - name: Publish Test Report to GitHub
+        uses: dorny/test-reporter@v1
         with:
-          artifact: junit-test-results  # artifact name
-          name: junit-test-results                  # Name of the check run which will be created
-          path: '*.xml'                     # Path to test results (inside artifact .zip)
-          reporter: jest-junit              # Format of test results
-          fail-on-error: 'false'
+          name: junit-test-results
+          path: build/test-results/test/*.xml
+          reporter: junit
+          fail-on-empty: false
+          list-suites: all
+          list-tests: all
+          use-actions-summary: true
       - name: Verify SonarQube Quality Gate Status
         # Uses the specified action version to actively check the server gate
         uses: sonarsource/sonarqube-quality-gate-action@v1.2.0
