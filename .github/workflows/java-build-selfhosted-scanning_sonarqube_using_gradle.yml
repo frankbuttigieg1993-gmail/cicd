@@ -98,8 +98,8 @@ jobs:
           path: 'build/test-results/test/*.xml'
           reporter: java-junit
           fail-on-empty: false
-          list-suites: all
-          list-tests: all
+#          list-suites: all
+#          list-tests: all
           use-actions-summary: true
           fail-on-error: false
       - name: Upload JaCoCo HTML Report
@@ -121,7 +121,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-and-coverage-reports
-          path: build/
+          path: | 
+            build/reports/
+            build/test-results/
           retention-days: 1
       # - name: Copy Sample Test Report 
       #   run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
@@ -159,6 +161,11 @@ jobs:
               java-version: '21'
               distribution: 'temurin'
               cache: 'gradle'
+          - name: Download Compiled Project
+            uses: actions/download-artifact@v4
+            with:
+              name: compiled-project
+              path: build/
           - name: Download Project Reports and Binaries
             uses: actions/download-artifact@v4
             with:
@@ -181,6 +188,9 @@ jobs:
           - name: Publish to Step Summary
             run: |
               cat build/sonar/report-task.txt >> $GITHUB_STEP_SUMMARY
+              # The Analysis ID can be found by the CE Task
+              # http://127.0.0.1:9300/api/ce/task?id=8729e4ec-c77b-43b5-a24d-00f1b51e7c83 => returns analysis ID 863d9764-8e4a-4d62-9992-f6956e025203
+              # http://127.0.0.1:9300/project/activity?id=java-application&analysis=863d9764-8e4a-4d62-9992-f6956e025203
     # Unit_Test:
     #   name: Unit_Test
     #   runs-on: ${{ fromJson(inputs.target-runner) }} 
