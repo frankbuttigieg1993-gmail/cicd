@@ -96,9 +96,9 @@ jobs:
         with:
           name: junit-test-results
           path: '*.xml'
-          reporter: jest-junit
+          reporter: java-junit
           fail-on-empty: false
-#          list-suites: all
+          list-suites: all
           list-tests: all
           use-actions-summary: true
       - name: Upload JaCoCo HTML Report
