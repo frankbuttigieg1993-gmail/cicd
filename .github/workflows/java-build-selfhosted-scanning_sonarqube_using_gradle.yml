@@ -112,8 +112,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-report
-          path: build/reports/jacoco/test/html
+          name: html-test-report
+          path: build/reports/tests/test/
           retention-days: 1
       # - name: Copy Sample Test Report 
       #   run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
