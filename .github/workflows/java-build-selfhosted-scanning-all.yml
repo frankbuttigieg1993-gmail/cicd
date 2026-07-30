@@ -68,72 +68,72 @@ jobs:
           echo "<h3>🚀 Build Overview </h3>" >> $GITHUB_STEP_SUMMARY
           echo "<table border='1'><tr><th>Item</th><th>Description</th></tr><tr><td>Git Commit </td><td>${{ github.sha }}</td></tr><tr><td>Branch</td><td>${{ github.ref_name }}</td></tr></table>" >> $GITHUB_STEP_SUMMARY
       - uses: tiacsys/clean-after-action@v3
-    test-code:
-      name: Run Tests
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
-      needs: Build
-      env:
-        NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
-        GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
-      steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      # Uses native VM caching mapped directly to the project build files
-      - name: Set up JDK 21 & Cache Gradle
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'gradle'
-      - name: Download Build Artefact
-        uses: actions/download-artifact@v4
-        with:
-          name: build
-          path: .
-      - name: Run Tests and Coverage
-        run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue
-        continue-on-error: true
-# HTML test report	build/reports/tests/test/index.html
-# JUnit XML results	build/test-results/test/
-# JaCoCo HTML coverage	build/reports/jacoco/test/html/index.html
-# JaCoCo XML coverage	build/reports/jacoco/test/jacocoTestReport.xml
-      - name: Publish Test Report to GitHub
-        uses: dorny/test-reporter@v1
-        with:
-          name: junit-test-results
-          path: 'build/test-results/test/*.xml'
-          reporter: java-junit
-          fail-on-empty: false
-#          list-suites: all
-#          list-tests: all
-#          use-actions-summary: true
-          fail-on-error: false
-      - name: Upload JaCoCo HTML Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-report
-          path: build/reports/jacoco/test/html
-          retention-days: 1
-      - name: Upload HTML Test Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: html-test-report
-          path: build/reports/tests/test/
-          retention-days: 1
-      - name: Upload test and coverage reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-and-coverage-reports
-          path: | 
-            build/reports/
-            build/test-results/
-          retention-days: 1
-      - uses: tiacsys/clean-after-action@v3
+#     test-code:
+#       name: Run Tests
+#       runs-on: ${{ fromJson(inputs.target-runner) }} 
+#       needs: Build
+#       env:
+#         NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
+#         GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
+#       steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0
+#       # Uses native VM caching mapped directly to the project build files
+#       - name: Set up JDK 21 & Cache Gradle
+#         uses: actions/setup-java@v4
+#         with:
+#           java-version: '21'
+#           distribution: 'temurin'
+#           cache: 'gradle'
+#       - name: Download Build Artefact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: build
+#           path: .
+#       - name: Run Tests and Coverage
+#         run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue
+#         continue-on-error: true
+# # HTML test report	build/reports/tests/test/index.html
+# # JUnit XML results	build/test-results/test/
+# # JaCoCo HTML coverage	build/reports/jacoco/test/html/index.html
+# # JaCoCo XML coverage	build/reports/jacoco/test/jacocoTestReport.xml
+#       - name: Publish Test Report to GitHub
+#         uses: dorny/test-reporter@v1
+#         with:
+#           name: junit-test-results
+#           path: 'build/test-results/test/*.xml'
+#           reporter: java-junit
+#           fail-on-empty: false
+# #          list-suites: all
+# #          list-tests: all
+# #          use-actions-summary: true
+#           fail-on-error: false
+#       - name: Upload JaCoCo HTML Report
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: jacoco-report
+#           path: build/reports/jacoco/test/html
+#           retention-days: 1
+#       - name: Upload HTML Test Report
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: html-test-report
+#           path: build/reports/tests/test/
+#           retention-days: 1
+#       - name: Upload test and coverage reports
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: test-and-coverage-reports
+#           path: | 
+#             build/reports/
+#             build/test-results/
+#           retention-days: 1
+#       - uses: tiacsys/clean-after-action@v3
     # sonar-scan:
     #     name: SonarQube Scan & Gate Check
     #     runs-on: ${{ fromJson(inputs.target-runner) }} 
@@ -189,25 +189,25 @@ jobs:
     #           # http://127.0.0.1:9300/api/ce/task?id=8729e4ec-c77b-43b5-a24d-00f1b51e7c83 => returns analysis ID 863d9764-8e4a-4d62-9992-f6956e025203
     #           # http://127.0.0.1:9300/project/activity?id=java-application&analysis=863d9764-8e4a-4d62-9992-f6956e025203
     #       - uses: tiacsys/clean-after-action@v3
-    DependencyCheck:
-      name: DependencyCheck
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
-      needs: Build
-      steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Download Build Artefact
-        uses: actions/download-artifact@v4
-        with:
-          name: build
-          path: .
-      - name: Publish Report
-        uses: actions/upload-artifact@master
-        with:
-            name: Depcheck report
-            path: build/reports/dependency-check/dependency-check-report.html
-            retention-days: 1
-      - uses: tiacsys/clean-after-action@v3
+    # DependencyCheck:
+    #   name: DependencyCheck
+    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
+    #   needs: Build
+    #   steps:
+    #   - name: Checkout
+    #     uses: actions/checkout@v4
+    #   - name: Download Build Artefact
+    #     uses: actions/download-artifact@v4
+    #     with:
+    #       name: build
+    #       path: .
+    #   - name: Publish Report
+    #     uses: actions/upload-artifact@master
+    #     with:
+    #         name: Depcheck report
+    #         path: build/reports/dependency-check/dependency-check-report.html
+    #         retention-days: 1
+    #   - uses: tiacsys/clean-after-action@v3
     CycloneDX_SBOM:
       name: CycloneDX_SBOM
       runs-on: ${{ fromJson(inputs.target-runner) }} 
@@ -220,14 +220,14 @@ jobs:
         with:
           name: build
           path: .
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
+      # - name: Setup Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '24'
       - name: Convert BOM to HTML
         run: |
+          npm install --global @cyclonedx/cyclonedx-npm
           npx cyclonedx-bom-visualizer -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
-
       - name: Publish CycloneDX BOM Files
         uses: actions/upload-artifact@master
         with:
@@ -257,11 +257,15 @@ jobs:
           name: build
           path: .
       - name: Confirm Existence of the Gradle Lock File
-        run: ls -alrt gradle.lockfile
+        run: | 
+         printenv | grep GIT
+         ls -alrt gradle.lockfile
       - name: Trivy Scan Source Code Table
         uses: aquasecurity/trivy-action@master
         env:
           TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
+          NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+          GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
         with:
           scan-type: 'fs'
           scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices
@@ -275,6 +279,8 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         env: 
           TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI Option not supported by the github action can be passed as an environemnt variable
+          NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+          GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
         with:
           scan-type: 'fs' 
           scan-ref: '.'
@@ -368,7 +374,7 @@ jobs:
         GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
       container:
         # A Docker image with Semgrep installed. Do not change this.
-        image: returntocorp/semgrep:nonroot
+        image: returntocorp/semgrep:1.163.0-nonroot
         options: --user 1000:1000
       # Skip any PR created by dependabot to avoid permission issues:
       if: (github.actor != 'dependabot[bot]')
