@@ -90,7 +90,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
-          path: build
+          path: .
       - name: Run Tests and Coverage
         run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue
         continue-on-error: true
@@ -154,12 +154,12 @@ jobs:
             uses: actions/download-artifact@v4
             with:
               name: build
-              path: build/
+              path: .
           - name: Download Project Reports and Binaries
             uses: actions/download-artifact@v4
             with:
               name: test-and-coverage-reports
-              path: build/
+              path: .
           - name: Cache SonarQube packages
             uses: actions/cache@v4
             with:
@@ -202,7 +202,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
-          path: build/
+          path: .
       - name: Publish Report
         uses: actions/upload-artifact@master
         with:
@@ -220,15 +220,20 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
-          path: build/
+          path: .
       # - name: Download Build Reports
       #   uses: actions/download-artifact@v4
       #   with:
       #     name: build-reports
       #     path: build/reports/
-      - name: Convert existing JSON to HTML via CycloneDX CLI
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-node-version: '20'
+      - name: Convert BOM to HTML
         run: |
-          docker run --rm -v ${{ github.workspace }}:/build/reports cyclonedx/cyclonedx-cli:latest convert --input-file /build/reports/cyclonedx/bom.json --output-file /build/reports/cyclonedx/bom.html --output-format html
+          npx cyclonedx-bom-visualizer -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
+
       - name: Publish CycloneDX BOM Files
         uses: actions/upload-artifact@master
         with:
@@ -244,6 +249,9 @@ jobs:
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
+      env:
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -251,7 +259,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
-          path: build/
+          path: .
       # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
       - name: Download Gradle Lock File
         uses: actions/download-artifact@v4
@@ -365,6 +373,8 @@ jobs:
       needs: Build
       env:
         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
       container:
         # A Docker image with Semgrep installed. Do not change this.
         image: returntocorp/semgrep
@@ -389,7 +399,7 @@ jobs:
         - name: Confirm Existence of the Gradle Lock File
           run: ls -alrt gradle.lockfile
         - name: Semgrep AppSec Platform Analysis
-          run: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif
+          run: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif  --no-suppress-errors
         # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
         # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
         - name: Semgrep AppSec Platform Artefact
@@ -403,7 +413,7 @@ jobs:
             sarif_file: semgrep.sarif
           if: always()
         - name: Run Local Scan
-          run: semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif 
+          run: semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif --no-suppress-errors
         - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
           uses: github/codeql-action/upload-sarif@v4
           with:
@@ -474,11 +484,11 @@ jobs:
         run: |
           aws sts get-caller-identity
           aws s3 ls
-      - name: Download build artifact
+      - name: Download Build Artefact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.build-artifact-key }}
-          path: build-artefact/
+          name: build
+          path: .
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -494,7 +504,6 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
-        working-directory: build-artefact/
       - uses: tiacsys/clean-after-action@v3
     Tag:
       name: Tag
