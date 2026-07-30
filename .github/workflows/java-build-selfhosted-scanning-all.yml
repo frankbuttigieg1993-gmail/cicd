@@ -90,20 +90,48 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build
-          path: build/
+          path: build
       - name: Run Tests and Coverage
-        run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --continue
+        run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue
         continue-on-error: true
+# HTML test report	build/reports/tests/test/index.html
+# JUnit XML results	build/test-results/test/
+# JaCoCo HTML coverage	build/reports/jacoco/test/html/index.html
+# JaCoCo XML coverage	build/reports/jacoco/test/jacocoTestReport.xml
       - name: Publish Test Report to GitHub
         uses: dorny/test-reporter@v1
         with:
           name: junit-test-results
           path: 'build/test-results/test/*.xml'
-          reporter: junit
+          reporter: java-junit
           fail-on-empty: false
-          list-suites: all
-          list-tests: all
+#          list-suites: all
+#          list-tests: all
           use-actions-summary: true
+          fail-on-error: false
+      - name: Upload JaCoCo HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: build/reports/jacoco/test/html
+          retention-days: 1
+      - name: Upload HTML Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-test-report
+          path: build/reports/tests/test/
+          retention-days: 1
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-and-coverage-reports
+          path: | 
+            build/reports/
+            build/test-results/
+          retention-days: 1
     sonar-scan:
         name: SonarQube Scan & Gate Check
         runs-on: ${{ fromJson(inputs.target-runner) }} 
@@ -127,6 +155,11 @@ jobs:
             with:
               name: build
               path: build/
+          - name: Download Project Reports and Binaries
+            uses: actions/download-artifact@v4
+            with:
+              name: test-and-coverage-reports
+              path: build/
           - name: Cache SonarQube packages
             uses: actions/cache@v4
             with:
@@ -137,10 +170,7 @@ jobs:
             env:
               SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
             run: |
-              ./gradlew sonar \
-                -x compileJava \
-                -x compileTestJava \
-                -x test
+              ./gradlew sonar -info --stacktrace
           # The final standalone step that blocks the pipeline if rules fail
           - name: Verify SonarQube Quality Gate Status
             uses: sonarsource/sonarqube-quality-gate-action@v1.2.0
@@ -153,6 +183,9 @@ jobs:
           - name: Publish to Step Summary
             run: |
               cat build/sonar/report-task.txt >> $GITHUB_STEP_SUMMARY
+              # The Analysis ID can be found by the CE Task
+              # http://127.0.0.1:9300/api/ce/task?id=8729e4ec-c77b-43b5-a24d-00f1b51e7c83 => returns analysis ID 863d9764-8e4a-4d62-9992-f6956e025203
+              # http://127.0.0.1:9300/project/activity?id=java-application&analysis=863d9764-8e4a-4d62-9992-f6956e025203
     DependencyCheck:
       name: DependencyCheck
       runs-on: ${{ fromJson(inputs.target-runner) }} 
@@ -219,23 +252,14 @@ jobs:
         with:
           name: build
           path: build/
-      # - name: Download Compiled Classes
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: compiled-classes
-      #     path: build/classes/
-      # # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
-      # - name: Download Gradle Lock File
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: gradle-lockfile
-      #     path: .
-      # - name: Download Build Libs
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: build-libs
-      #     path: build/libs/
-      #     retention-days: 1
+      # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
+      - name: Download Gradle Lock File
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: gradle.lockfile
+      - name: Confirm Existence of the Gradle Lock File
+        run: ls -alrt gradle.lockfile
       - name: Trivy Scan Source Code Table
         uses: aquasecurity/trivy-action@master
         env:
@@ -252,7 +276,7 @@ jobs:
       - name: Trivy Scan Source Code 
         uses: aquasecurity/trivy-action@v0.36.0
         env: 
-          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
+          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI Option not supported by the github action can be passed as an environemnt variable
         with:
           scan-type: 'fs' 
           scan-ref: '.'
@@ -356,7 +380,14 @@ jobs:
         # Fetch project source with GitHub Actions Checkout.
         - name: Checkout repository
           uses: actions/checkout@v4
-          
+        # Gradle generated this file so the transitive dependencies are included. Semgrep scans the transitive dependencies better when it has the gradle lock file
+        - name: Download Gradle Lock File
+          uses: actions/download-artifact@v4
+          with:
+            name: build
+            path: gradle.lockfile
+        - name: Confirm Existence of the Gradle Lock File
+          run: ls -alrt gradle.lockfile
         - name: Semgrep AppSec Platform Analysis
           run: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif
         # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
@@ -422,66 +453,66 @@ jobs:
     #       reporter: jest-junit              # Format of test results
     #       fail-on-error: 'false'
     # - uses: tiacsys/clean-after-action@v3
-    # Docker_Push:
-    #   name: Docker Push
-    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
-    #   permissions:
-    #     id-token: write # This is required for requesting the JWT for OIDC auth to AWS
-    #     contents: read  # Required for checkout
-    #   needs: Build
-    #   steps:
-    #   - name: Checkout
-    #     uses: actions/checkout@v4
-    #     with:
-    #       clean: true
-    #   - name: "Configure AWS Credentials - Action for GitHub Actions"
-    #     uses: aws-actions/configure-aws-credentials@v4
-    #     with:
-    #       aws-region: ap-southeast-2 
-    #       role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
-    #   - name: Verify AWS Identity
-    #     run: |
-    #       aws sts get-caller-identity
-    #       aws s3 ls
-    #   - name: Download build artifact
-    #     uses: actions/download-artifact@v4
-    #     with:
-    #       name: ${{ env.build-artifact-key }}
-    #       path: build-artefact/
-    #   - name: Login to Amazon ECR
-    #     id: login-ecr
-    #     uses: aws-actions/amazon-ecr-login@v1
-    #   - name: Docker Build 
-    #     id: Docker-Build 
-    #     env:
-    #       ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-    #       APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
-    #     run: |
-    #       echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-    #       docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
-    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
-    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
-    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-    #       echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
-    #     working-directory: build-artefact/
-    #   - uses: tiacsys/clean-after-action@v3
-    # Tag:
-    #   name: Tag
-    #   runs-on: ubuntu-24.04
-    #   permissions:
-    #     contents: write
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
-    #   needs: [Build, Docker_Push]
-    #   steps:
-    #   - uses: actions/checkout@v4
-    #     with:
-    #       clean: true
-    #   - name: Git Tag 
-    #     id: tag_version
-    #     uses: mathieudutour/github-tag-action@v6.2
-    #     with:
-    #       release_branches: "release.*"
-    #       github_token: ${{ env.GITHUB_TOKEN }}
-    #       custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}
-    #   - uses: tiacsys/clean-after-action@v3
+    Docker_Push:
+      name: Docker Push
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      permissions:
+        id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+        contents: read  # Required for checkout
+      needs: Build
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: true
+      - name: "Configure AWS Credentials - Action for GitHub Actions"
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ap-southeast-2 
+          role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
+      - name: Verify AWS Identity
+        run: |
+          aws sts get-caller-identity
+          aws s3 ls
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.build-artifact-key }}
+          path: build-artefact/
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Docker Build 
+        id: Docker-Build 
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
+        run: |
+          echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
+        working-directory: build-artefact/
+      - uses: tiacsys/clean-after-action@v3
+    Tag:
+      name: Tag
+      runs-on: ubuntu-24.04
+      permissions:
+        contents: write
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+      needs: [Build, Docker_Push]
+      steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: true
+      - name: Git Tag 
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          release_branches: "release.*"
+          github_token: ${{ env.GITHUB_TOKEN }}
+          custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}
+      - uses: tiacsys/clean-after-action@v3
