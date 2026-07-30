@@ -207,7 +207,7 @@ jobs:
         uses: actions/upload-artifact@master
         with:
             name: Depcheck report
-            path: build/reports/dependency-check-report.html
+            path: build/reports/dependency-check/dependency-check-report.html
             retention-days: 1
     CycloneDX_SBOM:
       name: CycloneDX_SBOM
