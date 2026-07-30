@@ -233,7 +233,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-node-version: '20'
+          node-version: '24'
       - name: Convert BOM to HTML
         run: |
           npx cyclonedx-bom-visualizer -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
@@ -260,17 +260,12 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
+      # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
       - name: Download Build Artefact
         uses: actions/download-artifact@v4
         with:
           name: build
           path: .
-      # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
-      - name: Download Gradle Lock File
-        uses: actions/download-artifact@v4
-        with:
-          name: build
-          path: gradle.lockfile
       - name: Confirm Existence of the Gradle Lock File
         run: ls -alrt gradle.lockfile
       - name: Trivy Scan Source Code Table
@@ -383,7 +378,7 @@ jobs:
         GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
       container:
         # A Docker image with Semgrep installed. Do not change this.
-        image: returntocorp/semgrep
+        image: returntocorp/semgrep:nonroot
         options: --user 1000:1000
       # Skip any PR created by dependabot to avoid permission issues:
       if: (github.actor != 'dependabot[bot]')
@@ -402,7 +397,7 @@ jobs:
           uses: actions/download-artifact@v4
           with:
             name: build
-            path: gradle.lockfile
+            path: .
         - name: Confirm Existence of the Gradle Lock File
           run: ls -alrt gradle.lockfile
         - name: Semgrep AppSec Platform Analysis
