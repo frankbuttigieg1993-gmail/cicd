@@ -84,6 +84,13 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'gradle'
+      - name: Cache Dependency-Check data
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/dependency-check
+          key: odc-${{ runner.os }}-12.2.2-${{ hashFiles('**/gradle.lockfile', '**/build.gradle', '**/settings.gradle') }}
+          restore-keys: |
+            odc-${{ runner.os }}-12.2.2-
       - name: Cache Gradle and Maven
         uses: actions/cache@v4
         with:
@@ -328,6 +335,13 @@ jobs:
       #     key: trivy-binary-v0.72.0-Linux-X64
       #     enableCrossOsArchive: false
       #     fail-on-cache-miss: false
+      - name: Cache Dependency-Check data
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/dependency-check
+          key: odc-${{ runner.os }}-12.2.2-${{ hashFiles('**/gradle.lockfile', '**/build.gradle', '**/settings.gradle') }}
+          restore-keys: |
+            odc-${{ runner.os }}-12.2.2-
       - name: Cache Gradle and Maven
         uses: actions/cache@v4
         with:
