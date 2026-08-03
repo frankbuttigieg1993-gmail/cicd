@@ -275,8 +275,10 @@ jobs:
       - name: Install Node, NPM and NVM 
         run: | 
           curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
-          . ~/.nvm/nvm.sh
+          source ~/.bashrc
           nvm install --lts
+          node -v
+          npm -v
       - name: Convert BOM to HTML
         run: |
           npm install --global @cyclonedx/cyclonedx-npm
@@ -332,9 +334,17 @@ jobs:
           key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
 
       - name: Warm dependency cache
-        run: ./gradlew --no-daemon build -x test
+        run: ./gradlew --no-daemon dependencies --write-locks build -x test
         # or the smallest step that fully resolves dependencies
-        
+
+      - name: Write Trivy config for offline Java scanning
+        run: |
+          mkdir -p .github
+          cat > .github/trivy-scan.yaml <<'EOF'
+          scan:
+            offline: true
+          EOF
+
       - name: Trivy Scan Source Code Table
         uses: aquasecurity/trivy-action@master
         env:
@@ -351,6 +361,7 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           scanners: "vuln,misconfig,license"
+          trivy-config: .github/trivy-scan.yaml
 
       - name: Trivy Scan Source Code 
         uses: aquasecurity/trivy-action@v0.36.0
@@ -367,6 +378,8 @@ jobs:
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'reports/trivy-srccode-report.html'
+          trivy-config: .github/trivy-scan.yaml
+
       - name: Publish Trivy Scan Source Code HTML Report
         uses: actions/upload-artifact@v4
         with:
@@ -388,6 +401,8 @@ jobs:
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'reports/trivy-jar-report.html'
+          trivy-config: .github/trivy-scan.yaml
+
       - name: Publish Trivy Scan JAR HTML Report
         uses: actions/upload-artifact@v4
         with:
@@ -418,6 +433,8 @@ jobs:
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'reports/trivy-dockerimage-report.html'
+          trivy-config: .github/trivy-scan.yaml
+
       - name: Trivy Scan Docker Image HTML Report
         uses: actions/upload-artifact@v4
         with:
@@ -442,6 +459,8 @@ jobs:
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'reports/trivy-webgoat-jar-report.html'
+          trivy-config: .github/trivy-scan.yaml
+          
       - name: Trivy Scan JAR HTML Report - Webgoat
         uses: actions/upload-artifact@v4
         with:
