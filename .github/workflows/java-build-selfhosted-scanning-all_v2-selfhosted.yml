@@ -22,49 +22,10 @@ env:
   build-artifact-key: app-${{ github.sha }}
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
-concurrency:
-  group: aws-runner-${{ github.ref }}
-  cancel-in-progress: false
-
-
 jobs:
-    start-runner:
-      name: Start self-hosted EC2 runner
-      runs-on: ubuntu-latest
-      outputs:
-        label: ${{ steps.start-ec2-runner.outputs.label }}
-        ec2-instance-id: ${{ steps.start-ec2-runner.outputs.ec2-instance-id }}
-      steps:
-        - name: Configure AWS credentials
-          uses: aws-actions/configure-aws-credentials@v4
-          with:
-            aws-access-key-id: ${{ secrets.AWS_GITHUB_ACCESS_KEY_ID }}
-            aws-secret-access-key: ${{ secrets.AWS_GITHUB_SECRET_ACCESS_KEY_ID }}
-            aws-region: 'ap-southeast-2'
-        - name: Start EC2 runner
-          id: start-ec2-runner
-          uses: machulav/ec2-github-runner@v2
-          with:
-            mode: start
-            github-token: ${{ secrets.AWS_GITHUB_RUNNER_TOKEN }}
-            ec2-image-id: ami-07709f5ec3cb18820
-            ec2-instance-type: t3.medium
-            subnet-id: subnet-0b38821d605af3a64
-            security-group-id: sg-004bf88b5a89e74ea
-            iam-role-name: github-actions-role
-            aws-resource-tags: > # optional, requires additional permissions
-              [
-                {"Key": "Name", "Value": "ec2-github-runner"},
-                {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
-              ]
-            block-device-mappings: > # optional, to customize EBS volumes
-              [
-                {"DeviceName": "/dev/sda1", "Ebs": {"VolumeSize": 30, "VolumeType": "gp3"}}
-              ]
     Build:
       name: Build
-      needs: start-runner
-      runs-on: ${{ needs.start-runner.outputs.label }}
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       env:
@@ -249,8 +210,8 @@ jobs:
     #   - uses: tiacsys/clean-after-action@v3
     CycloneDX_SBOM:
       name: CycloneDX_SBOM
-      runs-on: ${{ needs.start-runner.outputs.label }}
-      needs: [start-runner, Build]
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: Build
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -278,8 +239,8 @@ jobs:
       - uses: tiacsys/clean-after-action@v3
     Trivy:
       name: Trivy
-      runs-on: ${{ needs.start-runner.outputs.label }}
-      needs: [start-runner, Build]
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: Build
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
@@ -415,8 +376,8 @@ jobs:
       - uses: tiacsys/clean-after-action@v3
     semgrep_scan:
       name: semgrep/ci
-      runs-on: ${{ needs.start-runner.outputs.label }}
-      needs: [start-runner, Build]
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: Build
       env:
         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
         NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
@@ -483,28 +444,6 @@ jobs:
             path: semgrep-local-scan-report.html
             retention-days: 2
         - uses: tiacsys/clean-after-action@v3
-    delete-runner:
-      name: Delete the self-hosted EC2 runner
-      needs:
-        - start-runner # required to get output from the start-runner job
-        - Build
-        # - Tag 
-        # - Unit_Test
-        # - Docker_Push
-      runs-on: ubuntu-latest
-      if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
-      steps:
-        - name: Configure AWS credentials
-          uses: aws-actions/configure-aws-credentials@v4
-          with:
-            aws-access-key-id: ${{ secrets.AWS_GITHUB_ACCESS_KEY_ID }}
-            aws-secret-access-key: ${{ secrets.AWS_GITHUB_SECRET_ACCESS_KEY_ID }}
-            aws-region: ap-southeast-2
-        - name: Terminate EC2 instance
-          run: |
-            aws ec2 terminate-instances \
-              --instance-ids ${{ needs.start-runner.outputs.ec2-instance-id }} \
-              --region ap-southeast-2
     # Docker_Push:
     #   name: Docker Push
     #   runs-on: ${{ fromJson(inputs.target-runner) }} 
