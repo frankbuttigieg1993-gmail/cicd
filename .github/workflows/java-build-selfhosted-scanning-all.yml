@@ -23,7 +23,7 @@ env:
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
 concurrency:
-  group: aws-runner-${{ github.ref }}
+  group: selfhosted-runner-${{ github.ref }}
   cancel-in-progress: false
 
 
@@ -44,12 +44,6 @@ jobs:
       - name: Set APP_VERSION Output 
         id: app_version
         run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
-      - name: Set up JDK 21 & Cache Gradle
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'gradle'
       - name: Cache Gradle and Maven
         uses: actions/cache@v4
         with:
@@ -94,13 +88,6 @@ jobs:
 #         uses: actions/checkout@v4
 #         with:
 #           fetch-depth: 0
-#       # Uses native VM caching mapped directly to the project build files
-#       - name: Set up JDK 21 & Cache Gradle
-#         uses: actions/setup-java@v4
-#         with:
-#           java-version: '21'
-#           distribution: 'temurin'
-#           cache: 'gradle'
 #       - name: Download Build Artefact
 #         uses: actions/download-artifact@v4
 #         with:
@@ -160,12 +147,6 @@ jobs:
     #         uses: actions/checkout@v4
     #         with:
     #           fetch-depth: 0
-    #       - name: Set up JDK 21 & Cache Gradle
-    #         uses: actions/setup-java@v4
-    #         with:
-    #           java-version: '21'
-    #           distribution: 'temurin'
-    #           cache: 'gradle'
     #       - name: Download Build Artefact
     #         uses: actions/download-artifact@v4
     #         with:
@@ -257,25 +238,27 @@ jobs:
         with:
           name: build
           path: .
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - name: Verify Node and NPM 
-        run: | 
-          node -v
-          npm -v
+      # - name: Setup Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '24'
+      # - name: Verify Node and NPM 
+      #   run: | 
+      #     node -v
+      #     npm -v
       - name: Install CycloneDX CLI
         run: |
-          # Download the latest Linux x64 binary directly from the official release assets
-          curl -Lo cyclonedx https://github.com
-          chmod +x cyclonedx
-          sudo mv cyclonedx /usr/local/bin/
+          CDX_VERSION="v0.29.1"
+          curl -L \
+            -o cyclonedx-linux-x64 \
+            "https://github.com/CycloneDX/cyclonedx-cli/releases/download/${CDX_VERSION}/cyclonedx-linux-x64"
+          chmod +x cyclonedx-linux-x64
+          sudo mv cyclonedx-linux-x64 /usr/local/bin/cyclonedx
+          cyclonedx --version
       - name: Convert JSON SBOM to HTML
         run: |
           # The official CLI uses the convert command to output alternative layouts
           cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.html
-            
       - name: Publish CycloneDX BOM Files
         uses: actions/upload-artifact@master
         with:
@@ -374,7 +357,7 @@ jobs:
           scan-type: 'fs' 
           scan-ref: '.'
           format: 'template'
-          template: '@trivy/html_template.tpl'
+          template: '@${{ github.workspace }}/.github/trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'build/reports/trivy-srccode-report.html'
@@ -397,7 +380,7 @@ jobs:
           scan-type: 'rootfs'
           scan-ref: 'build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
           format: 'template'
-          template: '@trivy/html_template.tpl'
+          template: '@${{ github.workspace }}/.github/trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'build/reports/trivy-jar-report.html'
@@ -429,7 +412,7 @@ jobs:
           scan-type: 'image' 
           image-ref: 'java-application:${{ github.sha }}'
           format: 'template'
-          template: '@trivy/html_template.tpl'
+          template: '@${{ github.workspace }}/.github/trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'build/reports/trivy-dockerimage-report.html'
@@ -455,7 +438,7 @@ jobs:
           scan-type: 'rootfs'
           scan-ref: 'webgoat-2025.3.jar' # Explicit path to your JAR file
           format: 'template'
-          template: '@trivy/html_template.tpl'
+          template: '@${{ github.workspace }}/.github/trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'build/reports/trivy-webgoat-jar-report.html'
@@ -481,6 +464,7 @@ jobs:
       needs: [Build]
       env:
         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
+        HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
         NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
         GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
       # Skip any PR created by dependabot to avoid permission issues:
@@ -503,10 +487,6 @@ jobs:
             path: .
         - name: Confirm Existence of the Gradle Lock File
           run: ls -alrt gradle.lockfile
-        - name: Prepare Semgrep Home Directory
-          run: |
-            mkdir -p /github/home/.semgrep
-            chmod -R 777 /github/home
         - name: Semgrep AppSec Platform Analysis
           uses: docker://returntocorp/semgrep:1.163.0-nonroot
           with: 
