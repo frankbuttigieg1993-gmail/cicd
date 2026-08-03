@@ -255,10 +255,14 @@ jobs:
       #     chmod +x cyclonedx-linux-x64
       #     sudo mv cyclonedx-linux-x64 /usr/local/bin/cyclonedx
       #     cyclonedx --version
+      # - name: Convert JSON SBOM to HTML
+      #   run: |
+      #     # The official CLI uses the convert command to output alternative layouts
+      #     cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.html
       - name: Convert JSON SBOM to HTML
         run: |
-          # The official CLI uses the convert command to output alternative layouts
-          cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.html
+          pip install -r trivy/sunshine-requirements.txt
+          python trivy/sunshine.py -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
       - name: Publish CycloneDX BOM Files
         uses: actions/upload-artifact@master
         with:
@@ -506,9 +510,6 @@ jobs:
               -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
               -e SSL_CERT_FILE=/certs/corp-ca.pem \
               -e REQUESTS_CA_BUNDLE=/certs/corp-ca.pem \
-              -e HTTPS_PROXY="${HTTPS_PROXY}" \
-              -e HTTP_PROXY="${HTTP_PROXY}" \
-              -e NO_PROXY="${NO_PROXY}" \
               -v "$PWD:/src" \
               -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
               -w /src \
@@ -536,9 +537,6 @@ jobs:
               -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
               -e SSL_CERT_FILE=/certs/corp-ca.pem \
               -e REQUESTS_CA_BUNDLE=/certs/corp-ca.pem \
-              -e HTTPS_PROXY="${HTTPS_PROXY}" \
-              -e HTTP_PROXY="${HTTP_PROXY}" \
-              -e NO_PROXY="${NO_PROXY}" \
               -v "$PWD:/src" \
               -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
               -w /src \
