@@ -261,7 +261,7 @@ jobs:
       #     cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.html
       - name: Convert JSON SBOM to HTML
         run: |
-          pip install -r trivy/sunshine-requirements.txt
+#          pip install -r trivy/sunshine-requirements.txt
           python trivy/sunshine.py -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
       - name: Publish CycloneDX BOM Files
         uses: actions/upload-artifact@master
@@ -491,12 +491,14 @@ jobs:
         #   uses: docker://returntocorp/semgrep:1.163.0-nonroot
         #   with: 
         #     args: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif  --no-suppress-errors
+        # - name: Write corporate CA cert
+        #   run: |
+        #     echo "$CORP_CA_B64" | base64 -d > corp-ca.pem
+        #   env:
+        #     CORP_CA_B64: ${{ secrets.CORP_CA_B64 }}
         - name: Write corporate CA cert
           run: |
-            echo "$CORP_CA_B64" | base64 -d > corp-ca.pem
-          env:
-            CORP_CA_B64: ${{ secrets.CORP_CA_B64 }}
-
+            cp -p /home/ubuntu/zscaler-crt.crt corp-ca.pem
         - name: Confirm Gradle Lock File
           run: ls -alrt gradle.lockfile
 
@@ -510,7 +512,7 @@ jobs:
               -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
               -w /src \
               returntocorp/semgrep:1.163.0-nonroot \
-              semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif --no-suppress-errors src
+              semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif --no-suppress-errors
         # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
         # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
         - name: Semgrep AppSec Platform Artefact
