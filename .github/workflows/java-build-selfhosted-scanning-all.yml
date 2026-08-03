@@ -84,6 +84,14 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'gradle'
+      - name: Cache Gradle and Maven
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.m2/repository
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
       - name: Build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
@@ -107,6 +115,7 @@ jobs:
           echo "<h3>🚀 Build Overview </h3>" >> $GITHUB_STEP_SUMMARY
           echo "<table border='1'><tr><th>Item</th><th>Description</th></tr><tr><td>Git Commit </td><td>${{ github.sha }}</td></tr><tr><td>Branch</td><td>${{ github.ref_name }}</td></tr></table>" >> $GITHUB_STEP_SUMMARY
       - uses: tiacsys/clean-after-action@v3
+        if: always()
 #     test-code:
 #       name: Run Tests
 #       runs-on: ${{ fromJson(inputs.target-runner) }} 
@@ -259,10 +268,15 @@ jobs:
         with:
           name: build
           path: .
-      # - name: Setup Node.js
-      #   uses: actions/setup-node@v4
-      #   with:
-      #     node-version: '24'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Node, NPM and NVM 
+        run: | 
+          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
+          . ~/.nvm/nvm.sh
+          nvm install --lts
       - name: Convert BOM to HTML
         run: |
           npm install --global @cyclonedx/cyclonedx-npm
@@ -276,6 +290,7 @@ jobs:
              build/reports/cyclonedx/bom.html
             retention-days: 1
       - uses: tiacsys/clean-after-action@v3
+        if: always()
     Trivy:
       name: Trivy
       runs-on: ${{ needs.start-runner.outputs.label }}
@@ -307,13 +322,26 @@ jobs:
       #     key: trivy-binary-v0.72.0-Linux-X64
       #     enableCrossOsArchive: false
       #     fail-on-cache-miss: false
+      - name: Cache Gradle and Maven
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.m2/repository
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
 
+      - name: Warm dependency cache
+        run: ./gradlew --no-daemon build -x test
+        # or the smallest step that fully resolves dependencies
+        
       - name: Trivy Scan Source Code Table
         uses: aquasecurity/trivy-action@master
         env:
           TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
           NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
           GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+          TRIVY_CACHE_DIR: ~/.cache/trivy
         with:
           scan-type: 'fs'
           scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices
@@ -330,6 +358,7 @@ jobs:
           TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI Option not supported by the github action can be passed as an environemnt variable
           NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
           GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+          TRIVY_CACHE_DIR: ~/.cache/trivy
         with:
           scan-type: 'fs' 
           scan-ref: '.'
@@ -340,14 +369,17 @@ jobs:
           output: 'reports/trivy-srccode-report.html'
       - name: Publish Trivy Scan Source Code HTML Report
         uses: actions/upload-artifact@v4
-        env: 
-          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
         with:
           name: trivy-srccode-report
           path: reports/trivy-srccode-report.html
           retention-days: 30
       - name: Trivy Scan JAR 
         uses: aquasecurity/trivy-action@v0.36.0
+        env: 
+          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI Option not supported by the github action can be passed as an environemnt variable
+          NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+          GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+          TRIVY_CACHE_DIR: ~/.cache/trivy
         with:
           scan-type: 'rootfs'
           scan-ref: 'build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
@@ -373,6 +405,11 @@ jobs:
         #  echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
       - name: Trivy Docker Image 
         uses: aquasecurity/trivy-action@v0.36.0
+        env: 
+          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI Option not supported by the github action can be passed as an environemnt variable
+          NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+          GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+          TRIVY_CACHE_DIR: ~/.cache/trivy
         with:
           scan-type: 'image' 
           image-ref: 'java-application:${{ github.sha }}'
@@ -392,6 +429,11 @@ jobs:
           curl -LO https://github.com/WebGoat/WebGoat/releases/download/v2025.3/webgoat-2025.3.jar
       - name: Trivy Scan JAR - Webgoat 
         uses: aquasecurity/trivy-action@v0.36.0
+        env: 
+          TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI Option not supported by the github action can be passed as an environemnt variable
+          NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+          GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+          TRIVY_CACHE_DIR: ~/.cache/trivy
         with:
           scan-type: 'rootfs'
           scan-ref: 'webgoat-2025.3.jar' # Explicit path to your JAR file
@@ -413,6 +455,7 @@ jobs:
           path: reports/
           retention-days: 30
       - uses: tiacsys/clean-after-action@v3
+        if: always()
     semgrep_scan:
       name: semgrep/ci
       runs-on: ${{ needs.start-runner.outputs.label }}
@@ -483,6 +526,7 @@ jobs:
             path: semgrep-local-scan-report.html
             retention-days: 2
         - uses: tiacsys/clean-after-action@v3
+          if: always()
     delete-runner:
       name: Delete the self-hosted EC2 runner
       needs:
