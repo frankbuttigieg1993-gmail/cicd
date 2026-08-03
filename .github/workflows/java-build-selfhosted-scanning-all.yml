@@ -300,13 +300,13 @@ jobs:
          printenv | grep GIT
          ls -alrt gradle.lockfile
 
-      - name: Setup Trivy (preinstalled) ## Needed for self hosted VM
-        uses: aquasecurity/trivy-action@v0.72.0
-        with:
-          path: /opt/trivy
-          key: trivy-binary-v0.72.0-Linux-X64
-          enableCrossOsArchive: false
-          fail-on-cache-miss: false
+      # - name: Setup Trivy (preinstalled) ## Needed for self hosted VM
+      #   uses: aquasecurity/trivy-action@v0.72.0
+      #   with:
+      #     path: /opt/trivy
+      #     key: trivy-binary-v0.72.0-Linux-X64
+      #     enableCrossOsArchive: false
+      #     fail-on-cache-miss: false
 
       - name: Trivy Scan Source Code Table
         uses: aquasecurity/trivy-action@master
