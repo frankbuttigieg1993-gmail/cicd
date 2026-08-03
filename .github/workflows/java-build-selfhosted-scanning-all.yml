@@ -272,17 +272,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install Node, NPM and NVM 
+      - name: Verify Node and NPM 
         run: | 
-          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
-          source ~/.bashrc
-          nvm install --lts
           node -v
           npm -v
-      - name: Convert BOM to HTML
+      - name: Install and Run CycloneDX Tools
         run: |
-          npm install --global @cyclonedx/cyclonedx-npm
-          npx cyclonedx-bom-visualizer -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
+            # Set safe global directory for AL2023 which doesn't require root/sudo permissions as the default global path is write protected in Github actions
+            mkdir -p ~/.npm-global
+            npm config set prefix '~/.npm-global'
+            export PATH=~/.npm-global/bin:$PATH
+            
+            # Install and run tools
+            npm install --global @cyclonedx/cyclonedx-npm
+            npx cyclonedx-bom-visualizer -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
+            
       - name: Publish CycloneDX BOM Files
         uses: actions/upload-artifact@master
         with:
@@ -377,14 +381,14 @@ jobs:
           template: '@trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
-          output: 'reports/trivy-srccode-report.html'
+          output: 'build/reports/trivy-srccode-report.html'
           trivy-config: .github/trivy-scan.yaml
 
       - name: Publish Trivy Scan Source Code HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-srccode-report
-          path: reports/trivy-srccode-report.html
+          path: build/reports/trivy-srccode-report.html
           retention-days: 30
       - name: Trivy Scan JAR 
         uses: aquasecurity/trivy-action@v0.36.0
@@ -400,14 +404,14 @@ jobs:
           template: '@trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
-          output: 'reports/trivy-jar-report.html'
+          output: 'build/reports/trivy-jar-report.html'
           trivy-config: .github/trivy-scan.yaml
 
       - name: Publish Trivy Scan JAR HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-jar-report
-          path: reports/trivy-jar-report.html
+          path: build/reports/trivy-jar-report.html
           retention-days: 30
       - name: Docker Build 
         id: Docker-Build 
@@ -432,14 +436,14 @@ jobs:
           template: '@trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
-          output: 'reports/trivy-dockerimage-report.html'
+          output: 'build/reports/trivy-dockerimage-report.html'
           trivy-config: .github/trivy-scan.yaml
 
       - name: Trivy Scan Docker Image HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-dockerimage-report
-          path: reports/trivy-dockerimage-report.html
+          path: build/reports/trivy-dockerimage-report.html
           retention-days: 30
       - name: Trivy Webgoat Docker Image SCan
         run: |
@@ -458,20 +462,20 @@ jobs:
           template: '@trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
-          output: 'reports/trivy-webgoat-jar-report.html'
+          output: 'build/reports/trivy-webgoat-jar-report.html'
           trivy-config: .github/trivy-scan.yaml
-          
+
       - name: Trivy Scan JAR HTML Report - Webgoat
         uses: actions/upload-artifact@v4
         with:
           name: trivy-webgoat-jar-report
-          path: reports/trivy-webgoat-jar-report.html
+          path: build/reports/trivy-webgoat-jar-report.html
           retention-days: 30
       - name: Scan Reports 
         uses: actions/upload-artifact@v4
         with:
           name: scan-reports
-          path: reports/
+          path: build/reports/
           retention-days: 30
       - uses: tiacsys/clean-after-action@v3
         if: always()
@@ -483,10 +487,6 @@ jobs:
         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
         NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
         GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
-      container:
-        # A Docker image with Semgrep installed. Do not change this.
-        image: returntocorp/semgrep:1.163.0-nonroot
-        options: --user 1000:1000
       # Skip any PR created by dependabot to avoid permission issues:
       if: (github.actor != 'dependabot[bot]')
       permissions:
@@ -508,7 +508,9 @@ jobs:
         - name: Confirm Existence of the Gradle Lock File
           run: ls -alrt gradle.lockfile
         - name: Semgrep AppSec Platform Analysis
-          run: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif  --no-suppress-errors
+          uses: docker://returntocorp/semgrep:1.163.0-nonroot
+          with: 
+            args: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif  --no-suppress-errors
         # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
         # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
         - name: Semgrep AppSec Platform Artefact
@@ -522,7 +524,9 @@ jobs:
             sarif_file: semgrep.sarif
           if: always()
         - name: Run Local Scan
-          run: semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif --no-suppress-errors
+          uses: docker://returntocorp/semgrep:1.163.0-nonroot
+          with: 
+            args: semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif --no-suppress-errors
         - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
           uses: github/codeql-action/upload-sarif@v4
           with:
