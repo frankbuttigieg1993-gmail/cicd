@@ -28,9 +28,43 @@ concurrency:
 
 
 jobs:
+    start-runner:
+      name: Start self-hosted EC2 runner
+      runs-on: ubuntu-latest
+      outputs:
+        label: ${{ steps.start-ec2-runner.outputs.label }}
+        ec2-instance-id: ${{ steps.start-ec2-runner.outputs.ec2-instance-id }}
+      steps:
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            aws-access-key-id: ${{ secrets.AWS_GITHUB_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_GITHUB_SECRET_ACCESS_KEY_ID }}
+            aws-region: 'ap-southeast-2'
+        - name: Start EC2 runner
+          id: start-ec2-runner
+          uses: machulav/ec2-github-runner@v2
+          with:
+            mode: start
+            github-token: ${{ secrets.AWS_GITHUB_RUNNER_TOKEN }}
+            ec2-image-id: ami-07709f5ec3cb18820
+            ec2-instance-type: t3.large
+            subnet-id: subnet-0b38821d605af3a64
+            security-group-id: sg-004bf88b5a89e74ea
+            iam-role-name: github-actions-role
+            aws-resource-tags: > # optional, requires additional permissions
+              [
+                {"Key": "Name", "Value": "ec2-github-runner"},
+                {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
+              ]
+            block-device-mappings: > # optional, to customize EBS volumes
+              [
+                {"DeviceName": "/dev/sda1", "Ebs": {"VolumeSize": 30, "VolumeType": "gp3"}}
+              ]
     Build:
       name: Build
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: start-runner
+      runs-on: ${{ needs.start-runner.outputs.label }}
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       env:
@@ -231,8 +265,8 @@ jobs:
     #   - uses: tiacsys/clean-after-action@v3
     CycloneDX_SBOM:
       name: CycloneDX_SBOM
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
-      needs: [Build]
+      runs-on: ${{ needs.start-runner.outputs.label }}
+      needs: [start-runner, Build]
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -249,16 +283,16 @@ jobs:
         run: | 
           node -v
           npm -v
-      - name: Install CycloneDX CLI
+      - name: Install and Run CycloneDX Tools
         run: |
-          # Download the latest Linux x64 binary directly from the official release assets
-          curl -Lo cyclonedx https://github.com
-          chmod +x cyclonedx
-          sudo mv cyclonedx /usr/local/bin/
-      - name: Convert JSON SBOM to HTML
-        run: |
-          # The official CLI uses the convert command to output alternative layouts
-          cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.html
+            # Set safe global directory for AL2023 which doesn't require root/sudo permissions as the default global path is write protected in Github actions
+            mkdir -p ~/.npm-global
+            npm config set prefix '~/.npm-global'
+            export PATH=~/.npm-global/bin:$PATH
+            
+            # Install and run tools
+            npm install --global @cyclonedx/cyclonedx-npm
+            npx cyclonedx-bom-visualizer -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
             
       - name: Publish CycloneDX BOM Files
         uses: actions/upload-artifact@master
@@ -272,8 +306,8 @@ jobs:
         if: always()
     Trivy:
       name: Trivy
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
-      needs: [Build]
+      runs-on: ${{ needs.start-runner.outputs.label }}
+      needs: [start-runner, Build]
       permissions:
         id-token: write # This is required for requesting the JWT for OIDC auth to AWS
         contents: read  # Required for checkout
@@ -461,8 +495,8 @@ jobs:
         if: always()
     semgrep_scan:
       name: semgrep/ci
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
-      needs: [Build]
+      runs-on: ${{ needs.start-runner.outputs.label }}
+      needs: [start-runner, Build]
       env:
         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
         NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
@@ -487,10 +521,6 @@ jobs:
             path: .
         - name: Confirm Existence of the Gradle Lock File
           run: ls -alrt gradle.lockfile
-        - name: Prepare Semgrep Home Directory
-          run: |
-            mkdir -p /github/home/.semgrep
-            chmod -R 777 /github/home
         - name: Semgrep AppSec Platform Analysis
           uses: docker://returntocorp/semgrep:1.163.0-nonroot
           with: 
