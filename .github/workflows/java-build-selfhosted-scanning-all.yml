@@ -48,7 +48,7 @@ jobs:
             mode: start
             github-token: ${{ secrets.AWS_GITHUB_RUNNER_TOKEN }}
             ec2-image-id: ami-07709f5ec3cb18820
-            ec2-instance-type: t3.medium
+            ec2-instance-type: t3.large
             subnet-id: subnet-0b38821d605af3a64
             security-group-id: sg-004bf88b5a89e74ea
             iam-role-name: github-actions-role
@@ -488,6 +488,9 @@ jobs:
       needs:
         - start-runner # required to get output from the start-runner job
         - Build
+        - semgrep_scan
+        - CycloneDX_SBOM
+        - Trivy
         # - Tag 
         # - Unit_Test
         # - Docker_Push
