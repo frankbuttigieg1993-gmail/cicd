@@ -246,15 +246,15 @@ jobs:
       #   run: | 
       #     node -v
       #     npm -v
-      - name: Install CycloneDX CLI
-        run: |
-          CDX_VERSION="v0.29.1"
-          curl -L \
-            -o cyclonedx-linux-x64 \
-            "https://github.com/CycloneDX/cyclonedx-cli/releases/download/${CDX_VERSION}/cyclonedx-linux-x64"
-          chmod +x cyclonedx-linux-x64
-          sudo mv cyclonedx-linux-x64 /usr/local/bin/cyclonedx
-          cyclonedx --version
+      # - name: Install CycloneDX CLI
+      #   run: |
+      #     CDX_VERSION="v0.29.1"
+      #     curl -L \
+      #       -o cyclonedx-linux-x64 \
+      #       "https://github.com/CycloneDX/cyclonedx-cli/releases/download/${CDX_VERSION}/cyclonedx-linux-x64"
+      #     chmod +x cyclonedx-linux-x64
+      #     sudo mv cyclonedx-linux-x64 /usr/local/bin/cyclonedx
+      #     cyclonedx --version
       - name: Convert JSON SBOM to HTML
         run: |
           # The official CLI uses the convert command to output alternative layouts
@@ -357,7 +357,7 @@ jobs:
           scan-type: 'fs' 
           scan-ref: '.'
           format: 'template'
-          template: '@${{ github.workspace }}/.github/trivy/html_template.tpl'
+          template: '@${{ github.workspace }}/trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'build/reports/trivy-srccode-report.html'
@@ -380,7 +380,7 @@ jobs:
           scan-type: 'rootfs'
           scan-ref: 'build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
           format: 'template'
-          template: '@${{ github.workspace }}/.github/trivy/html_template.tpl'
+          template: '@${{ github.workspace }}/trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'build/reports/trivy-jar-report.html'
@@ -412,7 +412,7 @@ jobs:
           scan-type: 'image' 
           image-ref: 'java-application:${{ github.sha }}'
           format: 'template'
-          template: '@${{ github.workspace }}/.github/trivy/html_template.tpl'
+          template: '@${{ github.workspace }}/trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'build/reports/trivy-dockerimage-report.html'
@@ -438,7 +438,7 @@ jobs:
           scan-type: 'rootfs'
           scan-ref: 'webgoat-2025.3.jar' # Explicit path to your JAR file
           format: 'template'
-          template: '@${{ github.workspace }}/.github/trivy/html_template.tpl'
+          template: '@${{ github.workspace }}/trivy/html_template.tpl'
           scanners: "vuln,misconfig,license"
           ignore-unfixed: true
           output: 'build/reports/trivy-webgoat-jar-report.html'
@@ -487,10 +487,33 @@ jobs:
             path: .
         - name: Confirm Existence of the Gradle Lock File
           run: ls -alrt gradle.lockfile
+        # - name: Semgrep AppSec Platform Analysis
+        #   uses: docker://returntocorp/semgrep:1.163.0-nonroot
+        #   with: 
+        #     args: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif  --no-suppress-errors
+        - name: Write corporate CA cert
+          run: |
+            echo "$CORP_CA_B64" | base64 -d > corp-ca.pem
+          env:
+            CORP_CA_B64: ${{ secrets.CORP_CA_B64 }}
+
+        - name: Confirm Gradle Lock File
+          run: ls -alrt gradle.lockfile
+
         - name: Semgrep AppSec Platform Analysis
-          uses: docker://returntocorp/semgrep:1.163.0-nonroot
-          with: 
-            args: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif  --no-suppress-errors
+          run: |
+            docker run --rm \
+              -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
+              -e SSL_CERT_FILE=/certs/corp-ca.pem \
+              -e REQUESTS_CA_BUNDLE=/certs/corp-ca.pem \
+              -e HTTPS_PROXY="${HTTPS_PROXY}" \
+              -e HTTP_PROXY="${HTTP_PROXY}" \
+              -e NO_PROXY="${NO_PROXY}" \
+              -v "$PWD:/src" \
+              -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
+              -w /src \
+              returntocorp/semgrep:1.163.0-nonroot \
+              semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif --no-suppress-errors
         # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
         # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
         - name: Semgrep AppSec Platform Artefact
@@ -503,10 +526,24 @@ jobs:
           with:
             sarif_file: semgrep.sarif
           if: always()
+        # - name: Run Local Scan
+        #   uses: docker://returntocorp/semgrep:1.163.0-nonroot
+        #   with: 
+        #     args: semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif --no-suppress-errors
         - name: Run Local Scan
-          uses: docker://returntocorp/semgrep:1.163.0-nonroot
-          with: 
-            args: semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif --no-suppress-errors
+          run: |
+            docker run --rm \
+              -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
+              -e SSL_CERT_FILE=/certs/corp-ca.pem \
+              -e REQUESTS_CA_BUNDLE=/certs/corp-ca.pem \
+              -e HTTPS_PROXY="${HTTPS_PROXY}" \
+              -e HTTP_PROXY="${HTTP_PROXY}" \
+              -e NO_PROXY="${NO_PROXY}" \
+              -v "$PWD:/src" \
+              -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
+              -w /src \
+              returntocorp/semgrep:1.163.0-nonroot \
+              semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif --no-suppress-errors
         - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
           uses: github/codeql-action/upload-sarif@v4
           with:
