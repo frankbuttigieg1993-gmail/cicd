@@ -13,7 +13,7 @@ runs:
         - name: Checkout repository
           uses: actions/checkout@v4
         # Gradle generated this file so the transitive dependencies are included. Semgrep scans the transitive dependencies better when it has the gradle lock file
-        - name: Download Gradle Lock File
+        - name: Download Build Artefact
           uses: actions/download-artifact@v4
           with:
             name: build
@@ -33,9 +33,6 @@ runs:
         - name: Write corporate CA cert
           run: |
             cp -p /home/ubuntu/zscaler-crt.crt corp-ca.pem
-          shell: bash 
-        - name: Confirm Gradle Lock File
-          run: ls -alrt gradle.lockfile
           shell: bash 
 # -w overrides the working directory for the container. 
 # This is scanning everything inside the repository since $pwd is mapped to /src and we are configuring the scanner to look at /src
