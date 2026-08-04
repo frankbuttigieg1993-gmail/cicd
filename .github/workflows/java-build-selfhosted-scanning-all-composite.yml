@@ -23,9 +23,8 @@ env:
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
 concurrency:
-  group: selfhosted-runner-${{ github.ref }}
+  group: ${{ github.workflow }}-runner-${{ github.ref }}
   cancel-in-progress: false
-
 
 jobs:
     Build:
@@ -62,53 +61,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
           sonar-token: ${{ secrets.SONAR_TOKEN }} 
-#       - name: Download Build Artefact
-#         uses: actions/download-artifact@v4
-#         with:
-#           name: build
-#           path: .
-#       - name: Run Tests and Coverage
-#         run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue
-#         continue-on-error: true
-# # HTML test report	build/reports/tests/test/index.html
-# # JUnit XML results	build/test-results/test/
-# # JaCoCo HTML coverage	build/reports/jacoco/test/html/index.html
-# # JaCoCo XML coverage	build/reports/jacoco/test/jacocoTestReport.xml
-#       - name: Publish Test Report to GitHub
-#         uses: dorny/test-reporter@v1
-#         with:
-#           name: junit-test-results
-#           path: 'build/test-results/test/*.xml'
-#           reporter: java-junit
-#           fail-on-empty: false
-# #          list-suites: all
-# #          list-tests: all
-# #          use-actions-summary: true
-#           fail-on-error: false
-#       - name: Upload JaCoCo HTML Report
-#         if: always()
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: jacoco-report
-#           path: build/reports/jacoco/test/html
-#           retention-days: 1
-#       - name: Upload HTML Test Report
-#         if: always()
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: html-test-report
-#           path: build/reports/tests/test/
-#           retention-days: 1
-#       - name: Upload test and coverage reports
-#         if: always()
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: test-and-coverage-reports
-#           path: | 
-#             build/reports/
-#             build/test-results/
-#           retention-days: 1
-#       - uses: tiacsys/clean-after-action@v3
     # sonar-scan:
     #     name: SonarQube Scan & Gate Check
     #     runs-on: ${{ fromJson(inputs.target-runner) }} 
@@ -117,89 +69,21 @@ jobs:
     #       NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
     #       GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
     #     steps:
-    #       - name: Check out repository
-    #         uses: actions/checkout@v4
+    #       - name: Sonar Scan Java Application
+    #         uses: frankbuttigieg1993-gmail/cicd/.github/actions/sonar-scan@main
     #         with:
-    #           fetch-depth: 0
-    #       - name: Download Build Artefact
-    #         uses: actions/download-artifact@v4
-    #         with:
-    #           name: build
-    #           path: .
-    #       - name: Download Project Reports and Binaries
-    #         uses: actions/download-artifact@v4
-    #         with:
-    #           name: test-and-coverage-reports
-    #           path: .
-    #       - name: Cache SonarQube packages
-    #         uses: actions/cache@v4
-    #         with:
-    #           path: ~/.sonar/cache
-    #           key: ${{ runner.os }}-sonar
-    #           restore-keys: ${{ runner.os }}-sonar
-    #       - name: Execute Sonar Scan
-    #         env:
-    #           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    #         run: |
-    #           ./gradlew sonar -info --stacktrace
-    #       # The final standalone step that blocks the pipeline if rules fail
-    #       - name: Verify SonarQube Quality Gate Status
-    #         uses: sonarsource/sonarqube-quality-gate-action@v1.2.0
-    #         with:
-    #           scanMetadataReportFile: build/sonar/report-task.txt
-    #         env:
-    #           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    #           NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-    #           SONAR_HOST_URL: "http://10.0.2.15:9300"
-    #       - name: Publish to Step Summary
-    #         run: |
-    #           cat build/sonar/report-task.txt >> $GITHUB_STEP_SUMMARY
-    #           # The Analysis ID can be found by the CE Task
-    #           # http://127.0.0.1:9300/api/ce/task?id=8729e4ec-c77b-43b5-a24d-00f1b51e7c83 => returns analysis ID 863d9764-8e4a-4d62-9992-f6956e025203
-    #           # http://127.0.0.1:9300/project/activity?id=java-application&analysis=863d9764-8e4a-4d62-9992-f6956e025203
-    #       - uses: tiacsys/clean-after-action@v3
+    #           github-token: ${{ secrets.GITHUB_TOKEN }}  
+    #           sonar-token: ${{ secrets.SONAR_TOKEN }} 
     # DependencyCheck:
     #   name: DependencyCheck
     #   runs-on: ${{ fromJson(inputs.target-runner) }} 
     #   needs: Build
     #   steps:
-    #   - name: Checkout
-    #     uses: actions/checkout@v4
-    #   - name: Download Build Artefact
-    #     uses: actions/download-artifact@v4
-    #     with:
-    #       name: build
-    #       path: .
-      # - name: Cache Dependency-Check data
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: ~/.cache/dependency-check
-      #     key: odc-${{ runner.os }}-12.2.2-${{ hashFiles('**/gradle.lockfile', '**/build.gradle', '**/settings.gradle') }}
-      #     restore-keys: |
-      #       odc-${{ runner.os }}-12.2.2-
-      # - name: Cache Gradle and Maven
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: |
-      #       ~/.gradle/caches
-      #       ~/.gradle/wrapper
-      #       ~/.m2/repository
-      #     key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
-#       - name: Run Gradle DependencyCheckAnalyse 
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-#           NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-#           SONAR_HOST_URL: "http://10.0.2.15:9300"
-# #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
-#         run: ./gradlew build -x dependencies dependencyCheckAnalyze -info --scan --write-locks
-    #   - name: Publish Report
-    #     uses: actions/upload-artifact@master
-    #     with:
-    #         name: Depcheck report
-    #         path: build/reports/dependency-check/dependency-check-report.html
-    #         retention-days: 1
-    #   - uses: tiacsys/clean-after-action@v3
+    # - name: Dependency Check
+    #   uses: frankbuttigieg1993-gmail/cicd/.github/actions/dependency-check@main
+    #   with:
+    #     github-token: ${{ secrets.GITHUB_TOKEN }}  
+    #     sonar-token: ${{ secrets.SONAR_TOKEN }} 
     CycloneDX_SBOM:
       name: CycloneDX_SBOM
       runs-on: ${{ fromJson(inputs.target-runner) }} 
