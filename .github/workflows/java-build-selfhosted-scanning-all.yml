@@ -261,7 +261,6 @@ jobs:
       #     cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.html
       - name: Convert JSON SBOM to HTML
         run: |
-#          pip install -r trivy/sunshine-requirements.txt
           python trivy/sunshine.py -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
       - name: Publish CycloneDX BOM Files
         uses: actions/upload-artifact@master
