@@ -49,7 +49,7 @@ runs:
               -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
               -w /src \
               returntocorp/semgrep:1.163.0-nonroot \
-              semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif --no-suppress-errors src
+              semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif --no-suppress-errors
           shell: bash 
         # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
         # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
