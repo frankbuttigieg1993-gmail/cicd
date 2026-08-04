@@ -1,0 +1,49 @@
+name: 'Build the Java Application'
+description: 'Build the Java Application'
+
+inputs:
+  github-token:
+    description: 'The github token'
+    required: true
+  sonar-token:
+    description: 'The sonar token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    # Every shell step in a composite action MUST explicitly define the shell
+    - name: Cache Gradle and Maven
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+          ~/.m2/repository
+        key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+    - name: Build
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}  
+        SONAR_TOKEN: ${{ inputs.sonar-token }}  
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" 
+        SONAR_HOST_URL: "http://10.0.2.15:9300"
+    #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
+      run: ./gradlew compileJava compileTestJava build -x test cyclonedxBom dependencies -info --scan --write-locks
+      shell: bash
+    - name: Upload Build Artefact
+      uses: actions/upload-artifact@v4
+      with:
+        name: build
+        path: | 
+          build/
+          gradle.lockfile
+          Dockerfile
+        retention-days: 1
+    - name: Build Overview
+      run: |
+        # Generate your HTML block
+        echo "<h3>🚀 Build Overview </h3>" >> $GITHUB_STEP_SUMMARY
+        echo "<table border='1'><tr><th>Item</th><th>Description</th></tr><tr><td>Git Commit </td><td>${{ github.sha }}</td></tr><tr><td>Branch</td><td>${{ github.ref_name }}</td></tr></table>" >> $GITHUB_STEP_SUMMARY
+      shell: bash
+    - uses: tiacsys/clean-after-action@v3
+      if: always()
