@@ -35,7 +35,7 @@ runs:
         restore-keys: ${{ runner.os }}-sonar
     - name: Execute Sonar Scan
       env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
       run: |
         ./gradlew sonar -info --stacktrace
       shell: bash
@@ -45,7 +45,7 @@ runs:
       with:
         scanMetadataReportFile: build/sonar/report-task.txt
       env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
         NODE_TLS_REJECT_UNAUTHORIZED: "0" 
         SONAR_HOST_URL: "http://10.0.2.15:9300"
     - name: Publish to Step Summary

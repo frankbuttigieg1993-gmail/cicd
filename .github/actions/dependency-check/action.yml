@@ -1,12 +1,9 @@
-name: 'Build the Java Application'
-description: 'Build the Java Application'
+name: 'Dependency Check Analysis'
+description: 'Dependency Check Analysis'
 
 inputs:
   github-token:
     description: 'The github token'
-    required: true
-  sonar-token:
-    description: 'The sonar token'
     required: true
 
 runs:
@@ -37,12 +34,11 @@ runs:
       key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
   - name: Run Gradle DependencyCheckAnalyse 
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      GITHUB_TOKEN: ${{ inputs.github-token }}  
       NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-      SONAR_HOST_URL: "http://10.0.2.15:9300"
 #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
     run: ./gradlew build -x dependencies dependencyCheckAnalyze -info --scan --write-locks
+    shell: bash 
   - name: Publish Report
     uses: actions/upload-artifact@master
     with:
