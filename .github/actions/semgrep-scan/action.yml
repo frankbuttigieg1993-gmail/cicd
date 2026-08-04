@@ -77,7 +77,7 @@ runs:
               -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
               -w /src \
               returntocorp/semgrep:1.163.0-nonroot \
-              semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif src
+              semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif
           shell: bash 
         - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
           uses: github/codeql-action/upload-sarif@v4
