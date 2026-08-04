@@ -8,6 +8,7 @@ inputs:
   sonar-token:
     description: 'The sonar token'
     required: true
+# pipx install cyclonedx-bom
 
 runs:
   using: 'composite'
