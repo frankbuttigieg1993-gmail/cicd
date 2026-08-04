@@ -1,12 +1,9 @@
-name: 'Build the Java Application'
-description: 'Build the Java Application'
+name: 'Java Build'
+description: 'Java Build'
 
 inputs:
   github-token:
     description: 'The github token'
-    required: true
-  sonar-token:
-    description: 'The sonar token'
     required: true
 
 runs:
@@ -24,9 +21,7 @@ runs:
     - name: Build
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}  
-        SONAR_TOKEN: ${{ inputs.sonar-token }}  
         NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-        SONAR_HOST_URL: "http://10.0.2.15:9300"
     #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
       run: ./gradlew compileJava compileTestJava build -x test cyclonedxBom dependencies -info --scan --write-locks
       shell: bash

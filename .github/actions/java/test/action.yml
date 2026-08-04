@@ -1,12 +1,9 @@
-name: 'Test the Java Application'
-description: 'Test the Java Application'
+name: 'Run Java Tests'
+description: 'Run Java Tests'
 
 inputs:
   github-token:
     description: 'The github token'
-    required: true
-  sonar-token:
-    description: 'The sonar token'
     required: true
 
 # HTML test report	build/reports/tests/test/index.html
