@@ -23,7 +23,7 @@ env:
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
 
 concurrency:
-  group: selfhosted-runner-${{ github.ref }}
+  group: ${{ github.workflow }}-runner-${{ github.ref }}
   cancel-in-progress: false
 
 
@@ -293,6 +293,18 @@ jobs:
       #   run: |
       #     # The official CLI uses the convert command to output alternative layouts
       #     cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.html
+    # 2. Install Python 3 and configure pip
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Specify your required Python version
+
+      # 3. Upgrade pip and install your dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
       - name: Convert JSON SBOM to HTML
         run: |
           python trivy/sunshine.py -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
@@ -529,21 +541,29 @@ jobs:
         #     echo "$CORP_CA_B64" | base64 -d > corp-ca.pem
         #   env:
         #     CORP_CA_B64: ${{ secrets.CORP_CA_B64 }}
-        - name: Write corporate CA cert
-          run: |
-            cp -p /home/ubuntu/zscaler-crt.crt corp-ca.pem
         - name: Confirm Gradle Lock File
           run: ls -alrt gradle.lockfile
+        # - name: Write corporate CA cert
+        #   run: |
+        #     cp -p /home/ubuntu/zscaler-crt.crt corp-ca.pem
 # -w overrides the working directory for the container. 
 # This is scanning everything inside the repository since $pwd is mapped to /src and we are configuring the scanner to look at /src
+        # - name: Semgrep AppSec Platform Analysis
+        #   run: |
+        #     docker run --rm \
+        #       -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
+        #       -e SSL_CERT_FILE=/certs/corp-ca.pem \
+        #       -e REQUESTS_CA_BUNDLE=/certs/corp-ca.pem \
+        #       -v "$PWD:/src" \
+        #       -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
+        #       -w /src \   
+        #       returntocorp/semgrep:1.163.0-nonroot \
+        #       semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif --no-suppress-errors
         - name: Semgrep AppSec Platform Analysis
           run: |
             docker run --rm \
               -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
-              -e SSL_CERT_FILE=/certs/corp-ca.pem \
-              -e REQUESTS_CA_BUNDLE=/certs/corp-ca.pem \
               -v "$PWD:/src" \
-              -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
               -w /src \   
               returntocorp/semgrep:1.163.0-nonroot \
               semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif --no-suppress-errors
@@ -567,13 +587,21 @@ jobs:
           run: |
             docker run --rm \
               -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
-              -e SSL_CERT_FILE=/certs/corp-ca.pem \
-              -e REQUESTS_CA_BUNDLE=/certs/corp-ca.pem \
               -v "$PWD:/src" \
-              -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
               -w /src \
               returntocorp/semgrep:1.163.0-nonroot \
-              semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif --no-suppress-errors src
+              semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif --no-suppress-errors
+        # - name: Run Local Scan
+        #   run: |
+        #     docker run --rm \
+        #       -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
+        #       -e SSL_CERT_FILE=/certs/corp-ca.pem \
+        #       -e REQUESTS_CA_BUNDLE=/certs/corp-ca.pem \
+        #       -v "$PWD:/src" \
+        #       -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
+        #       -w /src \
+        #       returntocorp/semgrep:1.163.0-nonroot \
+        #       semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif --no-suppress-errors
         - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
           uses: github/codeql-action/upload-sarif@v4
           with:
