@@ -97,7 +97,7 @@ runs:
         shell: bash 
       - name: Scan SBOM with Trivy
         run: |
-          trivy sbom --scanners vuln,license --format json --output trivy-sbom.json bom.json
+          trivy sbom --scanners vuln,license --format json --output trivy-sbom.json build/reports/cyclonedx/bom.json
         shell: bash 
       - name: Generate TRIVY Enhanced SBOM Report
         run: |
