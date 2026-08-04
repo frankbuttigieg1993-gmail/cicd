@@ -65,6 +65,27 @@ runs:
              build/reports/cyclonedx/bom.json
              build/reports/cyclonedx/bom.html
             retention-days: 1
+      - name: Trivy Convert CycloneDX SBOM to HTML
+        uses: docker://aquasec/trivy:0.72.0
+        with:
+          args: >-
+            sbom
+            --format template
+            --template "@trivy/html_template.tpl"
+            --output trivy-sbom-report.html
+            build/reports/cyclonedx/bom.json
+      # - name: Scan CycloneDX SBOM
+      #   run: |
+      #     # trivy sbom \
+      #     #   --format template \
+      #     #   --template "@trivy/html_template.tpl" \
+      #     #   --output trivy-sbom-report.html \
+      #     #   build/reports/cyclonedx/bom.json
+      - name: Upload Trivy HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sbom-report
+          path: trivy-sbom-report.html
       - uses: tiacsys/clean-after-action@v3
         if: always()
-      - uses: tiacsys/clean-after-action@v3
