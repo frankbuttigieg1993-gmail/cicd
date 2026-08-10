@@ -74,7 +74,7 @@ runs:
               -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
               -w /src \
               returntocorp/semgrep:1.163.0-nonroot \
-              semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif
+              semgrep scan --config auto --error --sarif --sarif-output=semgrep-local-scan-results.sarif
           shell: bash 
         - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
           uses: github/codeql-action/upload-sarif@v4
@@ -84,7 +84,7 @@ runs:
         - name: Generate HTML Reports
           run: |
             python3 trivy/parse-semgrep.py --input semgrep.sarif --output semgrep-report.html --project-name "Java Application SemGrep AppSec" --only INFO,WARNING,ERROR
-            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
+#            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
           shell: bash 
         - name: Publish Semgrep AppSet HTML Report
           uses: actions/upload-artifact@v4

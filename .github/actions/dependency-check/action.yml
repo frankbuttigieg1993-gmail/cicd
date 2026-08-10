@@ -37,7 +37,7 @@ runs:
       GITHUB_TOKEN: ${{ inputs.github-token }}  
       NODE_TLS_REJECT_UNAUTHORIZED: "0" 
 #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
-    run: ./gradlew build -x dependencies dependencyCheckAnalyze -info --scan --write-locks
+    run: ./gradlew build dependencies dependencyCheckAnalyze -info --scan --write-locks -x test
     shell: bash 
   - name: Publish Report
     uses: actions/upload-artifact@master

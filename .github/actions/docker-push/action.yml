@@ -5,6 +5,9 @@ inputs:
   github-token:
     description: 'The github token'
     required: true
+  app-version:
+    description: 'The application version'
+    required: true
 
 runs:
   using: 'composite'
@@ -35,7 +38,7 @@ runs:
       id: Docker-Build 
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
+        APP_VERSION: ${{ inputs.app-version }}
       run: |
         echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
