@@ -40,10 +40,11 @@ runs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         APP_VERSION: ${{ inputs.app-version }}
       run: |
+        APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)
         echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }} -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION.${{ github.run_number }} .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION.${{ github.run_number }}
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
       shell: bash
