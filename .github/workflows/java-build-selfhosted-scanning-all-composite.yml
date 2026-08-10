@@ -22,6 +22,7 @@ permissions:
   issues: write
   id-token: write # This is required for requesting the JWT for OIDC auth to AWS
   security-events: write # Required for Semgrep and Uploading to GitHub Security Feature
+  actions: read
 
 env:
   AWS_REGION: ap-southeast-2                   # set this to your preferred AWS region, e.g. us-west-1
