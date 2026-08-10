@@ -1,5 +1,5 @@
-name: 'Sonar Scan'
-description: 'Sonar Scan'
+name: 'Trivy Scan'
+description: 'Trivy Scan'
 
 inputs:
   github-token:
@@ -12,6 +12,8 @@ runs:
     # Every shell step in a composite action MUST explicitly define the shell
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
     - name: Download Build Artefact
       uses: actions/download-artifact@v4
@@ -76,7 +78,7 @@ runs:
         scan-type: 'fs' 
         scan-ref: '.'
         format: 'template'
-        template: '@${{ github.workspace }}/trivy/html_template.tpl'
+        template: '${{ github.workspace }}/trivy/html_template.tpl' 
         scanners: "vuln,misconfig,license"
         ignore-unfixed: true
         output: 'build/reports/trivy-srccode-report.html'
@@ -100,7 +102,7 @@ runs:
         scan-type: 'rootfs'
         scan-ref: 'build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
         format: 'template'
-        template: '@${{ github.workspace }}/trivy/html_template.tpl'
+        template: '${{ github.workspace }}/trivy/html_template.tpl'
         scanners: "vuln,misconfig,license"
         ignore-unfixed: true
         output: 'build/reports/trivy-jar-report.html'
@@ -134,7 +136,7 @@ runs:
         scan-type: 'image' 
         image-ref: 'java-application:${{ github.sha }}'
         format: 'template'
-        template: '@${{ github.workspace }}/trivy/html_template.tpl'
+        template: '${{ github.workspace }}/trivy/html_template.tpl'
         scanners: "vuln,misconfig,license"
         ignore-unfixed: true
         output: 'build/reports/trivy-dockerimage-report.html'
@@ -161,7 +163,7 @@ runs:
         scan-type: 'rootfs'
         scan-ref: 'webgoat-2025.3.jar' # Explicit path to your JAR file
         format: 'template'
-        template: '@${{ github.workspace }}/trivy/html_template.tpl'
+        template: '${{ github.workspace }}/trivy/html_template.tpl'
         scanners: "vuln,misconfig,license"
         ignore-unfixed: true
         output: 'build/reports/trivy-webgoat-jar-report.html'
