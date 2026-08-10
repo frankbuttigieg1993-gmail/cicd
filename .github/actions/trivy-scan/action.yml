@@ -65,7 +65,7 @@ runs:
         severity: 'CRITICAL,HIGH'
         scanners: "vuln,misconfig,license"
         trivy-config: .github/trivy-scan.yaml
-        timeout: 20m
+        timeout: 40m
 
     - name: Trivy Scan Source Code 
       uses: aquasecurity/trivy-action@v0.36.0
@@ -83,14 +83,14 @@ runs:
         ignore-unfixed: true
         output: 'build/reports/trivy-srccode-report.html'
         trivy-config: .github/trivy-scan.yaml
-        timeout: 20m
+        timeout: 40m
 
     - name: Publish Trivy Scan Source Code HTML Report
       uses: actions/upload-artifact@v4
       with:
         name: trivy-srccode-report
         path: build/reports/trivy-srccode-report.html
-        retention-days: 30
+        retention-days: 1
     - name: Trivy Scan JAR 
       uses: aquasecurity/trivy-action@v0.36.0
       env: 
@@ -107,7 +107,7 @@ runs:
         ignore-unfixed: true
         output: 'build/reports/trivy-jar-report.html'
         trivy-config: .github/trivy-scan.yaml
-        timeout: 20m          
+        timeout: 40m          
 
     - name: Publish Trivy Scan JAR HTML Report
       uses: actions/upload-artifact@v4
@@ -141,13 +141,13 @@ runs:
         ignore-unfixed: true
         output: 'build/reports/trivy-dockerimage-report.html'
         trivy-config: .github/trivy-scan.yaml
-        timeout: 20m
+        timeout: 40m
     - name: Trivy Scan Docker Image HTML Report
       uses: actions/upload-artifact@v4
       with:
         name: trivy-dockerimage-report
         path: build/reports/trivy-dockerimage-report.html
-        retention-days: 30
+        retention-days: 1
     - name: Trivy Webgoat Docker Image SCan
       run: |
         curl -LO https://github.com/WebGoat/WebGoat/releases/download/v2025.3/webgoat-2025.3.jar
@@ -168,18 +168,18 @@ runs:
         ignore-unfixed: true
         output: 'build/reports/trivy-webgoat-jar-report.html'
         trivy-config: .github/trivy-scan.yaml
-
+        timeout: 40m
     - name: Trivy Scan JAR HTML Report - Webgoat
       uses: actions/upload-artifact@v4
       with:
         name: trivy-webgoat-jar-report
         path: build/reports/trivy-webgoat-jar-report.html
         retention-days: 30
-    - name: Scan Reports 
+    - name: Build Reports 
       uses: actions/upload-artifact@v4
       with:
-        name: scan-reports
+        name: build-reports
         path: build/reports/
-        retention-days: 30
+        retention-days: 1
     - uses: tiacsys/clean-after-action@v3
       if: always()
