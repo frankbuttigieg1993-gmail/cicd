@@ -100,7 +100,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
     Trivy:
       name: Trivy
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      runs-on: ubuntu-24.04
       needs: [Build]
       env:
         NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
@@ -112,7 +112,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
     semgrep_scan:
       name: semgrep/ci
-      runs-on: ubuntu-24.04
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
       needs: [Build]
       env:
         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
