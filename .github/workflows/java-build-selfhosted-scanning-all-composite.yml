@@ -82,7 +82,7 @@ jobs:
               sonar-token: ${{ secrets.SONAR_TOKEN }} 
     DependencyCheck:
       name: DependencyCheck
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      runs-on: ubuntu-24.04
       needs: Build
       steps:
       - name: Dependency Check
@@ -112,7 +112,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
     semgrep_scan:
       name: semgrep/ci
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      runs-on: ubuntu-24.04
       needs: [Build]
       env:
         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
