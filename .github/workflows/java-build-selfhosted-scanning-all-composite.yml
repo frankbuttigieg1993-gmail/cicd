@@ -17,10 +17,19 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: write  # Required for checkout and write is required for tagging the git repository
+  issues: write
+  id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+  security-events: write # Required for Semgrep and Uploading to GitHub Security Feature
+
 env:
   AWS_REGION: ap-southeast-2                   # set this to your preferred AWS region, e.g. us-west-1
   build-artifact-key: app-${{ github.sha }}
   ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
+  NODE_TLS_REJECT_UNAUTHORIZED: '0' # # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+  GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
+  
 
 concurrency:
   group: ${{ github.workflow }}-runner-${{ github.ref }}
@@ -32,9 +41,6 @@ jobs:
       runs-on: ${{ fromJson(inputs.target-runner) }} 
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
-      env:
-        NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
-        GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,40 +53,40 @@ jobs:
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/build@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
-    # test-code:
-    #   name: Run Tests
-    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
-    #   needs: Build
-    #   env:
-    #     NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
-    #     GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
-    #   steps:
-    #   - name: Java Test
-    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
-    #     with:
-    #       github-token: ${{ secrets.GITHUB_TOKEN }}  
-    # sonar-scan:
-    #     name: SonarQube Scan & Gate Check
-    #     runs-on: ${{ fromJson(inputs.target-runner) }} 
-    #     needs: test-code
-    #     env:
-    #       NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
-    #       GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
-    #     steps:
-    #       - name: Sonar Scan Java Application
-    #         uses: frankbuttigieg1993-gmail/cicd/.github/actions/sonar-scan@main
-    #         with:
-    #           github-token: ${{ secrets.GITHUB_TOKEN }}  
-    #           sonar-token: ${{ secrets.SONAR_TOKEN }} 
-    # DependencyCheck:
-    #   name: DependencyCheck
-    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
-    #   needs: Build
-    #   steps:
-    # - name: Dependency Check
-    #   uses: frankbuttigieg1993-gmail/cicd/.github/actions/dependency-check@main
-    #   with:
-    #     github-token: ${{ secrets.GITHUB_TOKEN }}  
+    test-code:
+      name: Run Tests
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: Build
+      env:
+        NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
+        GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
+      steps:
+      - name: Java Test
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}  
+    sonar-scan:
+        name: SonarQube Scan & Gate Check
+        runs-on: ${{ fromJson(inputs.target-runner) }} 
+        needs: test-code
+        env:
+          NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
+          GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
+        steps:
+          - name: Sonar Scan Java Application
+            uses: frankbuttigieg1993-gmail/cicd/.github/actions/sonar-scan@main
+            with:
+              github-token: ${{ secrets.GITHUB_TOKEN }}  
+              sonar-token: ${{ secrets.SONAR_TOKEN }} 
+    DependencyCheck:
+      name: DependencyCheck
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: Build
+      steps:
+      - name: Dependency Check
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/dependency-check@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}  
     CycloneDX_SBOM:
       name: CycloneDX_SBOM
       runs-on: ${{ fromJson(inputs.target-runner) }} 
@@ -90,102 +96,56 @@ jobs:
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/cyclone-dx-sbom@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
-    # Trivy:
-    #   name: Trivy
-    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
-    #   needs: [Build]
-    #   permissions:
-    #     id-token: write # This is required for requesting the JWT for OIDC auth to AWS
-    #     contents: read  # Required for checkout
-    #   env:
-    #     NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
-    #     GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
-    #   steps:
-    #   - name: Trivy Scan 
-    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-scan@main
-    #     with:
-    #       github-token: ${{ secrets.GITHUB_TOKEN }}  
-    # semgrep_scan:
-    #   name: semgrep/ci
-    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
-    #   needs: [Build]
-    #   env:
-    #     SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
-    #     HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
-    #     NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
-    #     GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
-    #   # Skip any PR created by dependabot to avoid permission issues:
-    #   if: (github.actor != 'dependabot[bot]')
-    #   permissions:
-    #     # required for all workflows
-    #     security-events: write
-    #     # only required for workflows in private repositories
-    #     actions: read
-    #     contents: read
-    #   steps:
-    #   - name: Semgrep Scan 
-    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/semgrep-scan@main
-    #     with:
-    #       github-token: ${{ secrets.GITHUB_TOKEN }}  
-    # Docker_Push:
-    #   name: Docker Push
-    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
-    #   permissions:
-    #     id-token: write # This is required for requesting the JWT for OIDC auth to AWS
-    #     contents: read  # Required for checkout
-    #   needs: Build
-    #   steps:
-    #   - name: Checkout
-    #     uses: actions/checkout@v4
-    #     with:
-    #       clean: true
-    #   - name: "Configure AWS Credentials - Action for GitHub Actions"
-    #     uses: aws-actions/configure-aws-credentials@v4
-    #     with:
-    #       aws-region: ap-southeast-2 
-    #       role-to-assume: arn:aws:iam::865983312994:role/github-actions-role
-    #   - name: Verify AWS Identity
-    #     run: |
-    #       aws sts get-caller-identity
-    #       aws s3 ls
-    #   - name: Download Build Artefact
-    #     uses: actions/download-artifact@v4
-    #     with:
-    #       name: build
-    #       path: .
-    #   - name: Login to Amazon ECR
-    #     id: login-ecr
-    #     uses: aws-actions/amazon-ecr-login@v1
-    #   - name: Docker Build 
-    #     id: Docker-Build 
-    #     env:
-    #       ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-    #       APP_VERSION: ${{ needs.Build.outputs.APP_VERSION }}
-    #     run: |
-    #       echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
-    #       docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$APP_VERSION -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }} .
-    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
-    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
-    #       docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-    #       echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
-    #   - uses: tiacsys/clean-after-action@v3
-    # Tag:
-    #   name: Tag
-    #   runs-on: ubuntu-24.04
-    #   permissions:
-    #     contents: write
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
-    #   needs: [Build, Docker_Push]
-    #   steps:
-    #   - uses: actions/checkout@v4
-    #     with:
-    #       clean: true
-    #   - name: Git Tag 
-    #     id: tag_version
-    #     uses: mathieudutour/github-tag-action@v6.2
-    #     with:
-    #       release_branches: "release.*"
-    #       github_token: ${{ env.GITHUB_TOKEN }}
-    #       custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}
-    #   - uses: tiacsys/clean-after-action@v3
+    Trivy:
+      name: Trivy
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: [Build]
+      env:
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+      steps:
+      - name: Trivy Scan 
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-scan@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}  
+    semgrep_scan:
+      name: semgrep/ci
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: [Build]
+      env:
+        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
+        HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
+      # Skip any PR created by dependabot to avoid permission issues:
+      if: (github.actor != 'dependabot[bot]')
+      steps:
+      - name: Semgrep Scan 
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/semgrep-scan@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}  
+    Docker_Push:
+      name: Docker Push
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: Build
+      steps:
+      - name: Docker Push 
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/docker-push@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}  
+    Tag:
+      name: Tag
+      runs-on: ubuntu-24.04
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+      needs: [Build, Docker_Push]
+      steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: true
+      - name: Git Tag 
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          release_branches: "release.*"
+          github_token: ${{ env.GITHUB_TOKEN }}
+          custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}
+      - uses: tiacsys/clean-after-action@v3
