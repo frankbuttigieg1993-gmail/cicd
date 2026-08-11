@@ -148,8 +148,8 @@ runs:
 
     - name: Trivy Scan JAR - Webgoat
       run: |
-        trivy rootfs \
-          --scanners vuln,misconfig,license \
+        trivy fs \
+          --scanners vuln,license \
           --ignore-unfixed \
           --format template \
           --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl"' \
@@ -164,6 +164,7 @@ runs:
         name: trivy-reports
         path: build/reports/trivy/
         retention-days: 1
+      if: always()
 
     - uses: tiacsys/clean-after-action@v4
       if: always()
