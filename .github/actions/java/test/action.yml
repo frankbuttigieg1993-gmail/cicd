@@ -28,9 +28,9 @@ runs:
       uses: actions/cache@v5
       with:
         path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-          ~/.m2/repository
+          ${{ runner.home }}/.gradle/caches
+          ${{ runner.home }}/.gradle/wrapper
+          ${{ runner.home }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
     - name: Run Tests and Coverage
       run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue

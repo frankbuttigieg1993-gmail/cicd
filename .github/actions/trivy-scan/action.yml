@@ -59,9 +59,9 @@ runs:
       uses: actions/cache@v5
       with:
         path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-          ~/.m2/repository
+          ${{ runner.home }}/.gradle/caches
+          ${{ runner.home }}/.gradle/wrapper
+          ${{ runner.home }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
 
     - name: Get current date
@@ -73,7 +73,7 @@ runs:
       uses: actions/cache@v5
       with:
         path: |
-          ~/.cache/trivy
+          ${{ runner.home }}/.cache/trivy
         # Refresh the database cache once a day, while allowing older caches to restore.
         key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
         restore-keys: |
@@ -132,15 +132,14 @@ runs:
       shell: bash
 
     - name: Trivy Container Misconfiguration
+      shell: bash
       run: |
         trivy config \
-          --scanners misconfig \
           --format template \
           --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
           --output build/reports/trivy/trivy-config-report.html \
           --timeout 10m \
           .
-      shell: bash
 
     - name: Download Webgoat JAR
       run: |
