@@ -21,17 +21,27 @@ runs:
         with:
           name: build
           path: .
+      - name: Verify CycloneDX BOM
+        shell: bash
+        run: |
+          echo "CycloneDX BOM:"
+          jq '{
+            bomFormat,
+            specVersion,
+            version,
+            componentCount: (.components // [] | length)
+          }' build/reports/cyclonedx/complete-bom.json 
       - name: Generate CSV Version of Complete SBOM 
         run: |
-           cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.csv --output-format csv
+           cyclonedx convert --input-file build/reports/cyclonedx/complete-bom.json --output-file build/reports/cyclonedx/complete-bom.csv --output-format csv
         shell: bash 
       - name: Scan Complete SBOM with Trivy
         run: |
-          trivy sbom --scanners vuln,license --format json --output trivy-sbom.json build/reports/cyclonedx/bom.json
+          trivy sbom --scanners vuln,license --format json --output trivy-sbom.json build/reports/cyclonedx/complete-bom.json
         shell: bash 
       - name: Generate TRIVY Enhanced Complete SBOM Report
         run: |
-          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/bom.json --trivy trivy-sbom.json --output build/reports/cyclonedx/bom.html
+          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/complete-bom.json --trivy trivy-sbom.json --output build/reports/cyclonedx/complete-bom.html
         shell: bash 
 
       - name: Generate CSV Version of Runtime SBOM 
