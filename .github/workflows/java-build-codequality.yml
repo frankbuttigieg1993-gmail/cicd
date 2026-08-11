@@ -167,4 +167,4 @@ jobs:
     #       release_branches: "release.*"
     #       github_token: ${{ env.GITHUB_TOKEN }}
     #       custom_tag: ${{ needs.Build.outputs.APP_VERSION }}.${{ github.run_number }}
-    #   - uses: tiacsys/clean-after-action@v3
+    #   - uses: tiacsys/clean-after-action@v4

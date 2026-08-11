@@ -13,7 +13,7 @@ runs:
   using: 'composite'
   steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         clean: true
     - name: "Configure AWS Credentials - Action for GitHub Actions"
@@ -48,4 +48,4 @@ runs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
       shell: bash
-    - uses: tiacsys/clean-after-action@v3
+    - uses: tiacsys/clean-after-action@v4

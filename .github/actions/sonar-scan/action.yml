@@ -14,7 +14,7 @@ runs:
   steps:
     # Every shell step in a composite action MUST explicitly define the shell
     - name: Check out repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
     - name: Download Build Artefact
@@ -28,7 +28,7 @@ runs:
         name: test-and-coverage-reports
         path: .
     - name: Cache SonarQube packages
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.sonar/cache
         key: ${{ runner.os }}-sonar
@@ -55,4 +55,4 @@ runs:
         # http://127.0.0.1:9300/api/ce/task?id=8729e4ec-c77b-43b5-a24d-00f1b51e7c83 => returns analysis ID 863d9764-8e4a-4d62-9992-f6956e025203
         # http://127.0.0.1:9300/project/activity?id=java-application&analysis=863d9764-8e4a-4d62-9992-f6956e025203
       shell: bash
-    - uses: tiacsys/clean-after-action@v3
+    - uses: tiacsys/clean-after-action@v4

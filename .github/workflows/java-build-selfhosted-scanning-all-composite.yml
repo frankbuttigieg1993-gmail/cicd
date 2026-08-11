@@ -102,8 +102,13 @@ jobs:
       runs-on: ubuntu-24.04
       needs: [Build]
       env:
+        TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
         NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
         GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+        TRIVY_SKIP_DB_UPDATE: "true"
+        TRIVY_SKIP_JAVA_DB_UPDATE: "true"
+        TRIVY_SKIP_CHECK_UPDATE: "true"
+        TRIVY_CACHE_DIR: ~/.cache/trivy
       steps:
       - name: Trivy Scan 
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-scan@main

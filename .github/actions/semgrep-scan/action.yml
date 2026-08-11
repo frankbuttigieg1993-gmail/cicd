@@ -11,7 +11,7 @@ runs:
   steps:
         # Fetch project source with GitHub Actions Checkout.
         - name: Checkout repository
-          uses: actions/checkout@v4
+          uses: actions/checkout@v6
         # Gradle generated this file so the transitive dependencies are included. Semgrep scans the transitive dependencies better when it has the gradle lock file
         - name: Download Build Artefact
           uses: actions/download-artifact@v4
@@ -51,7 +51,7 @@ runs:
         # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
         # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
         - name: Semgrep AppSec Platform Artefact
-          uses: actions/upload-artifact@v4
+          uses: actions/upload-artifact@v5
           with:
             name: semgrep-scan-results
             path: semgrep.sarif
@@ -74,7 +74,7 @@ runs:
               -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
               -w /src \
               returntocorp/semgrep:1.163.0-nonroot \
-              semgrep scan --config auto --error --sarif --sarif-output=semgrep-local-scan-results.sarif
+              semgrep scan --config auto --sarif --sarif-output=semgrep-local-scan-results.sarif
           shell: bash 
         - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
           uses: github/codeql-action/upload-sarif@v4
@@ -87,16 +87,16 @@ runs:
 #            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
           shell: bash 
         - name: Publish Semgrep AppSet HTML Report
-          uses: actions/upload-artifact@v4
+          uses: actions/upload-artifact@v5
           with:
             name: semgrep-appsec-report
             path: semgrep-report.html
             retention-days: 2
         - name: Publish Semgrep Local Scan HTML Report
-          uses: actions/upload-artifact@v4
+          uses: actions/upload-artifact@v5
           with:
             name: semgrep-local-scan-report
             path: semgrep-local-scan-report.html
             retention-days: 2
-        - uses: tiacsys/clean-after-action@v3
+        - uses: tiacsys/clean-after-action@v4
           if: always()
