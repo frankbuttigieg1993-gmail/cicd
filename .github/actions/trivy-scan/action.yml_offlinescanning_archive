@@ -16,7 +16,7 @@ runs:
         fetch-depth: 0
     # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
     - name: Download Build Artefact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: build
         path: .
@@ -99,7 +99,7 @@ runs:
         timeout: 40m
 
     - name: Publish Trivy Scan Source Code HTML Report
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: trivy-srccode-report
         path: build/reports/trivy-srccode-report.html
@@ -123,7 +123,7 @@ runs:
         timeout: 40m          
 
     - name: Publish Trivy Scan JAR HTML Report
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: trivy-jar-report
         path: build/reports/trivy-jar-report.html
@@ -156,7 +156,7 @@ runs:
         trivy-config: .github/trivy-scan.yaml
         timeout: 40m
     - name: Trivy Scan Docker Image HTML Report
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: trivy-dockerimage-report
         path: build/reports/trivy-dockerimage-report.html
@@ -183,13 +183,13 @@ runs:
         trivy-config: .github/trivy-scan.yaml
         timeout: 40m
     - name: Trivy Scan JAR HTML Report - Webgoat
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: trivy-webgoat-jar-report
         path: build/reports/trivy/trivy-webgoat-jar-report.html
         retention-days: 30
     - name: Trivy Reports 
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: trivy-reports
         path: build/reports/

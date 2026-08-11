@@ -18,12 +18,12 @@ runs:
       with:
         fetch-depth: 0
     - name: Download Build Artefact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: build
         path: .
     - name: Download Project Reports and Binaries
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: test-and-coverage-reports
         path: .

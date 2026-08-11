@@ -17,7 +17,7 @@ runs:
           uses: actions/checkout@v6
         # Gradle generated this file so the transitive dependencies are included. Semgrep scans the transitive dependencies better when it has the gradle lock file
         - name: Download Build Artefact
-          uses: actions/download-artifact@v4
+          uses: actions/download-artifact@v8
           with:
             name: build
             path: .
@@ -98,7 +98,7 @@ runs:
 #            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
           shell: bash 
         - name: Publish Semgrep Reports 
-          uses: actions/upload-artifact@v5
+          uses: actions/upload-artifact@v7
           with:
             name: semgrep-reports
             path: build/reports/semgrep/

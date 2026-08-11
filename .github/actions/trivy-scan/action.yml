@@ -50,7 +50,7 @@ runs:
 
     # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included.
     - name: Download Build Artefact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: build
         path: .
@@ -159,7 +159,7 @@ runs:
       shell: bash
 
     - name: Trivy Reports
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: trivy-reports
         path: build/reports/trivy/
