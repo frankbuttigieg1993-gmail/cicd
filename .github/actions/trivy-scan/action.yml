@@ -123,18 +123,38 @@ runs:
           Vulnerabilities: (.Vulnerabilities // [] | length),
           Licenses: (.Licenses // [] | length)
         }' build/reports/trivy/trivy-jar-report.json
-        
-    - name: Trivy Scan JAR
+
+    - name: Extract JAR
+      shell: bash
       run: |
-        trivy fs \
+        rm -rf build/jar-rootfs
+        mkdir -p build/jar-rootfs
+        cd build/jar-rootfs
+        jar xf ../libs/env-printer-springboot-project-1.0.0.jar
+
+    - name: Trivy Scan Packaged JAR
+      run: |
+        trivy rootfs \
           --scanners vuln,license \
           --ignore-unfixed \
           --format template \
           --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
           --output build/reports/trivy/trivy-jar-report.html \
           --timeout 40m \
-          build/libs/env-printer-springboot-project-1.0.0.jar
+          build/jar-rootfs
       shell: bash
+
+    # - name: Trivy Scan Packaged JAR
+    #   run: |
+    #     trivy rootfs \
+    #       --scanners vuln,license \
+    #       --ignore-unfixed \
+    #       --format template \
+    #       --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
+    #       --output build/reports/trivy/trivy-jar-report.html \
+    #       --timeout 40m \
+    #       build/libs/env-printer-springboot-project-1.0.0.jar
+    #   shell: bash
 
     - name: Docker Build
       id: Docker-Build
@@ -177,7 +197,7 @@ runs:
 
     - name: Trivy Scan JAR - Webgoat
       run: |
-        trivy fs \
+        trivy rootfs \
           --scanners vuln,license \
           --ignore-unfixed \
           --format template \
