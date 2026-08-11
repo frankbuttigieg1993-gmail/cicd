@@ -32,9 +32,9 @@ env:
   GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
   
 
-concurrency:
-  group: ${{ github.workflow }}-runner-${{ github.ref }}
-  cancel-in-progress: false
+# concurrency:
+#   group: ${{ github.workflow }}-runner-${{ github.ref }}
+#   cancel-in-progress: false
 
 jobs:
     Build:
