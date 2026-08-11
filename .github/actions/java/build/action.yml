@@ -23,8 +23,9 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}  
         NODE_TLS_REJECT_UNAUTHORIZED: "0" 
     #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
-      run: ./gradlew compileJava compileTestJava build -x test cyclonedxBom cyclonedxDirectBomRuntime dependencies -info --scan --write-locks
-      shell: bash
+#      run: ./gradlew compileJava compileTestJava build -x test cyclonedxBom cyclonedxDirectBomRuntime dependencies -info --scan --write-locks
+      run: ./gradlew compileJava compileTestJava build -x test cyclonedxAllConfigsBom cyclonedxRuntimeBom dependencies -info --scan --write-locks
+      shell: bash 
     - name: Upload Build Artefact
       uses: actions/upload-artifact@v7
       with:
