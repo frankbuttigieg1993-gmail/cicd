@@ -1,3 +1,15 @@
+# Design Notes:
+
+# 1) Semgrep and Sonarqube will perform the SAST Scan for Code Quality 
+# 2) CycloneDX produces the full dependency inventory/SBOM with direct and transitive dependencies that's enriched through Trivy
+# 3) Trivy understands build.gradle, settings.gradle and the gradle.lockfile (produced by gradle with all dependencies) so we scan the source code to understand all licences and vulnerabilities that our code uses. 
+# It is better to scan the full source code rather than just the JAR
+# 4) We will use Trivy to scan the JAR file to understand 'What was actually shipped?' The JAR just refelcts the artifact that will run
+# 5) We will use Trivy to scan the docker image to answer 'What will actually be deployed' eg: OS packages/libraries, openssl, libc, curl, certificates and any additional files copied to the docker image to run your application 
+# This includes OS vulnerabilities, JRE vulnerabilities and container packages.
+# The most important scanning for Trivy is the source code scan and the docker image scan 
+# 6) We will use Trivy to scna for misconfigurations in the files.
+
 name: 'Trivy Scan'
 description: 'Trivy Scan'
 
@@ -44,27 +56,27 @@ runs:
     - name: Warm dependency cache
       run: ./gradlew --no-daemon dependencies --write-locks build -x test
       shell: bash
-    - name: Trivy Scan Source Code Table
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices
-        format: 'table'
-        # output: 'reports/trivy-report.txt'
-#          exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
-        ignore-unfixed: true
-        severity: 'CRITICAL,HIGH'
-        scanners: "vuln,misconfig,license"
-        timeout: 40m
+#     - name: Trivy Scan Source Code Table
+#       uses: aquasecurity/trivy-action@master
+#       with:
+#         scan-type: 'fs'
+#         scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices
+#         format: 'table'
+#         # output: 'reports/trivy-report.txt'
+# #          exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
+#         ignore-unfixed: true
+#         severity: 'CRITICAL,HIGH'
+#         scanners: "vuln,misconfig,license"
+#         timeout: 40m
 
-    - name: Trivy Scan Source Code 
+    - name: Trivy Scan Java Dependencies 
       uses: aquasecurity/trivy-action@v0.36.0
       with:
         scan-type: 'fs' 
         scan-ref: '.'
         format: 'template'
-        template: '${{ github.workspace }}/trivy/html_template.tpl' 
-        scanners: "vuln,misconfig,license"
+        template: '@${{ github.workspace }}/trivy/html_template.tpl' 
+        scanners: "vuln,license"
         ignore-unfixed: true
         output: 'build/reports/trivy/trivy-srccode-report.html'
         timeout: 40m
@@ -72,11 +84,11 @@ runs:
     - name: Trivy Scan JAR 
       uses: aquasecurity/trivy-action@v0.36.0
       with:
-        scan-type: 'rootfs'
+        scan-type: 'fs'
         scan-ref: 'build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
         format: 'template'
-        template: '${{ github.workspace }}/trivy/html_template.tpl'
-        scanners: "vuln,misconfig,license"
+        template: '@${{ github.workspace }}/trivy/html_template.tpl'
+        scanners: "vuln,license"
         ignore-unfixed: true
         output: 'build/reports/trivy/trivy-jar-report.html'
         timeout: 40m          
@@ -91,18 +103,32 @@ runs:
       #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
       #  echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
       shell: bash 
+
     - name: Trivy Docker Image 
       uses: aquasecurity/trivy-action@v0.36.0
       with:
         scan-type: 'image' 
         image-ref: 'java-application:${{ github.sha }}'
         format: 'template'
-        template: '${{ github.workspace }}/trivy/html_template.tpl'
-        scanners: "vuln,misconfig,license"
+        template: '@${{ github.workspace }}/trivy/html_template.tpl'
+        scanners: "vuln"
+        pkg-types: 'os'
         ignore-unfixed: true
         output: 'build/reports/trivy/trivy-dockerimage-report.html'
         timeout: 40m
-    - name: Trivy Webgoat Docker Image SCan
+
+    - name: Trivy Container Misconfiguration
+      uses: aquasecurity/trivy-action@v0.36.0
+      with:
+        scan-type: 'config'
+        scan-ref: '.'
+        format: 'template'
+        template: '@${{ github.workspace }}/trivy/html_template.tpl'
+        scanners: 'misconfig'
+        output: 'build/reports/trivy/trivy-config-report.html'
+        timeout: '10m'
+        
+    - name: Download Webgoat JAR 
       run: |
         curl -LO https://github.com/WebGoat/WebGoat/releases/download/v2025.3/webgoat-2025.3.jar
       shell: bash 
@@ -112,7 +138,7 @@ runs:
         scan-type: 'rootfs'
         scan-ref: 'webgoat-2025.3.jar' # Explicit path to your JAR file
         format: 'template'
-        template: '${{ github.workspace }}/trivy/html_template.tpl'
+        template: '@${{ github.workspace }}/trivy/html_template.tpl'
         scanners: "vuln,misconfig,license"
         ignore-unfixed: true
         output: 'build/reports/trivy/trivy-webgoat-jar-report.html'
