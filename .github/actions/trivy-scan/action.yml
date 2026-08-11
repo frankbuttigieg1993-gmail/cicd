@@ -44,7 +44,6 @@ runs:
     - name: Bootstrap
       run: |
         mkdir -p build/reports/trivy/
-        curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/${{ inputs.trivy-version }}/contrib/html.tpl -o @$GITHUB_ACTION_PATH/resources/html_template.tpl
       shell: bash
 
     # Trivy CLI is installed once and then reused by all scans below.
@@ -100,7 +99,7 @@ runs:
           --scanners vuln,license \
           --ignore-unfixed \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
+          --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
           --output build/reports/trivy/trivy-srccode-report.html \
           --timeout 40m \
           .
@@ -131,7 +130,7 @@ runs:
           --scanners vuln,license \
           --ignore-unfixed \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
+          --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
           --output build/reports/trivy/trivy-jar-report.html \
           --timeout 40m \
           build/libs/env-printer-springboot-project-1.0.0.jar
@@ -155,7 +154,7 @@ runs:
           --pkg-types os \
           --ignore-unfixed \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
+          --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
           --output build/reports/trivy/trivy-dockerimage-report.html \
           --timeout 40m \
           java-application:${{ github.sha }}
@@ -166,7 +165,7 @@ runs:
       run: |
         trivy config \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
+          --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
           --output build/reports/trivy/trivy-config-report.html \
           --timeout 10m \
           .
@@ -182,7 +181,7 @@ runs:
           --scanners vuln,license \
           --ignore-unfixed \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
+          --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
           --output build/reports/trivy/trivy-webgoat-jar-report.html \
           --timeout 40m \
           webgoat-2025.3.jar
