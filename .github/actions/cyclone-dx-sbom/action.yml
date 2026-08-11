@@ -76,7 +76,7 @@ runs:
         shell: bash 
       - name: Generate TRIVY Enhanced Runtime SBOM Report
         run: |
-          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/runtime-bom.json --trivy trivy-runtime-bom.json --output build/reports/cyclonedx/runtime-bom.html
+          python3 ${{ github.workspace }}/trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/runtime-bom.json --trivy trivy-runtime-bom.json --output build/reports/cyclonedx/runtime-bom.html
         shell: bash 
       - name: Upload Reports 
         uses: actions/upload-artifact@master
