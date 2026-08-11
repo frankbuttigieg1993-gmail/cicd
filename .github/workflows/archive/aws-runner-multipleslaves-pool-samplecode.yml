@@ -1,0 +1,88 @@
+name: Parallel EC2 Runner Workflow
+
+on:
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  # 1. START THE RUNNERS
+  start-runner:
+    name: Start self-hosted EC2 runners
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Define how many runners you want (e.g., 3 runners)
+        runner-index: [1, 2, 3]
+    outputs:
+      # Expose the matrix array so the next jobs know the indices
+      runner-indices: ${{管理 matrix.runner-index }} 
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_GITHUB_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_GITHUB_SECRET_ACCESS_KEY_ID }}
+          aws-region: 'ap-southeast-2'
+          
+      - name: Start EC2 runner
+        id: start-ec2-runner
+        uses: machulav/ec2-github-runner@v2
+        with:
+          mode: start
+          github-token: ${{ secrets.AWS_GITHUB_RUNNER_TOKEN }}
+          ec2-image-id: ami-07709f5ec3cb18820
+          ec2-instance-type: t3.medium
+          subnet-id: subnet-0b38821d605af3a64
+          security-group-id: sg-004bf88b5a89e74ea
+          iam-role-name: github-actions-role
+          # The action internally spawns a label named 'ec2-github-runner-${{ matrix.runner-index }}'
+          aws-resource-tags: >
+            [
+              {"Key": "Name", "Value": "ec2-github-runner-${{ matrix.runner-index }}"},
+              {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
+            ]
+
+  # 2. RUN WORK ON THE EC2 INSTANCES
+  build-and-test:
+    name: Run workload on self-hosted instances
+    needs: start-runner
+    runs-on: ubuntu-latest # Falls back safely if needed, but overridden below
+    strategy:
+      matrix:
+        # Re-use the exact same indices mapping
+        runner-index: [1, 2, 3]
+    # This targets the exact individual self-hosted runner matching this matrix item
+    runs-on: ${{ matrix.runner-index == 1 && 'ec2-github-runner-1' || matrix.runner-index == 2 && 'ec2-github-runner-2' || 'ec2-github-runner-3' }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run heavy execution tasks
+        run: |
+          echo "Hello from EC2 Runner #${{ matrix.runner-index }}!"
+          echo "This script is executing natively inside your isolated AWS EC2 hardware."
+
+  # 3. STOP AND TEARDOWN RUNNERS (CRITICAL FOR COST SAVINGS)
+  stop-runner:
+    name: Stop self-hosted EC2 runners
+    needs: [start-runner, build-and-test]
+    runs-on: ubuntu-latest
+    # ensures cleanup runs even if the previous testing job fails or gets cancelled
+    if: always() 
+    strategy:
+      matrix:
+        runner-index: [1, 2, 3]
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_GITHUB_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_GITHUB_SECRET_ACCESS_KEY_ID }}
+          aws-region: 'ap-southeast-2'
+          
+      - name: Stop EC2 runner
+        uses: machulav/ec2-github-runner@v2
+        with:
+          mode: stop
+          github-token: ${{ secrets.AWS_GITHUB_RUNNER_TOKEN }}
+          # The action queries AWS using this tag value to find the specific machine and terminate it
+          label: ec2-github-runner-${{ matrix.runner-index }}

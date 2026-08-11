@@ -10,20 +10,13 @@
 # 4) Trivy Scan JAR (Build Artefact)
 # We unpack the Build Artefact File and we explicitly tell Trivy to scan all of the nested JAR files inside the Build Artefact
 # This provides a complete scan of the dependent JAR files that are actually packed in the Build Artefact and its vulnerabilities.
+# Documentation and ChatGPT suggests that v0.72.0 includes improvements for scanning licences in JAR files but there are some limitations. The scanner also works better if you unpack/extract the Build artefact
 # Note: Trivy's Documentation Notes that it struggles to analyse licences from JAR files. The Gradle runtime SBOM caters for this limitation
 # 5) Trivy Scan Docker Image
-# This sacns for what is present in the deployable container image  eg: OS packages/libraries, openssl, libc, curl, certificates
-# We have limitted this scan 
-
-
-# 5) Trivy Scan Docker Image
-# This will answer the question of ' What is actually present in the deployable container image' eg: OS packages/libraries, openssl, libc, curl, certificates and any additional files copied to the docker image to run your application
-# This includes OS vulnerabilities, JRE vulnerabilities and container packages.
-# 
+# This scans for what is present in the deployable container image  eg: OS packages/libraries, container packages, JRE vulnerabilities, the JAR file, configuration files, openssl, libc, curl, certificates
 # 6) Trivy Scan Configuration 
-# We will use Trivy to scan for misconfigurations in the files.
-# 7) The Github action for trivy scans isn't maintained regularly. So we moved away from using the github action to installing trivy separately and running a CLI command so we can ensure we are using the latest version of trivy
-#    The most important scanning for Trivy is the source code scan and the docker image scan
+# We will use Trivy to scan for misconfigurations in the files. eg: HELM Charts, Docker FIles etc.
+# Note:  The Github action for trivy scans isn't maintained regularly. So we moved away from using the github action to installing trivy separately and running a CLI command so we can ensure we are using the latest version of trivy
 
 
 name: 'Trivy Scan'
@@ -184,7 +177,7 @@ runs:
     - name: Trivy Docker Image
       run: |
         trivy image \
-          --scanners vuln, license \
+          --scanners vuln,license \
           --ignore-unfixed \
           --format template \
           --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
