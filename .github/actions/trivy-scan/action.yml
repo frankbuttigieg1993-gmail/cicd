@@ -89,7 +89,7 @@ runs:
           --scanners vuln,license \
           --ignore-unfixed \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/trivy/html_template.tpl" \
+          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
           --output build/reports/trivy/trivy-srccode-report.html \
           --timeout 40m \
           .
@@ -101,7 +101,7 @@ runs:
           --scanners vuln,license \
           --ignore-unfixed \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/trivy/html_template.tpl" \
+          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
           --output build/reports/trivy/trivy-jar-report.html \
           --timeout 40m \
           build/libs/env-printer-springboot-project-1.0.0.jar
@@ -125,7 +125,7 @@ runs:
           --pkg-types os \
           --ignore-unfixed \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/trivy/html_template.tpl" \
+          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
           --output build/reports/trivy/trivy-dockerimage-report.html \
           --timeout 40m \
           java-application:${{ github.sha }}
@@ -136,7 +136,7 @@ runs:
         trivy config \
           --scanners misconfig \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/trivy/html_template.tpl" \
+          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
           --output build/reports/trivy/trivy-config-report.html \
           --timeout 10m \
           .
@@ -153,7 +153,7 @@ runs:
           --scanners vuln,misconfig,license \
           --ignore-unfixed \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/trivy/html_template.tpl"' \
+          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl"' \
           --output build/reports/trivy/trivy-webgoat-jar-report.html \
           --timeout 40m \
           webgoat-2025.3.jar
