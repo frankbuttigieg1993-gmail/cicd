@@ -40,16 +40,16 @@ jobs:
     Build:
       name: Build
       runs-on: ${{ fromJson(inputs.target-runner) }} 
-      outputs:
-        APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
+      # outputs:
+      #   APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set APP_VERSION Output 
-        id: app_version
-        run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
+      # - name: Set APP_VERSION Output 
+      #   id: app_version
+      #   run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
       - name: Java Build
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/build@main
         with:
