@@ -1,0 +1,196 @@
+name: 'Trivy Scan'
+description: 'Trivy Scan'
+
+inputs:
+  github-token:
+    description: 'The github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    # Every shell step in a composite action MUST explicitly define the shell
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
+    - name: Download Build Artefact
+      uses: actions/download-artifact@v4
+      with:
+        name: build
+        path: .
+    # - name: Setup Trivy (preinstalled) ## Needed for self hosted VM
+    #   uses: aquasecurity/trivy-action@v0.72.0
+    #   with:
+    #     path: /opt/trivy
+    #     key: trivy-binary-v0.72.0-Linux-X64
+    #     enableCrossOsArchive: false
+    #     fail-on-cache-miss: false
+    - name: Cache Gradle and Maven
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+          ~/.m2/repository
+        key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+    - name: Create Trivy Reports Directories 
+      run: mkdir -p build/reports/trivy/
+      shell: bash
+    - name: Write Trivy config for offline Java scanning
+      run: |
+        mkdir -p .github
+        cat > .github/trivy-scan.yaml <<'EOF'
+        scan:
+          offline: true
+        EOF
+      shell: bash
+    - name: Warm dependency cache
+      run: ./gradlew --no-daemon dependencies --write-locks build -x test
+      # or the smallest step that fully resolves dependencies
+      shell: bash
+    - name: Write Trivy config for offline Java scanning
+      run: |
+        mkdir -p .github
+        cat > .github/trivy-scan.yaml <<'EOF'
+        scan:
+          offline: true
+        EOF
+      shell: bash
+    - name: Trivy Scan Source Code Table
+      uses: aquasecurity/trivy-action@master
+      env:
+        TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+        TRIVY_CACHE_DIR: ~/.cache/trivy
+        TRIVY_SKIP_CHECK_UPDATE: true
+      with:
+        scan-type: 'fs'
+        scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices
+        format: 'table'
+        # output: 'reports/trivy-report.txt'
+#          exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
+        ignore-unfixed: true
+        severity: 'CRITICAL,HIGH'
+        scanners: "vuln,misconfig,license"
+        trivy-config: .github/trivy-scan.yaml
+        timeout: 40m
+
+    - name: Trivy Scan Source Code 
+      uses: aquasecurity/trivy-action@v0.36.0
+      env: 
+        TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI Option not supported by the github action can be passed as an environemnt variable
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+        TRIVY_CACHE_DIR: ~/.cache/trivy
+      with:
+        scan-type: 'fs' 
+        scan-ref: '.'
+        format: 'template'
+        template: '${{ github.workspace }}/trivy/html_template.tpl' 
+        scanners: "vuln,misconfig,license"
+        ignore-unfixed: true
+        output: 'build/reports/trivy-srccode-report.html'
+        trivy-config: .github/trivy-scan.yaml
+        timeout: 40m
+
+    - name: Publish Trivy Scan Source Code HTML Report
+      uses: actions/upload-artifact@v5
+      with:
+        name: trivy-srccode-report
+        path: build/reports/trivy-srccode-report.html
+        retention-days: 1
+    - name: Trivy Scan JAR 
+      uses: aquasecurity/trivy-action@v0.36.0
+      env: 
+        TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI Option not supported by the github action can be passed as an environemnt variable
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+        TRIVY_CACHE_DIR: ~/.cache/trivy
+      with:
+        scan-type: 'rootfs'
+        scan-ref: 'build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
+        format: 'template'
+        template: '${{ github.workspace }}/trivy/html_template.tpl'
+        scanners: "vuln,misconfig,license"
+        ignore-unfixed: true
+        output: 'build/reports/trivy-jar-report.html'
+        trivy-config: .github/trivy-scan.yaml
+        timeout: 40m          
+
+    - name: Publish Trivy Scan JAR HTML Report
+      uses: actions/upload-artifact@v5
+      with:
+        name: trivy-jar-report
+        path: build/reports/trivy-jar-report.html
+        retention-days: 30
+    - name: Docker Build 
+      id: Docker-Build 
+      run: |
+        echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
+        docker build -t java-application:${{ github.sha }} .
+      #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
+      #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+      #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+      #  echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
+      shell: bash 
+    - name: Trivy Docker Image 
+      uses: aquasecurity/trivy-action@v0.36.0
+      env: 
+        TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI Option not supported by the github action can be passed as an environemnt variable
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+        TRIVY_CACHE_DIR: ~/.cache/trivy
+      with:
+        scan-type: 'image' 
+        image-ref: 'java-application:${{ github.sha }}'
+        format: 'template'
+        template: '${{ github.workspace }}/trivy/html_template.tpl'
+        scanners: "vuln,misconfig,license"
+        ignore-unfixed: true
+        output: 'build/reports/trivy-dockerimage-report.html'
+        trivy-config: .github/trivy-scan.yaml
+        timeout: 40m
+    - name: Trivy Scan Docker Image HTML Report
+      uses: actions/upload-artifact@v5
+      with:
+        name: trivy-dockerimage-report
+        path: build/reports/trivy-dockerimage-report.html
+        retention-days: 1
+    - name: Trivy Webgoat Docker Image SCan
+      run: |
+        curl -LO https://github.com/WebGoat/WebGoat/releases/download/v2025.3/webgoat-2025.3.jar
+      shell: bash 
+    - name: Trivy Scan JAR - Webgoat 
+      uses: aquasecurity/trivy-action@v0.36.0
+      env: 
+        TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI Option not supported by the github action can be passed as an environemnt variable
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+        TRIVY_CACHE_DIR: ~/.cache/trivy
+      with:
+        scan-type: 'rootfs'
+        scan-ref: 'webgoat-2025.3.jar' # Explicit path to your JAR file
+        format: 'template'
+        template: '${{ github.workspace }}/trivy/html_template.tpl'
+        scanners: "vuln,misconfig,license"
+        ignore-unfixed: true
+        output: 'build/reports/trivy-webgoat-jar-report.html'
+        trivy-config: .github/trivy-scan.yaml
+        timeout: 40m
+    - name: Trivy Scan JAR HTML Report - Webgoat
+      uses: actions/upload-artifact@v5
+      with:
+        name: trivy-webgoat-jar-report
+        path: build/reports/trivy/trivy-webgoat-jar-report.html
+        retention-days: 30
+    - name: Trivy Reports 
+      uses: actions/upload-artifact@v5
+      with:
+        name: trivy-reports
+        path: build/reports/
+        retention-days: 1
+    - uses: tiacsys/clean-after-action@v4
+      if: always()

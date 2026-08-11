@@ -11,21 +11,21 @@ runs:
   steps:
 #    Every shell step in a composite action MUST explicitly define the shell
   - name: Checkout
-    uses: actions/checkout@v4
+    uses: actions/checkout@v6
   - name: Download Build Artefact
     uses: actions/download-artifact@v4
     with:
       name: build
       path: .
   - name: Cache Dependency-Check data
-    uses: actions/cache@v4
+    uses: actions/cache@v5
     with:
       path: ~/.cache/dependency-check
       key: odc-${{ runner.os }}-12.2.2-${{ hashFiles('**/gradle.lockfile', '**/build.gradle', '**/settings.gradle') }}
       restore-keys: |
         odc-${{ runner.os }}-12.2.2-
   - name: Cache Gradle and Maven
-    uses: actions/cache@v4
+    uses: actions/cache@v5
     with:
       path: |
         ~/.gradle/caches
@@ -45,4 +45,4 @@ runs:
         name: Depcheck report
         path: build/reports/dependency-check/dependency-check-report.html
         retention-days: 1
-  - uses: tiacsys/clean-after-action@v3
+  - uses: tiacsys/clean-after-action@v4
