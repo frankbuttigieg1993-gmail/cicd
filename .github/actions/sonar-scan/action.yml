@@ -27,6 +27,14 @@ runs:
       with:
         name: test-and-coverage-reports
         path: .
+    - name: Cache Gradle and Maven
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+          ~/.m2/repository
+        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
     - name: Cache SonarQube packages
       uses: actions/cache@v5
       with:
