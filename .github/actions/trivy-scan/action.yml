@@ -2,13 +2,23 @@
 
 # 1) Semgrep and Sonarqube will perform the SAST Scan for Code Quality
 # 2) CycloneDX produces the full dependency inventory/SBOM with direct and transitive dependencies that's enriched through Trivy
-# 3) Trivy understands build.gradle, settings.gradle and the gradle.lockfile (produced by gradle with all dependencies) so we scan the source code to understand all licences and vulnerabilities that our code uses.
-# 4) We will use Trivy to scan the JAR file to understand 'What was actually shipped?' The JAR just reflects the artifact that will run
-# 5) We will use Trivy to scan the docker image to answer 'What will actually be deployed' eg: OS packages/libraries, openssl, libc, curl, certificates and any additional files copied to the docker image to run your application
-#    This includes OS vulnerabilities, JRE vulnerabilities and container packages.
-#    The most important scanning for Trivy is the source code scan and the docker image scan
-# 6) We will use Trivy to scan for misconfigurations in the files.
+# 3) Trivy Scan Soure Cod
+# Trivy understands build.gradle, settings.gradle and the gradle.lockfile (produced by gradle with all dependencies)
+# So we scan the source code to understand all of the components, licences and vulnerabilities that our code uses.
+# Question Answered: What dependencies/configuration are present in the source repository? => Checks: gradle.lockfile, dependencies, licenses and configuration
+# 4) Trivy Scan JAR
+# This tells us What dependencies are actually packaged in the built Java artifact?
+# Trivy's JAR scanner is good for vulnerabilities, but current Trivy documentation says JAR license detection is limited
+# It checks nested JARs etc
+# 5) Trivy Scan Docker Image
+# This will answer the question of ' What is actually present in the deployable container image' eg: OS packages/libraries, openssl, libc, curl, certificates and any additional files copied to the docker image to run your application
+# This includes OS vulnerabilities, JRE vulnerabilities and container packages.
+# 
+# 6) Trivy Scan Configuration 
+# We will use Trivy to scan for misconfigurations in the files.
 # 7) The Github action for trivy scans isn't maintained regularly. So we moved away from using the github action to installing trivy separately and running a CLI command so we can ensure we are using the latest version of trivy
+#    The most important scanning for Trivy is the source code scan and the docker image scan
+
 
 name: 'Trivy Scan'
 description: 'Trivy Scan'
@@ -34,6 +44,7 @@ runs:
     - name: Bootstrap
       run: |
         mkdir -p build/reports/trivy/
+        curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/${{ inputs.trivy-version }}/contrib/html.tpl -o @$GITHUB_ACTION_PATH/resources/html_template.tpl
       shell: bash
 
     # Trivy CLI is installed once and then reused by all scans below.
@@ -95,6 +106,25 @@ runs:
           .
       shell: bash
 
+    - name: Trivy JAR Debug
+      shell: bash
+      run: |
+        trivy fs \
+          --scanners vuln,license \
+          --ignore-unfixed \
+          --format json \
+          --output build/reports/trivy/trivy-jar-report.json \
+          --timeout 40m \
+          build/libs/env-printer-springboot-project-1.0.0.jar
+
+        jq '.Results[]? | {
+          Target,
+          Class: .Class,
+          Type: .Type,
+          Vulnerabilities: (.Vulnerabilities // [] | length),
+          Licenses: (.Licenses // [] | length)
+        }' build/reports/trivy/trivy-jar-report.json
+        
     - name: Trivy Scan JAR
       run: |
         trivy fs \
