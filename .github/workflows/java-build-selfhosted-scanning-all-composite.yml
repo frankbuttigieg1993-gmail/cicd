@@ -114,21 +114,21 @@ jobs:
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-scan@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
-    # semgrep_scan:
-    #   name: semgrep/ci
-    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
-    #   needs: [Build]
-    #   env:
-    #     SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
-    #     HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
-    #   # Skip any PR created by dependabot to avoid permission issues:
-    #   if: (github.actor != 'dependabot[bot]')
-    #   steps:
-    #   - name: Semgrep Scan 
-    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/semgrep-scan@main
-    #     with:
-    #       github-token: ${{ secrets.GITHUB_TOKEN }} 
-    #       SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+    semgrep_scan:
+      name: semgrep/ci
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: [Build]
+      env:
+        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
+        HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
+      # Skip any PR created by dependabot to avoid permission issues:
+      if: (github.actor != 'dependabot[bot]')
+      steps:
+      - name: Semgrep Scan 
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/semgrep-scan@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }} 
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
     # Docker_Push:
     #   name: Docker Push
     #   runs-on: ${{ fromJson(inputs.target-runner) }} 
