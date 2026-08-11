@@ -74,7 +74,7 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
       - name: Download Compiled Project
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: compiled-project
           path: build
@@ -160,7 +160,7 @@ jobs:
               distribution: 'temurin'
               cache: 'gradle'
           - name: Download Project Reports and Binaries
-            uses: actions/download-artifact@v4
+            uses: actions/download-artifact@v8
             with:
               name: test-and-coverage-reports
               path: build/
@@ -234,7 +234,7 @@ jobs:
     #       aws sts get-caller-identity
     #       aws s3 ls
     #   - name: Download build artifact
-    #     uses: actions/download-artifact@v4
+    #     uses: actions/download-artifact@v8
     #     with:
     #       name: ${{ env.build-artifact-key }}
     #       path: build-artefact/

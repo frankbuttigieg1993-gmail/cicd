@@ -88,7 +88,7 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
       - name: Download Build Artefact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: build
           path: .
@@ -153,12 +153,12 @@ jobs:
               distribution: 'temurin'
               cache: 'gradle'
           - name: Download Build Artefact
-            uses: actions/download-artifact@v4
+            uses: actions/download-artifact@v8
             with:
               name: build
               path: .
           - name: Download Project Reports and Binaries
-            uses: actions/download-artifact@v4
+            uses: actions/download-artifact@v8
             with:
               name: test-and-coverage-reports
               path: .
@@ -197,12 +197,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       # - name: Download Build Reports
-      #   uses: actions/download-artifact@v4
+      #   uses: actions/download-artifact@v8
       #   with:
       #     name: build-reports
       #     path: build/reports/
       - name: Download Build Artefact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: build
           path: .
@@ -221,12 +221,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Download Build Artefact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: build
           path: .
       # - name: Download Build Reports
-      #   uses: actions/download-artifact@v4
+      #   uses: actions/download-artifact@v8
       #   with:
       #     name: build-reports
       #     path: build/reports/
@@ -262,7 +262,7 @@ jobs:
         uses: actions/checkout@v4
       # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
       - name: Download Build Artefact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: build
           path: .
@@ -394,7 +394,7 @@ jobs:
           uses: actions/checkout@v4
         # Gradle generated this file so the transitive dependencies are included. Semgrep scans the transitive dependencies better when it has the gradle lock file
         - name: Download Gradle Lock File
-          uses: actions/download-artifact@v4
+          uses: actions/download-artifact@v8
           with:
             name: build
             path: .
@@ -488,7 +488,7 @@ jobs:
           aws sts get-caller-identity
           aws s3 ls
       - name: Download Build Artefact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: build
           path: .
