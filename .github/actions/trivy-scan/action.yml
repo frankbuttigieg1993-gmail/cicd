@@ -134,7 +134,8 @@ runs:
         cd build/jar-rootfs
         jar xf ../libs/env-printer-springboot-project-1.0.0.jar
 
-# The limitation with this approach is it only scans the actually packaged dependency jars. It won't scan its dependencies. 
+# This will scan everything inside the JAR however it won't scan the dependencies. We cater for this through the Gradle SBOM Task 
+
     - name: Trivy Scan Packaged JAR
       run: |
         trivy rootfs \
