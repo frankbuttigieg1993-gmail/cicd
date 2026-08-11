@@ -35,6 +35,28 @@ runs:
         run: |
            cyclonedx convert --input-file build/reports/cyclonedx/complete-bom.json --output-file build/reports/cyclonedx/complete-bom.csv --output-format csv
         shell: bash 
+      # Trivy CLI is installed once and then reused by all scans below.
+      # The setup action version is deliberately independent from the Trivy CLI version.
+      - name: Setup Trivy CLI
+        uses: aquasecurity/setup-trivy@v0.3.1
+        with:
+          version: ${{ inputs.trivy-version }}
+          cache: true
+
+      - name: Verify Trivy version
+        run: trivy --version
+        shell: bash
+
+      - name: Cache Trivy Databases
+        uses: actions/cache@v5
+        with:
+          path: |
+            ${{ runner.home }}/.cache/trivy
+          # Refresh the database cache once a day, while allowing older caches to restore.
+          key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
+          restore-keys: |
+            trivy-db-${{ runner.os }}-
+            
       - name: Scan Complete SBOM with Trivy
         run: |
           trivy sbom --scanners vuln,license --format json --output trivy-sbom.json build/reports/cyclonedx/complete-bom.json
