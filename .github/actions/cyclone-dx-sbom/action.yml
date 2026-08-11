@@ -21,6 +21,40 @@ runs:
         with:
           name: build
           path: .
+      - name: Generate CSV Version of Complete SBOM 
+        run: |
+           cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.csv --output-format csv
+        shell: bash 
+      - name: Scan Complete SBOM with Trivy
+        run: |
+          trivy sbom --scanners vuln,license --format json --output trivy-sbom.json build/reports/cyclonedx/bom.json
+        shell: bash 
+      - name: Generate TRIVY Enhanced Complete SBOM Report
+        run: |
+          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/bom.json --trivy trivy-sbom.json --output build/reports/cyclonedx/bom.html
+        shell: bash 
+
+      - name: Generate CSV Version of Runtime SBOM 
+        run: |
+           cyclonedx convert --input-file build/reports/cyclonedx/runtime-bom.json --output-file build/reports/cyclonedx/runtime-bom.csv --output-format csv
+        shell: bash 
+      - name: Scan Runtime SBOM with Trivy
+        run: |
+          trivy sbom --scanners vuln,license --format json --output trivy-runtime-bom.json build/reports/cyclonedx/runtime-bom.json
+        shell: bash 
+      - name: Generate TRIVY Enhanced Runtime SBOM Report
+        run: |
+          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/runtime-bom.json --trivy trivy-runtime-bom.json --output build/reports/cyclonedx/runtime-bom.html
+        shell: bash 
+      - name: Upload Reports 
+        uses: actions/upload-artifact@master
+        with:
+            name: sbom-reports
+            path: | 
+             build/reports/cyclonedx/
+            retention-days: 1
+      - uses: tiacsys/clean-after-action@v4
+        if: always()
       # - name: Setup Node.js
       #   uses: actions/setup-node@v4
       #   with:
@@ -91,27 +125,3 @@ runs:
       
       
       # sudo snap install trivy
-      - name: Generate CSV Version of SBOM 
-        run: |
-           cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.csv --output-format csv
-        shell: bash 
-      - name: Scan SBOM with Trivy
-        run: |
-          trivy sbom --scanners vuln,license --format json --output trivy-sbom.json build/reports/cyclonedx/bom.json
-        shell: bash 
-      - name: Generate TRIVY Enhanced SBOM Report
-        run: |
-          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/bom.json --trivy trivy-sbom.json --output build/reports/cyclonedx/bom.html
-        shell: bash 
-      - name: Upload Reports 
-        uses: actions/upload-artifact@master
-        with:
-            name: sbom-reports
-            path: | 
-             build/reports/cyclonedx/bom.json
-             build/reports/cyclonedx/bom.xml
-             build/reports/cyclonedx/bom.csv
-             build/reports/cyclonedx/bom.html
-            retention-days: 1
-      - uses: tiacsys/clean-after-action@v4
-        if: always()

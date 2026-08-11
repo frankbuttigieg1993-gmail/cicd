@@ -93,7 +93,9 @@ runs:
       run: ./gradlew --no-daemon dependencies --write-locks build -x test
       shell: bash
 
-    - name: Trivy Scan Java Dependencies
+# This will scan all components in the CyloneDX SBOM which includes all configuration options (not just runtime) because it is a complete SBOM
+
+    - name: Trivy Scan Java Source Code
       run: |
         trivy fs \
           --scanners vuln,license \
@@ -132,6 +134,7 @@ runs:
         cd build/jar-rootfs
         jar xf ../libs/env-printer-springboot-project-1.0.0.jar
 
+# The limitation with this approach is it only scans the actually packaged dependency jars. It won't scan its dependencies. 
     - name: Trivy Scan Packaged JAR
       run: |
         trivy rootfs \
