@@ -47,9 +47,6 @@ jobs:
       steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Run Unit Tests
-        run: gradle test --no-daemon
-        continue-on-error: true
       - name: Copy Sample Test Report 
         run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
       - name: Upload Test Report files
@@ -65,3 +62,6 @@ jobs:
           path: '*.xml'                     # Path to test results (inside artifact .zip)
           reporter: jest-junit              # Format of test results
           fail-on-error: 'false'
+      - name: Run Unit Tests
+        run: gradle test --no-daemon
+        continue-on-error: false
