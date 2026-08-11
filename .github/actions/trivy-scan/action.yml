@@ -46,10 +46,6 @@ runs:
       shell: bash
     - name: Trivy Scan Source Code Table
       uses: aquasecurity/trivy-action@master
-      env:
-        TRIVY_SKIP_DB_UPDATE: "false"
-        TRIVY_SKIP_JAVA_DB_UPDATE: "false"
-        TRIVY_SKIP_CHECK_UPDATE: "false"
       with:
         scan-type: 'fs'
         scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices

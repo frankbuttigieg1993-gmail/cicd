@@ -62,6 +62,7 @@ runs:
               --sarif-output=build/reports/semgrep/semgrep.sarif \
               --no-suppress-errors
           shell: bash
+          
 
         # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
         # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
