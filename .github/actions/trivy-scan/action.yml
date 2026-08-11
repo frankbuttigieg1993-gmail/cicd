@@ -152,7 +152,7 @@ runs:
           --scanners vuln,license \
           --ignore-unfixed \
           --format template \
-          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl"' \
+          --template "@$GITHUB_ACTION_PATH/resources/html_template.tpl" \
           --output build/reports/trivy/trivy-webgoat-jar-report.html \
           --timeout 40m \
           webgoat-2025.3.jar
