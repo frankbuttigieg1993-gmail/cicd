@@ -1,15 +1,21 @@
 # Design Notes:
 
 # 1) Semgrep and Sonarqube will perform the SAST Scan for Code Quality
-# 2) CycloneDX produces the full dependency inventory/SBOM with direct and transitive dependencies that's enriched through Trivy
-# 3) Trivy Scan Soure Cod
+# 2) Gradle uses CycloneDX to produce a complete SBOM of all components with direct and transitive dependencies that's enriched through Trivy
+# Gradle uses CycloneDX to produce a runtime SBOM with all components in the build artefact and their direct and transitive dependencies that's enriched through Trivy
+# 3) Trivy Scan Source Code
+# Gradle is the best tool to produce the complete SBOM and a dependency file (gradle.lockfile)
 # Trivy understands build.gradle, settings.gradle and the gradle.lockfile (produced by gradle with all dependencies)
-# So we scan the source code to understand all of the components, licences and vulnerabilities that our code uses.
-# Question Answered: What dependencies/configuration are present in the source repository? => Checks: gradle.lockfile, dependencies, licenses and configuration
-# 4) Trivy Scan JAR
-# This tells us What dependencies are actually packaged in the built Java artifact?
-# Trivy's JAR scanner is good for vulnerabilities, but current Trivy documentation says JAR license detection is limited
-# It checks nested JARs etc
+# This stage tells us what are all the components references by our source code and what licences and vulnerabilities do they have (mainly uses the gradle.lockfile to do this)
+# 4) Trivy Scan JAR (Build Artefact)
+# We unpack the Build Artefact File and we explicitly tell Trivy to scan all of the nested JAR files inside the Build Artefact
+# This provides a complete scan of the dependent JAR files that are actually packed in the Build Artefact and its vulnerabilities.
+# Note: Trivy's Documentation Notes that it struggles to analyse licences from JAR files. The Gradle runtime SBOM caters for this limitation
+# 5) Trivy Scan Docker Image
+# This sacns for what is present in the deployable container image  eg: OS packages/libraries, openssl, libc, curl, certificates
+# We have limitted this scan 
+
+
 # 5) Trivy Scan Docker Image
 # This will answer the question of ' What is actually present in the deployable container image' eg: OS packages/libraries, openssl, libc, curl, certificates and any additional files copied to the docker image to run your application
 # This includes OS vulnerabilities, JRE vulnerabilities and container packages.
@@ -134,7 +140,11 @@ runs:
         cd build/jar-rootfs
         jar xf ../libs/env-printer-springboot-project-1.0.0.jar
 
-# This will scan everything inside the JAR however it won't scan the dependencies. We cater for this through the Gradle SBOM Task 
+# This will scan everything inside the JAR however it won't scan the dependencies. 
+# Trivy's JAR scanner is good for vulnerabilities, but current Trivy documentation says JAR license detection is limited. 
+# One other positive development: Trivy 0.72 specifically added Java JAR license detection from packaged LICENSE files and embedded pom.xml, so your current Trivy version is actually better for direct JAR license scanning than older versions.
+
+# We cater for this limitation through the separate Gradle SBOM Task just for Runtime Libraries
 
     - name: Trivy Scan Packaged JAR
       run: |
@@ -174,8 +184,7 @@ runs:
     - name: Trivy Docker Image
       run: |
         trivy image \
-          --scanners vuln \
-          --pkg-types os \
+          --scanners vuln, license \
           --ignore-unfixed \
           --format template \
           --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
