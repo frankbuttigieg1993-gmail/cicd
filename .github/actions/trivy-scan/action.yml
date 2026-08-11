@@ -1,14 +1,14 @@
 # Design Notes:
 
-# 1) Semgrep and Sonarqube will perform the SAST Scan for Code Quality 
+# 1) Semgrep and Sonarqube will perform the SAST Scan for Code Quality
 # 2) CycloneDX produces the full dependency inventory/SBOM with direct and transitive dependencies that's enriched through Trivy
-# 3) Trivy understands build.gradle, settings.gradle and the gradle.lockfile (produced by gradle with all dependencies) so we scan the source code to understand all licences and vulnerabilities that our code uses. 
-# It is better to scan the full source code rather than just the JAR
-# 4) We will use Trivy to scan the JAR file to understand 'What was actually shipped?' The JAR just refelcts the artifact that will run
-# 5) We will use Trivy to scan the docker image to answer 'What will actually be deployed' eg: OS packages/libraries, openssl, libc, curl, certificates and any additional files copied to the docker image to run your application 
-# This includes OS vulnerabilities, JRE vulnerabilities and container packages.
-# The most important scanning for Trivy is the source code scan and the docker image scan 
-# 6) We will use Trivy to scna for misconfigurations in the files.
+# 3) Trivy understands build.gradle, settings.gradle and the gradle.lockfile (produced by gradle with all dependencies) so we scan the source code to understand all licences and vulnerabilities that our code uses.
+# 4) We will use Trivy to scan the JAR file to understand 'What was actually shipped?' The JAR just reflects the artifact that will run
+# 5) We will use Trivy to scan the docker image to answer 'What will actually be deployed' eg: OS packages/libraries, openssl, libc, curl, certificates and any additional files copied to the docker image to run your application
+#    This includes OS vulnerabilities, JRE vulnerabilities and container packages.
+#    The most important scanning for Trivy is the source code scan and the docker image scan
+# 6) We will use Trivy to scan for misconfigurations in the files.
+# 7) The Github action for trivy scans isn't maintained regularly. So we moved away from using the github action to installing trivy separately and running a CLI command so we can ensure we are using the latest version of trivy
 
 name: 'Trivy Scan'
 description: 'Trivy Scan'
@@ -17,6 +17,10 @@ inputs:
   github-token:
     description: 'The github token'
     required: true
+  trivy-version:
+    description: 'Trivy CLI version to install. Update this independently of the setup-trivy action version.'
+    required: false
+    default: 'v0.72.0'
 
 runs:
   using: 'composite'
@@ -26,16 +30,31 @@ runs:
       uses: actions/checkout@v6
       with:
         fetch-depth: 0
+
     - name: Bootstrap
-      run: | 
+      run: |
         mkdir -p build/reports/trivy/
-      shell: bash   
-    # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included. 
+      shell: bash
+
+    # Trivy CLI is installed once and then reused by all scans below.
+    # The setup action version is deliberately independent from the Trivy CLI version.
+    - name: Setup Trivy CLI
+      uses: aquasecurity/setup-trivy@v0.3.1
+      with:
+        version: ${{ inputs.trivy-version }}
+        cache: true
+
+    - name: Verify Trivy version
+      run: trivy --version
+      shell: bash
+
+    # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included.
     - name: Download Build Artefact
       uses: actions/download-artifact@v4
       with:
         name: build
         path: .
+
     - name: Cache Gradle and Maven
       uses: actions/cache@v5
       with:
@@ -44,110 +63,108 @@ runs:
           ~/.gradle/wrapper
           ~/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+
+    - name: Get current date
+      id: date
+      run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+      shell: bash
+
     - name: Cache Trivy Databases
       uses: actions/cache@v5
       with:
         path: |
           ~/.cache/trivy
-        # This key uses the current date, forcing a new download once a day
+        # Refresh the database cache once a day, while allowing older caches to restore.
         key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
         restore-keys: |
           trivy-db-${{ runner.os }}-
+
     - name: Warm dependency cache
       run: ./gradlew --no-daemon dependencies --write-locks build -x test
       shell: bash
-#     - name: Trivy Scan Source Code Table
-#       uses: aquasecurity/trivy-action@master
-#       with:
-#         scan-type: 'fs'
-#         scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices
-#         format: 'table'
-#         # output: 'reports/trivy-report.txt'
-# #          exit-code: '1' # Fails the pipeline if vulnerabilities match criteria
-#         ignore-unfixed: true
-#         severity: 'CRITICAL,HIGH'
-#         scanners: "vuln,misconfig,license"
-#         timeout: 40m
 
-    - name: Trivy Scan Java Dependencies 
-      uses: aquasecurity/trivy-action@v0.36.0
-      with:
-        scan-type: 'fs' 
-        scan-ref: '.'
-        format: 'template'
-        template: '@${{ github.workspace }}/trivy/html_template.tpl' 
-        scanners: "vuln,license"
-        ignore-unfixed: true
-        output: 'build/reports/trivy/trivy-srccode-report.html'
-        timeout: 40m
+    - name: Trivy Scan Java Dependencies
+      run: |
+        trivy fs \
+          --scanners vuln,license \
+          --ignore-unfixed \
+          --format template \
+          --template '@${{ github.workspace }}/trivy/html_template.tpl' \
+          --output build/reports/trivy/trivy-srccode-report.html \
+          --timeout 40m \
+          .
+      shell: bash
 
-    - name: Trivy Scan JAR 
-      uses: aquasecurity/trivy-action@v0.36.0
-      with:
-        scan-type: 'fs'
-        scan-ref: 'build/libs/env-printer-springboot-project-1.0.0.jar' # Explicit path to your JAR file
-        format: 'template'
-        template: '@${{ github.workspace }}/trivy/html_template.tpl'
-        scanners: "vuln,license"
-        ignore-unfixed: true
-        output: 'build/reports/trivy/trivy-jar-report.html'
-        timeout: 40m          
+    - name: Trivy Scan JAR
+      run: |
+        trivy fs \
+          --scanners vuln,license \
+          --ignore-unfixed \
+          --format template \
+          --template '@${{ github.workspace }}/trivy/html_template.tpl' \
+          --output build/reports/trivy/trivy-jar-report.html \
+          --timeout 40m \
+          build/libs/env-printer-springboot-project-1.0.0.jar
+      shell: bash
 
-    - name: Docker Build 
-      id: Docker-Build 
+    - name: Docker Build
+      id: Docker-Build
       run: |
         echo "BRANCH_NAME_ESCAPED=$( echo ${{ github.ref_name }} | tr "/" _  )" >> $GITHUB_ENV
         docker build -t java-application:${{ github.sha }} .
-      #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
-      #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
-      #  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-      #  echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
-      shell: bash 
+      # docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}
+      # docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.APP_VERSION }}.${{ github.run_number }}
+      # docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+      # echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" >> $GITHUB_OUTPUT
+      shell: bash
 
-    - name: Trivy Docker Image 
-      uses: aquasecurity/trivy-action@v0.36.0
-      with:
-        scan-type: 'image' 
-        image-ref: 'java-application:${{ github.sha }}'
-        format: 'template'
-        template: '@${{ github.workspace }}/trivy/html_template.tpl'
-        scanners: "vuln"
-        pkg-types: 'os'
-        ignore-unfixed: true
-        output: 'build/reports/trivy/trivy-dockerimage-report.html'
-        timeout: 40m
+    - name: Trivy Docker Image
+      run: |
+        trivy image \
+          --scanners vuln \
+          --pkg-types os \
+          --ignore-unfixed \
+          --format template \
+          --template '@${{ github.workspace }}/trivy/html_template.tpl' \
+          --output build/reports/trivy/trivy-dockerimage-report.html \
+          --timeout 40m \
+          java-application:${{ github.sha }}
+      shell: bash
 
     - name: Trivy Container Misconfiguration
-      uses: aquasecurity/trivy-action@v0.36.0
-      with:
-        scan-type: 'config'
-        scan-ref: '.'
-        format: 'template'
-        template: '@${{ github.workspace }}/trivy/html_template.tpl'
-        scanners: 'misconfig'
-        output: 'build/reports/trivy/trivy-config-report.html'
-        timeout: '10m'
-        
-    - name: Download Webgoat JAR 
+      run: |
+        trivy config \
+          --scanners misconfig \
+          --format template \
+          --template '@${{ github.workspace }}/trivy/html_template.tpl' \
+          --output build/reports/trivy/trivy-config-report.html \
+          --timeout 10m \
+          .
+      shell: bash
+
+    - name: Download Webgoat JAR
       run: |
         curl -LO https://github.com/WebGoat/WebGoat/releases/download/v2025.3/webgoat-2025.3.jar
-      shell: bash 
-    - name: Trivy Scan JAR - Webgoat 
-      uses: aquasecurity/trivy-action@v0.36.0
-      with:
-        scan-type: 'rootfs'
-        scan-ref: 'webgoat-2025.3.jar' # Explicit path to your JAR file
-        format: 'template'
-        template: '@${{ github.workspace }}/trivy/html_template.tpl'
-        scanners: "vuln,misconfig,license"
-        ignore-unfixed: true
-        output: 'build/reports/trivy/trivy-webgoat-jar-report.html'
-        timeout: 40m
-    - name: Trivy Reports 
+      shell: bash
+
+    - name: Trivy Scan JAR - Webgoat
+      run: |
+        trivy rootfs \
+          --scanners vuln,misconfig,license \
+          --ignore-unfixed \
+          --format template \
+          --template '@${{ github.workspace }}/trivy/html_template.tpl' \
+          --output build/reports/trivy/trivy-webgoat-jar-report.html \
+          --timeout 40m \
+          webgoat-2025.3.jar
+      shell: bash
+
+    - name: Trivy Reports
       uses: actions/upload-artifact@v5
       with:
         name: trivy-reports
         path: build/reports/trivy/
         retention-days: 1
+
     - uses: tiacsys/clean-after-action@v4
       if: always()
