@@ -51,7 +51,7 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             ~/.m2/repository
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+          key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
       - name: Build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
@@ -210,7 +210,7 @@ jobs:
       #       ~/.gradle/caches
       #       ~/.gradle/wrapper
       #       ~/.m2/repository
-      #     key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+      #     key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
 #       - name: Run Gradle DependencyCheckAnalyse 
 #         env:
 #           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
@@ -310,7 +310,7 @@ jobs:
 #             ~/.gradle/caches
 #             ~/.gradle/wrapper
 #             ~/.m2/repository
-#           key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+#           key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
 
 #       - name: Warm dependency cache
 #         run: ./gradlew --no-daemon dependencies --write-locks build -x test

@@ -31,7 +31,7 @@ runs:
           ~/.gradle/caches
           ~/.gradle/wrapper
           ~/.m2/repository
-        key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
     - name: Cache Trivy Databases
       uses: actions/cache@v5
       with:
@@ -46,6 +46,10 @@ runs:
       shell: bash
     - name: Trivy Scan Source Code Table
       uses: aquasecurity/trivy-action@master
+      env:
+        TRIVY_SKIP_DB_UPDATE: "false"
+        TRIVY_SKIP_JAVA_DB_UPDATE: "false"
+        TRIVY_SKIP_CHECK_UPDATE: "false"
       with:
         scan-type: 'fs'
         scan-ref: '.' # should be where build.gradle lives and trivy automatically scans dependnecices

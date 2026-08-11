@@ -20,13 +20,6 @@ runs:
       with:
         name: build
         path: .
-    # - name: Setup Trivy (preinstalled) ## Needed for self hosted VM
-    #   uses: aquasecurity/trivy-action@v0.72.0
-    #   with:
-    #     path: /opt/trivy
-    #     key: trivy-binary-v0.72.0-Linux-X64
-    #     enableCrossOsArchive: false
-    #     fail-on-cache-miss: false
     - name: Cache Gradle and Maven
       uses: actions/cache@v5
       with:
@@ -34,18 +27,27 @@ runs:
           ~/.gradle/caches
           ~/.gradle/wrapper
           ~/.m2/repository
-        key: ${{ runner.os }}-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+    - name: Cache Trivy Databases
+      uses: actions/cache@v5
+      with:
+        path: |
+          $GITHUB_WORKSPACE/.cache/trivy
+        # This key uses the current date, forcing a new download once a day
+        key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
+        restore-keys: |
+          trivy-db-${{ runner.os }}-
     - name: Create Trivy Reports Directories 
       run: mkdir -p build/reports/trivy/
       shell: bash
-    - name: Write Trivy config for offline Java scanning
-      run: |
-        mkdir -p .github
-        cat > .github/trivy-scan.yaml <<'EOF'
-        scan:
-          offline: true
-        EOF
-      shell: bash
+    # - name: Write Trivy config for offline Java scanning
+    #   run: |
+    #     mkdir -p .github
+    #     cat > .github/trivy-scan.yaml <<'EOF'
+    #     scan:
+    #       offline: true
+    #     EOF
+    #   shell: bash
     - name: Warm dependency cache
       run: ./gradlew --no-daemon dependencies --write-locks build -x test
       # or the smallest step that fully resolves dependencies

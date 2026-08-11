@@ -24,6 +24,14 @@ runs:
       with:
         name: build
         path: .
+    - name: Cache Gradle and Maven
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+          ~/.m2/repository
+        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
     - name: Run Tests and Coverage
       run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue
       continue-on-error: true
@@ -40,20 +48,6 @@ runs:
   #          list-tests: all
   #          use-actions-summary: true
         fail-on-error: false
-    - name: Upload JaCoCo HTML Report
-      if: always()
-      uses: actions/upload-artifact@v5
-      with:
-        name: jacoco-report
-        path: build/reports/jacoco/test/html
-        retention-days: 1
-    - name: Upload HTML Test Report
-      if: always()
-      uses: actions/upload-artifact@v5
-      with:
-        name: html-test-report
-        path: build/reports/tests/test/
-        retention-days: 1
     - name: Upload test and coverage reports
       if: always()
       uses: actions/upload-artifact@v5
