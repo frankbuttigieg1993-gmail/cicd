@@ -31,14 +31,14 @@ runs:
       uses: actions/cache@v5
       with:
         path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-          ~/.m2/repository
+          ${{ runner.home }}/.gradle/caches
+          ${{ runner.home }}/.gradle/wrapper
+          ${{ runner.home }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
     - name: Cache SonarQube packages
       uses: actions/cache@v5
       with:
-        path: ~/.sonar/cache
+        path: ${{ runner.home }}/.sonar/cache
         key: ${{ runner.os }}-sonar
         restore-keys: ${{ runner.os }}-sonar
     - name: Execute Sonar Scan
