@@ -57,8 +57,6 @@ runs:
            cyclonedx convert --input-file build/reports/cyclonedx/build-environment-bom.json --output-file build/reports/cyclonedx/build-environment-bom.json --output-format csv
         shell: bash 
 
-
-
       - name: Scan Runtime SBOM with Trivy
         run: |
           trivy sbom --scanners vuln,license --format json --output trivy-runtime-bom.json build/reports/cyclonedx/runtime-bom.json
@@ -101,10 +99,10 @@ runs:
         run: |
           python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/build-environment-bom.json --trivy trivy-build-environment-bom.json --output build/reports/cyclonedx/build-environment-bom.html
         shell: bash 
-        
 
       - name: Upload Reports 
         uses: actions/upload-artifact@master
+        if: always()
         with:
             name: sbom-reports
             path: | 
