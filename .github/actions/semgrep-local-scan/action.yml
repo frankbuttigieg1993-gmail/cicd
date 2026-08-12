@@ -78,56 +78,6 @@ runs:
         #       --sarif \
         #       --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif
         #   shell: bash
-
-        - name: Debug Semgrep targets
-          run: |
-            echo "Java files:"
-            find src -type f -name "*.java" -print
-
-            echo
-            echo "Semgrep version:"
-            semgrep --version
-
-            echo
-            echo "Semgrep config:"
-            semgrep scan --config auto --dryrun src/
-          shell: bash
-          
-        - name: Debug Semgrep ignore configuration
-          run: |
-            echo "=== Workspace ==="
-            pwd
-
-            echo
-            echo "=== All Semgrep ignore files ==="
-            find .. -type f -name ".semgrepignore" -print
-
-            echo
-            echo "=== Git tracked Semgrep ignore files ==="
-            git ls-files | grep -E '(^|/)\.semgrepignore$' || true
-
-            echo
-            echo "=== Semgrep environment ==="
-            env | grep -i semgrep || true
-
-            echo
-            echo "=== Verbose dry run ==="
-            semgrep scan \
-              --config auto \
-              --dryrun \
-              --verbose \
-              src/
-          shell: bash
-
-        - name: Compare Git tracked Java files
-          run: |
-            echo "=== Java files on disk ==="
-            find src -type f -name "*.java" | sort
-
-            echo
-            echo "=== Java files tracked by Git ==="
-            git ls-files | grep '\.java$' | sort
-          shell: bash
           
         - name: Run Local Scan
           env:

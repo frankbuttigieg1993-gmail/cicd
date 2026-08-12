@@ -80,19 +80,6 @@ runs:
         #       --sarif-output=build/reports/semgrep/semgrep.sarif \
         #       --no-suppress-errors
         #   shell: bash
-        - name: Debug Semgrep targets
-          run: |
-            echo "Java files:"
-            find src -type f -name "*.java" -print
-
-            echo
-            echo "Semgrep version:"
-            semgrep --version
-
-            echo
-            echo "Semgrep config:"
-            semgrep scan --config auto --dryrun src/
-          shell: bash
           
         - name: Semgrep AppSec Platform Analysis
           env:
