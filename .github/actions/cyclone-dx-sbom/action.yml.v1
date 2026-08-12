@@ -21,7 +21,10 @@ runs:
         with:
           name: build
           path: .
-
+      - name: Generate CSV Version of Complete SBOM 
+        run: |
+           cyclonedx convert --input-file build/reports/cyclonedx/complete-bom.json --output-file build/reports/cyclonedx/complete-bom.csv --output-format csv
+        shell: bash 
       # Trivy CLI is installed once and then reused by all scans below.
       # The setup action version is deliberately independent from the Trivy CLI version.
       - name: Setup Trivy CLI
@@ -43,22 +46,20 @@ runs:
           key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
           restore-keys: |
             trivy-db-${{ runner.os }}-
+            
+      - name: Scan Complete SBOM with Trivy
+        run: |
+          trivy sbom --scanners vuln,license --format json --output trivy-sbom.json build/reports/cyclonedx/complete-bom.json
+        shell: bash 
+      - name: Generate TRIVY Enhanced Complete SBOM Report
+        run: |
+          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/complete-bom.json --trivy trivy-sbom.json --output build/reports/cyclonedx/complete-bom.html
+        shell: bash 
 
       - name: Generate CSV Version of Runtime SBOM 
         run: |
            cyclonedx convert --input-file build/reports/cyclonedx/runtime-bom.json --output-file build/reports/cyclonedx/runtime-bom.csv --output-format csv
         shell: bash 
-      - name: Generate CSV Version of Complete Application SBOM 
-        run: |
-           cyclonedx convert --input-file build/reports/cyclonedx/all-configs-bom.json --output-file build/reports/cyclonedx/all-configs-bom.csv --output-format csv
-        shell: bash 
-      - name: Generate CSV Version of Build Environment SBOM 
-        run: |
-           cyclonedx convert --input-file build/reports/cyclonedx/build-environment-bom.json --output-file build/reports/cyclonedx/build-environment-bom.json --output-format csv
-        shell: bash 
-
-
-
       - name: Scan Runtime SBOM with Trivy
         run: |
           trivy sbom --scanners vuln,license --format json --output trivy-runtime-bom.json build/reports/cyclonedx/runtime-bom.json
@@ -67,27 +68,6 @@ runs:
         run: |
           python3 ${{ github.workspace }}/trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/runtime-bom.json --trivy trivy-runtime-bom.json --output build/reports/cyclonedx/runtime-bom.html
         shell: bash 
-
-  
-      - name: Scan Complete Application SBOM with Trivy
-        run: |
-          trivy sbom --scanners vuln,license --format json --output trivy-all-configs-bom.json build/reports/cyclonedx/all-configs-bom.json
-        shell: bash 
-      - name: Generate TRIVY Enhanced Complete SBOM Report
-        run: |
-          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/all-configs-bom.json --trivy trivy-all-configs-bom.json --output build/reports/cyclonedx/all-configs-bom.html
-        shell: bash 
-
-      - name: Scan Build Environment SBOM with Trivy
-        run: |
-          trivy sbom --scanners vuln,license --format json --output trivy-build-environment-bom.json build/reports/cyclonedx/build-environment-bom.json
-        shell: bash 
-      - name: Generate TRIVY Enhanced Complete SBOM Report
-        run: |
-          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/build-environment-bom.json --trivy trivy-build-environment-bom.json --output build/reports/cyclonedx/build-environment-bom.html
-        shell: bash 
-        
-
       - name: Upload Reports 
         uses: actions/upload-artifact@master
         with:
