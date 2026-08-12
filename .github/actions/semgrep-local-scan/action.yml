@@ -74,7 +74,7 @@ runs:
             /usr/bin/time -v semgrep scan \
               --config auto \
               --sarif \
-              --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif 
+              --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif \
               src/
 
             echo "========================================"
