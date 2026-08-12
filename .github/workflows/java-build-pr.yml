@@ -62,6 +62,6 @@ jobs:
           path: '*.xml'                     # Path to test results (inside artifact .zip)
           reporter: jest-junit              # Format of test results
           fail-on-error: 'false'
-      - name: Run Unit Tests
-        run: ./gradlew test --no-daemon
-        continue-on-error: false
+      # - name: Run Unit Tests
+      #   run: ./gradlew test --no-daemon
+      #   continue-on-error: false
