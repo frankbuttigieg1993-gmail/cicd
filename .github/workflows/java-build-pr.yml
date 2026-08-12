@@ -38,7 +38,7 @@ jobs:
         id: app_version
         run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
       - name: Build with Gradle
-        run:  ./gradlew build -x test
+        run:  ./gradlew  dependencies build -x test -info --scan --write-locks 
         continue-on-error: false
       - name: Listing Files
         run: find . -type f
