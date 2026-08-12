@@ -95,13 +95,13 @@ runs:
 
         - name: Generate HTML Reports
           run: |
-            python3 trivy/parse-semgrep-sarif.py --input build/reports/semgrep/semgrep.sarif --output build/reports/semgrep/semgrep-appsec-report.html --project-name "Java Application SemGrep AppSec" --only INFO,WARNING,ERROR
+            python3 trivy/parse-semgrep-sarif.py --input build/reports/semgrep/semgrep.sarif --output build/reports/semgrep/semgrep-appsec-report.html --project-name "Java Application SemGrep AppSec Scan" --only INFO,WARNING,ERROR
 #            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
           shell: bash 
         - name: Publish Semgrep Reports 
           uses: actions/upload-artifact@v7
           with:
-            name: semgrep-appset-reports
+            name: semgrep-appsec-reports
             path: build/reports/semgrep/
             retention-days: 1
         - uses: tiacsys/clean-after-action@v4

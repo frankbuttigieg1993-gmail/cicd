@@ -74,10 +74,7 @@ runs:
             /usr/bin/time -v semgrep scan \
               --config auto \
               --sarif \
-              --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif \
-              --include 'src/**' \
-              --include 'helm/**' \
-              --include 'build/**'
+              --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif 
 
             echo "========================================"
             echo "Finished Semgrep Local Scan"
@@ -91,7 +88,7 @@ runs:
           if: always()
         - name: Generate HTML Reports
           run: |
-            python3 trivy/parse-semgrep-sarif.py --input build/reports/semgrep/semgrep-local-scan-results.sarif --output build/reports/semgrep/semgrep-local-report.html --project-name "Java Application SemGrep AppSec" --only INFO,WARNING,ERROR
+            python3 trivy/parse-semgrep-sarif.py --input build/reports/semgrep/semgrep-local-scan-results.sarif --output build/reports/semgrep/semgrep-local-report.html --project-name "Java Application SemGrep Local Scan" --only INFO,WARNING,ERROR
 #            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
           shell: bash 
         - name: Publish Semgrep Reports 
