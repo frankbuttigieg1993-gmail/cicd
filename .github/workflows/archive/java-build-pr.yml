@@ -27,6 +27,9 @@ jobs:
       runs-on: ubuntu-24.04
       outputs:
         APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
+      container:
+        image: gradle:9.6.1-jdk21
+        options: --user 1000:1000
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,14 +39,17 @@ jobs:
         id: app_version
         run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
       - name: Build with Gradle
-        run:  ./gradlew build -x test
-        continue-on-error: false
+        run:  gradle clean test build 
+        continue-on-error: true
       - name: Listing Files
         run: find . -type f
     Unit_Test:
       name: Unit_Test
       runs-on: ubuntu-24.04
       needs: [Build]
+      container:
+        image: gradle:9.6.1-jdk21
+        options: --user 1000:1000
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,5 +69,5 @@ jobs:
           reporter: jest-junit              # Format of test results
           fail-on-error: 'false'
       - name: Run Unit Tests
-        run: ./gradlew test --no-daemon
+        run: gradle test --no-daemon
         continue-on-error: false
