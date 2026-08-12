@@ -106,24 +106,24 @@ runs:
           .
       shell: bash
 
-    - name: Trivy JAR Debug
-      shell: bash
-      run: |
-        trivy fs \
-          --scanners vuln,license \
-          --ignore-unfixed \
-          --format json \
-          --output build/reports/trivy/trivy-jar-report.json \
-          --timeout 40m \
-          build/libs/env-printer-springboot-project-1.0.0.jar
+    # - name: Trivy JAR Debug
+    #   shell: bash
+    #   run: |
+    #     trivy fs \
+    #       --scanners vuln,license \
+    #       --ignore-unfixed \
+    #       --format json \
+    #       --output build/reports/trivy/trivy-jar-report.json \
+    #       --timeout 40m \
+    #       build/libs/env-printer-springboot-project-1.0.0.jar
 
-        jq '.Results[]? | {
-          Target,
-          Class: .Class,
-          Type: .Type,
-          Vulnerabilities: (.Vulnerabilities // [] | length),
-          Licenses: (.Licenses // [] | length)
-        }' build/reports/trivy/trivy-jar-report.json
+    #     jq '.Results[]? | {
+    #       Target,
+    #       Class: .Class,
+    #       Type: .Type,
+    #       Vulnerabilities: (.Vulnerabilities // [] | length),
+    #       Licenses: (.Licenses // [] | length)
+    #     }' build/reports/trivy/trivy-jar-report.json
 
     - name: Extract JAR
       shell: bash
