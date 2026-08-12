@@ -49,19 +49,19 @@ jobs:
         uses: actions/checkout@v4
       - name: Copy Sample Test Report 
         run: mkdir -p build/test-results/sample && cp -a junit-example.xml build/test-results/sample/
-      - name: Upload Test Report files
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-report
-          path: build/test-results/sample/
-      - name: Publish Test Report To GitHub
-        uses: dorny/test-reporter@v2
-        with:
-          artifact: unit-test-report  # artifact name
-          name: unit-test-report                  # Name of the check run which will be created
-          path: '*.xml'                     # Path to test results (inside artifact .zip)
-          reporter: jest-junit              # Format of test results
-          fail-on-error: 'false'
+      # - name: Upload Test Report files
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: unit-test-report
+      #     path: build/test-results/sample/
+      # - name: Publish Test Report To GitHub
+      #   uses: dorny/test-reporter@v2
+      #   with:
+      #     artifact: unit-test-report  # artifact name
+      #     name: unit-test-report                  # Name of the check run which will be created
+      #     path: '*.xml'                     # Path to test results (inside artifact .zip)
+      #     reporter: jest-junit              # Format of test results
+      #     fail-on-error: 'false'
       # - name: Run Unit Tests
       #   run: ./gradlew test --no-daemon
       #   continue-on-error: false
