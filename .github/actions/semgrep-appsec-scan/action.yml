@@ -49,21 +49,43 @@ runs:
             python -m pip install Jinja2
           shell: bash
 
+        # - name: Semgrep AppSec Platform Analysis
+        #   env:
+        #     SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
+        #     SSL_CERT_FILE: ${{ github.workspace }}/corp-ca.pem
+        #     REQUESTS_CA_BUNDLE: ${{ github.workspace }}/corp-ca.pem
+        #   run: |
+        #     semgrep ci \
+        #       --supply-chain \
+        #       --code \
+        #       --metrics=off \
+        #       --sarif \
+        #       --sarif-output=build/reports/semgrep/semgrep.sarif \
+        #       --no-suppress-errors
+        #   shell: bash
+
         - name: Semgrep AppSec Platform Analysis
           env:
             SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
             SSL_CERT_FILE: ${{ github.workspace }}/corp-ca.pem
             REQUESTS_CA_BUNDLE: ${{ github.workspace }}/corp-ca.pem
           run: |
-            semgrep ci \
+            echo "========================================"
+            echo "Starting Semgrep AppSec Platform Scan"
+            echo "========================================"
+
+            /usr/bin/time -v semgrep ci \
               --supply-chain \
               --code \
               --metrics=off \
               --sarif \
               --sarif-output=build/reports/semgrep/semgrep.sarif \
               --no-suppress-errors
+
+            echo "========================================"
+            echo "Finished Semgrep AppSec Platform Scan"
+            echo "========================================"
           shell: bash
-          
 
         # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
         # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
@@ -74,34 +96,16 @@ runs:
             sarif_file: build/reports/semgrep/semgrep.sarif
           if: always()
 
-        - name: Run Local Scan
-          env:
-            SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
-            SSL_CERT_FILE: ${{ github.workspace }}/corp-ca.pem
-            REQUESTS_CA_BUNDLE: ${{ github.workspace }}/corp-ca.pem
-          run: |
-            semgrep scan \
-              --config auto \
-              --sarif \
-              --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif
-          shell: bash
-              
-        - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
-          uses: github/codeql-action/upload-sarif@v4
-          with:
-            sarif_file: build/reports/semgrep/semgrep-local-scan-results.sarif 
-
-          if: always()
         - name: Generate HTML Reports
           run: |
-            python3 trivy/parse-semgrep-sarif.py --input build/reports/semgrep/semgrep.sarif --output build/reports/semgrep/semgrep-report.html --project-name "Java Application SemGrep AppSec" --only INFO,WARNING,ERROR
+            python3 trivy/parse-semgrep-sarif.py --input build/reports/semgrep/semgrep.sarif --output build/reports/semgrep/semgrep-appsec-report.html --project-name "Java Application SemGrep AppSec" --only INFO,WARNING,ERROR
 #            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
           shell: bash 
         - name: Publish Semgrep Reports 
           uses: actions/upload-artifact@v7
           with:
-            name: semgrep-reports
+            name: semgrep-appset-reports
             path: build/reports/semgrep/
-            retention-days: 2
+            retention-days: 1
         - uses: tiacsys/clean-after-action@v4
           if: always()

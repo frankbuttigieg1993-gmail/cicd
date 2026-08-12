@@ -1,0 +1,99 @@
+name: 'Semgrep Scan'
+description: 'Semgrep Scan'
+
+inputs:
+  github-token:
+    description: 'The github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+        # Fetch project source with GitHub Actions Checkout.
+        - name: Checkout repository
+          uses: actions/checkout@v6
+        # Gradle generated this file so the transitive dependencies are included. Semgrep scans the transitive dependencies better when it has the gradle lock file
+        - name: Download Build Artefact
+          uses: actions/download-artifact@v8
+          with:
+            name: build
+            path: .
+        # - name: Semgrep AppSec Platform Analysis
+        #   uses: docker://returntocorp/semgrep:1.163.0-nonroot
+        #   with: 
+        #     args: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif  --no-suppress-errors
+        # - name: Write corporate CA cert
+        #   run: |
+        #     echo "$CORP_CA_B64" | base64 -d > corp-ca.pem
+        #   env:
+        #     CORP_CA_B64: ${{ secrets.CORP_CA_B64 }}
+        - name: Write corporate CA cert
+          run: |
+            cp -p /home/ubuntu/zscaler-crt.crt corp-ca.pem
+          shell: bash 
+# -w overrides the working directory for the container. 
+# This is scanning everything inside the repository since $pwd is mapped to /src and we are configuring the scanner to look at /src
+        - name: Semgrep AppSec Platform Analysis
+          run: |
+            docker run --rm \
+              -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
+              -e SSL_CERT_FILE=/certs/corp-ca.pem \
+              -e REQUESTS_CA_BUNDLE=/certs/corp-ca.pem \
+              -v "$PWD:/src" \
+              -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
+              -w /src \
+              returntocorp/semgrep:1.163.0-nonroot \
+              semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif --no-suppress-errors
+          shell: bash 
+        # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
+        # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
+        - name: Semgrep AppSec Platform Artefact
+          uses: actions/upload-artifact@v7
+          with:
+            name: semgrep-scan-results
+            path: semgrep.sarif
+        - name: Upload Semgrep AppSec Platform to the GitHub Security Dashboard
+          uses: github/codeql-action/upload-sarif@v4
+          with:
+            sarif_file: semgrep.sarif
+          if: always()
+        # - name: Run Local Scan
+        #   uses: docker://returntocorp/semgrep:1.163.0-nonroot
+        #   with: 
+        #     args: semgrep scan --config auto --error --json --json-output=semgrep-local-scan-results.json --sarif --sarif-output=semgrep-local-scan-results.sarif --no-suppress-errors
+        - name: Run Local Scan
+          run: |
+            docker run --rm \
+              -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
+              -e SSL_CERT_FILE=/certs/corp-ca.pem \
+              -e REQUESTS_CA_BUNDLE=/certs/corp-ca.pem \
+              -v "$PWD:/src" \
+              -v "$PWD/corp-ca.pem:/certs/corp-ca.pem:ro" \
+              -w /src \
+              returntocorp/semgrep:1.163.0-nonroot \
+              semgrep scan --config auto --sarif --sarif-output=semgrep-local-scan-results.sarif
+          shell: bash 
+        - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
+          uses: github/codeql-action/upload-sarif@v4
+          with:
+            sarif_file: semgrep-local-scan-results.sarif 
+          if: always()
+        - name: Generate HTML Reports
+          run: |
+            python3 trivy/parse-semgrep.py --input semgrep.sarif --output semgrep-report.html --project-name "Java Application SemGrep AppSec" --only INFO,WARNING,ERROR
+#            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
+          shell: bash 
+        - name: Publish Semgrep AppSet HTML Report
+          uses: actions/upload-artifact@v7
+          with:
+            name: semgrep-appsec-report
+            path: semgrep-report.html
+            retention-days: 2
+        - name: Publish Semgrep Local Scan HTML Report
+          uses: actions/upload-artifact@v7
+          with:
+            name: semgrep-local-scan-report
+            path: semgrep-local-scan-report.html
+            retention-days: 2
+        - uses: tiacsys/clean-after-action@v4
+          if: always()
