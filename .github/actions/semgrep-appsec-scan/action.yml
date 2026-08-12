@@ -91,7 +91,7 @@ runs:
               --metrics=off \
               --sarif \
               --sarif-output=build/reports/semgrep/semgrep.sarif \
-              -- verbose \
+              --verbose \
               --no-suppress-errors
 
             echo "========================================"
