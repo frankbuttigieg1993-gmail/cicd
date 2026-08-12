@@ -75,6 +75,7 @@ runs:
               --config auto \
               --sarif \
               --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif 
+              src/
 
             echo "========================================"
             echo "Finished Semgrep Local Scan"
