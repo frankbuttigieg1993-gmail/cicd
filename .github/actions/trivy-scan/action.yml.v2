@@ -99,62 +99,31 @@ runs:
         trivy fs \
           --scanners vuln,license \
           --ignore-unfixed \
-          --format json \
-          --output build/reports/trivy/trivy-srccode.json \
-          --timeout 40m \
-          .
-
-        # Convert JSON -> SARIF
-        trivy convert \
-          --format sarif \
-          --output build/reports/trivy/trivy-srccode.sarif \
-          build/reports/trivy/trivy-srccode.json
-
-        # Convert JSON -> HTML
-        trivy convert \
           --format template \
           --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
           --output build/reports/trivy/trivy-srccode-report.html \
-          build/reports/trivy/trivy-srccode.json
-
+          --timeout 40m \
+          .
       shell: bash
 
-    - name: Upload Trivy Source Code SARIF
-      if: always()
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: build/reports/trivy/trivy-srccode.sarif
-        
-    # - name: Trivy Scan Java Source Code
-    #   run: |
-    #     trivy fs \
-    #       --scanners vuln,license \
-    #       --ignore-unfixed \
-    #       --format template \
-    #       --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
-    #       --output build/reports/trivy/trivy-srccode-report.html \
-    #       --timeout 40m \
-    #       .
-    #   shell: bash
+    - name: Trivy JAR Debug
+      shell: bash
+      run: |
+        trivy fs \
+          --scanners vuln,license \
+          --ignore-unfixed \
+          --format json \
+          --output build/reports/trivy/trivy-jar-report.json \
+          --timeout 40m \
+          build/libs/env-printer-springboot-project-1.0.0.jar
 
-    # - name: Trivy JAR Debug
-    #   shell: bash
-    #   run: |
-    #     trivy fs \
-    #       --scanners vuln,license \
-    #       --ignore-unfixed \
-    #       --format json \
-    #       --output build/reports/trivy/trivy-jar-report.json \
-    #       --timeout 40m \
-    #       build/libs/env-printer-springboot-project-1.0.0.jar
-
-    #     jq '.Results[]? | {
-    #       Target,
-    #       Class: .Class,
-    #       Type: .Type,
-    #       Vulnerabilities: (.Vulnerabilities // [] | length),
-    #       Licenses: (.Licenses // [] | length)
-    #     }' build/reports/trivy/trivy-jar-report.json
+        jq '.Results[]? | {
+          Target,
+          Class: .Class,
+          Type: .Type,
+          Vulnerabilities: (.Vulnerabilities // [] | length),
+          Licenses: (.Licenses // [] | length)
+        }' build/reports/trivy/trivy-jar-report.json
 
     - name: Extract JAR
       shell: bash
@@ -171,50 +140,16 @@ runs:
 # We cater for this limitation through the separate Gradle SBOM Task just for Runtime Libraries
 
     - name: Trivy Scan Packaged JAR
-      shell: bash
       run: |
-        mkdir -p build/reports/trivy
-
-        # Scan once and save the full result as JSON
         trivy rootfs \
           --scanners vuln,license \
           --ignore-unfixed \
-          --format json \
-          --output build/reports/trivy/trivy-jar-report.json \
-          --timeout 40m \
-          build/jar-rootfs
-
-        # Convert JSON -> HTML
-        trivy convert \
           --format template \
           --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
           --output build/reports/trivy/trivy-jar-report.html \
-          build/reports/trivy/trivy-jar-report.json
-
-        # Convert JSON -> SARIF
-        trivy convert \
-          --format sarif \
-          --output build/reports/trivy/trivy-jar-report.sarif \
-          build/reports/trivy/trivy-jar-report.json
-
-    - name: Upload Trivy JAR SARIF
-      if: always()
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: build/reports/trivy/trivy-jar-report.sarif
-        category: trivy-packaged-jar
-
-    # - name: Trivy Scan Packaged JAR
-    #   run: |
-    #     trivy rootfs \
-    #       --scanners vuln,license \
-    #       --ignore-unfixed \
-    #       --format template \
-    #       --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
-    #       --output build/reports/trivy/trivy-jar-report.html \
-    #       --timeout 40m \
-    #       build/jar-rootfs
-    #   shell: bash
+          --timeout 40m \
+          build/jar-rootfs
+      shell: bash
 
     # - name: Trivy Scan Packaged JAR
     #   run: |
@@ -240,93 +175,26 @@ runs:
       shell: bash
 
     - name: Trivy Docker Image
-      shell: bash
       run: |
-        mkdir -p build/reports/trivy
-
-        # Scan once and save the complete result as JSON
         trivy image \
           --scanners vuln,license \
           --ignore-unfixed \
-          --format json \
-          --output build/reports/trivy/trivy-dockerimage-report.json \
-          --timeout 40m \
-          "java-application:${GITHUB_SHA}"
-
-        # Convert JSON -> HTML
-        trivy convert \
           --format template \
           --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
           --output build/reports/trivy/trivy-dockerimage-report.html \
-          build/reports/trivy/trivy-dockerimage-report.json
-
-        # Convert JSON -> SARIF
-        trivy convert \
-          --format sarif \
-          --output build/reports/trivy/trivy-dockerimage-report.sarif \
-          build/reports/trivy/trivy-dockerimage-report.json
-
-    - name: Upload Trivy Docker Image SARIF
-      if: always()
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: build/reports/trivy/trivy-dockerimage-report.sarif
-        category: trivy-docker-image
-          
-          
-    # - name: Trivy Docker Image
-    #   run: |
-    #     trivy image \
-    #       --scanners vuln,license \
-    #       --ignore-unfixed \
-    #       --format template \
-    #       --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
-    #       --output build/reports/trivy/trivy-dockerimage-report.html \
-    #       --timeout 40m \
-    #       java-application:${{ github.sha }}
-    #   shell: bash
+          --timeout 40m \
+          java-application:${{ github.sha }}
+      shell: bash
 
     - name: Trivy Container Misconfiguration
       shell: bash
       run: |
-        mkdir -p build/reports/trivy
-
-        # Scan once and save the complete result as JSON
         trivy config \
-          --format json \
-          --output build/reports/trivy/trivy-config-report.json \
-          --timeout 10m \
-          .
-
-        # Convert JSON -> HTML
-        trivy convert \
           --format template \
           --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
           --output build/reports/trivy/trivy-config-report.html \
-          build/reports/trivy/trivy-config-report.json
-
-        # Convert JSON -> SARIF
-        trivy convert \
-          --format sarif \
-          --output build/reports/trivy/trivy-config-report.sarif \
-          build/reports/trivy/trivy-config-report.json
-
-    - name: Upload Trivy Configuration SARIF
-      if: always()
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: build/reports/trivy/trivy-config-report.sarif
-        category: trivy-configuration
-          
-    # - name: Trivy Container Misconfiguration
-    #   shell: bash
-    #   run: |
-    #     trivy config \
-    #       --format template \
-    #       --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
-    #       --output build/reports/trivy/trivy-config-report.html \
-    #       --timeout 10m \
-    #       .
+          --timeout 10m \
+          .
 
     - name: Download Webgoat JAR
       run: |
