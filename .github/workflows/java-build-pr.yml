@@ -15,6 +15,12 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: write
+  id-token: write
+  security-events: write
+  actions: write
+
 jobs:
     Build:
       name: Build
