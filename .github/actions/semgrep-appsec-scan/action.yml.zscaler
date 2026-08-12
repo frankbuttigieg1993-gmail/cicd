@@ -32,6 +32,7 @@ runs:
         #     CORP_CA_B64: ${{ secrets.CORP_CA_B64 }}
         - name: Bootstrap 
           run: |
+            cp -p /home/ubuntu/zscaler-crt.crt corp-ca.pem
             mkdir -p build/reports/semgrep
           shell: bash 
 # -w overrides the working directory for the container. 
@@ -46,58 +47,64 @@ runs:
             python -m pip install --upgrade pip
             python -m pip install semgrep==1.163.0
             python -m pip install Jinja2
-          shell: bash          
+          shell: bash
 
-        # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
-        # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
-
-        # - name: Run Local Scan
+        # - name: Semgrep AppSec Platform Analysis
         #   env:
         #     SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
         #     SSL_CERT_FILE: ${{ github.workspace }}/corp-ca.pem
         #     REQUESTS_CA_BUNDLE: ${{ github.workspace }}/corp-ca.pem
         #   run: |
-        #     semgrep scan \
-        #       --config auto \
+        #     semgrep ci \
+        #       --supply-chain \
+        #       --code \
+        #       --metrics=off \
         #       --sarif \
-        #       --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif
+        #       --sarif-output=build/reports/semgrep/semgrep.sarif \
+        #       --no-suppress-errors
         #   shell: bash
 
-        - name: Run Local Scan
+        - name: Semgrep AppSec Platform Analysis
           env:
             SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
+            SSL_CERT_FILE: ${{ github.workspace }}/corp-ca.pem
+            REQUESTS_CA_BUNDLE: ${{ github.workspace }}/corp-ca.pem
           run: |
             echo "========================================"
-            echo "Starting Semgrep Local Scan"
+            echo "Starting Semgrep AppSec Platform Scan"
             echo "========================================"
 
-            /usr/bin/time -v semgrep scan \
-              --config auto \
+            /usr/bin/time -v semgrep ci \
+              --supply-chain \
+              --code \
+              --metrics=off \
               --sarif \
-              --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif \
-              --include 'src/**' \
-              --include 'helm/**' \
-              --include 'build/**'
+              --sarif-output=build/reports/semgrep/semgrep.sarif \
+              --no-suppress-errors
 
             echo "========================================"
-            echo "Finished Semgrep Local Scan"
+            echo "Finished Semgrep AppSec Platform Scan"
             echo "========================================"
           shell: bash
 
-        - name: Upload Semgrep Local Scan to the GitHub Security Dashboard
+        # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
+        # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
+
+        - name: Upload Semgrep AppSec Platform to the GitHub Security Dashboard
           uses: github/codeql-action/upload-sarif@v4
           with:
-            sarif_file: build/reports/semgrep/semgrep-local-scan-results.sarif 
+            sarif_file: build/reports/semgrep/semgrep.sarif
           if: always()
+
         - name: Generate HTML Reports
           run: |
-            python3 trivy/parse-semgrep-sarif.py --input build/reports/semgrep/semgrep-local-scan-results.sarif --output build/reports/semgrep/semgrep-local-report.html --project-name "Java Application SemGrep AppSec" --only INFO,WARNING,ERROR
+            python3 trivy/parse-semgrep-sarif.py --input build/reports/semgrep/semgrep.sarif --output build/reports/semgrep/semgrep-appsec-report.html --project-name "Java Application SemGrep AppSec" --only INFO,WARNING,ERROR
 #            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
           shell: bash 
         - name: Publish Semgrep Reports 
           uses: actions/upload-artifact@v7
           with:
-            name: semgrep-local-scan
+            name: semgrep-appset-reports
             path: build/reports/semgrep/
             retention-days: 1
         - uses: tiacsys/clean-after-action@v4

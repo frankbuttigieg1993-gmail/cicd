@@ -32,7 +32,6 @@ runs:
         #     CORP_CA_B64: ${{ secrets.CORP_CA_B64 }}
         - name: Bootstrap 
           run: |
-            cp -p /home/ubuntu/zscaler-crt.crt corp-ca.pem
             mkdir -p build/reports/semgrep
           shell: bash 
 # -w overrides the working directory for the container. 
@@ -67,8 +66,6 @@ runs:
         - name: Semgrep AppSec Platform Analysis
           env:
             SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
-            SSL_CERT_FILE: ${{ github.workspace }}/corp-ca.pem
-            REQUESTS_CA_BUNDLE: ${{ github.workspace }}/corp-ca.pem
           run: |
             echo "========================================"
             echo "Starting Semgrep AppSec Platform Scan"
