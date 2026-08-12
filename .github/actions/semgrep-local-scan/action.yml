@@ -1,3 +1,19 @@
+# Local scan
+# semgrep scan --config auto src/
+#         │
+#         └── Java source-code analysis
+#              └── src/**/*.java
+
+
+# Platform scan
+# semgrep ci --code --supply-chain
+#         │
+#         ├── Code/SAST analysis
+#         │
+#         └── Supply Chain/SCA
+#              └── gradle.lockfile
+#                   └── vulnerable dependencies
+
 name: 'Semgrep Scan'
 description: 'Semgrep Scan'
 

@@ -26,6 +26,8 @@ concurrency:
   group: ${{ github.workflow }}-runner-${{ github.ref }}
   cancel-in-progress: false
 
+# AWS Ephemeral Runners (can be configured to spin up multiple for the run through a github action matrix strategy )
+
 jobs:
     start-runner:
       name: Start self-hosted EC2 runner

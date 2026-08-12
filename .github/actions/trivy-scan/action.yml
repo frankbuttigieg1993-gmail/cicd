@@ -3,6 +3,7 @@
 # 1) Semgrep and Sonarqube will perform the SAST Scan for Code Quality
 # 2) Gradle uses CycloneDX to produce a complete SBOM of all components with direct and transitive dependencies that's enriched through Trivy
 # Gradle uses CycloneDX to produce a runtime SBOM with all components in the build artefact and their direct and transitive dependencies that's enriched through Trivy
+# Gradle uses CycloneDX to produce a Complete Build Chain SBOM with all components in the build artefact and their direct and transitive dependencies that's enriched through Trivy
 # 3) Trivy Scan Source Code
 # Gradle is the best tool to produce the complete SBOM and a dependency file (gradle.lockfile)
 # Trivy understands build.gradle, settings.gradle and the gradle.lockfile (produced by gradle with all dependencies)
@@ -94,7 +95,7 @@ runs:
 
 # This will scan all components in the CyloneDX SBOM which includes all configuration options (not just runtime) because it is a complete SBOM
 
-    - name: Trivy Scan Java Source Code
+    - name: Trivy Dependency and License Scan
       run: |
         trivy fs \
           --scanners vuln,license \
@@ -119,7 +120,7 @@ runs:
 
       shell: bash
 
-    - name: Upload Trivy Source Code SARIF
+    - name: Upload Trivy Trivy Dependency and License Scan SARIF
       if: always()
       uses: github/codeql-action/upload-sarif@v3
       with:

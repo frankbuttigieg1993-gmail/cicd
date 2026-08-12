@@ -1,3 +1,20 @@
+# Local scan
+# # semgrep scan --config auto src/
+# #         │
+# #         └── Java source-code analysis
+# #              └── src/**/*.java
+
+
+# # Platform scan
+# # semgrep ci --code --supply-chain
+# #         │
+# #         ├── Code/SAST analysis
+# #         │
+# #         └── Supply Chain/SCA
+# #              └── gradle.lockfile
+# #                   └── vulnerable dependencies
+# local scan is your fast, source-only SAST,
+
 # Semgrep analyzes source code; scanning compiled .class and .jar artifacts doesn't give you additional Java SAST coverage
 name: 'Semgrep Scan'
 description: 'Semgrep Scan'
