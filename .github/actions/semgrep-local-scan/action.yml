@@ -125,6 +125,8 @@ runs:
               --config auto \
               --sarif \
               --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif \
+              --metrics=off \
+              --verbose \
               src/
 
             echo "========================================"
