@@ -54,7 +54,7 @@ runs:
         shell: bash 
       - name: Generate CSV Version of Build Environment SBOM 
         run: |
-           cyclonedx convert --input-file build/reports/cyclonedx/build-environment-bom.json --output-file build/reports/cyclonedx/build-environment-bom.json --output-format csv
+           cyclonedx convert --input-file build/reports/cyclonedx/build-environment-bom.json --output-file build/reports/cyclonedx/build-environment-bom.csv --output-format csv
         shell: bash 
 
       - name: Scan Runtime SBOM with Trivy
@@ -65,22 +65,6 @@ runs:
         run: |
           python3 ${{ github.workspace }}/trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/runtime-bom.json --trivy trivy-runtime-bom.json --output build/reports/cyclonedx/runtime-bom.html
         shell: bash 
-
-      - name: Inspect Build Environment SBOM
-        shell: bash
-        run: |
-          echo "=== SBOM header ==="
-          head -40 build/reports/cyclonedx/build-environment-bom.json
-
-          echo
-          echo "=== SBOM format fields ==="
-          jq '{
-            bomFormat: .bomFormat,
-            specVersion: .specVersion,
-            serialNumber: .serialNumber,
-            version: .version,
-            components: (.components | length)
-          }' build/reports/cyclonedx/build-environment-bom.json
         
       - name: Scan Complete Application SBOM with Trivy
         run: |
