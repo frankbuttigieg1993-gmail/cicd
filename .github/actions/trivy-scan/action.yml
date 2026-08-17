@@ -99,7 +99,7 @@ runs:
     - name: Trivy Dependency and License Scan
       run: |
         trivy fs \
-          --scanners vuln,license \
+          --scanners vuln,license,secret \
           --ignore-unfixed \
           --format json \
           --output build/reports/trivy/trivy-srccode.json \
@@ -179,7 +179,7 @@ runs:
 
         # Scan once and save the full result as JSON
         trivy rootfs \
-          --scanners vuln,license \
+          --scanners vuln,license,secret \
           --ignore-unfixed \
           --format json \
           --output build/reports/trivy/trivy-jar-report.json \
@@ -248,7 +248,7 @@ runs:
 
         # Scan once and save the complete result as JSON
         trivy image \
-          --scanners vuln,license,os \
+          --scanners vuln,license \
           --ignore-unfixed \
           --format json \
           --output build/reports/trivy/trivy-dockerimage-report.json \
