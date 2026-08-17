@@ -61,6 +61,7 @@ runs:
         run: |
           trivy sbom --scanners vuln,license --format json --output trivy-runtime-bom.json build/reports/cyclonedx/runtime-bom.json
         shell: bash 
+
       - name: Generate TRIVY Enhanced Runtime SBOM Report
         run: |
           python3 ${{ github.workspace }}/trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/runtime-bom.json --trivy trivy-runtime-bom.json --output build/reports/cyclonedx/runtime-bom.html
@@ -70,6 +71,7 @@ runs:
         run: |
           trivy sbom --scanners vuln,license --format json --output trivy-all-configs-bom.json build/reports/cyclonedx/all-configs-bom.json
         shell: bash 
+
       - name: Generate TRIVY Enhanced Complete SBOM Report
         run: |
           python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/all-configs-bom.json --trivy trivy-all-configs-bom.json --output build/reports/cyclonedx/all-configs-bom.html
@@ -79,6 +81,7 @@ runs:
         run: |
           trivy sbom --scanners vuln,license --format json --output trivy-build-environment-bom.json build/reports/cyclonedx/build-environment-bom.json
         shell: bash 
+        
       - name: Generate TRIVY Enhanced Complete SBOM Report
         run: |
           python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/build-environment-bom.json --trivy trivy-build-environment-bom.json --output build/reports/cyclonedx/build-environment-bom.html
