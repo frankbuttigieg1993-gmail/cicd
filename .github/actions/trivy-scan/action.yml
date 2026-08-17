@@ -94,6 +94,7 @@ runs:
       shell: bash
 
 # This will scan all components in the CyloneDX SBOM which includes all configuration options (not just runtime) because it is a complete SBOM
+# Trivy uses the Gradle Lock file  to scan the transitive and direct dependencies.
 
     - name: Trivy Dependency and License Scan
       run: |
@@ -247,7 +248,7 @@ runs:
 
         # Scan once and save the complete result as JSON
         trivy image \
-          --scanners vuln,license \
+          --scanners vuln,license,os \
           --ignore-unfixed \
           --format json \
           --output build/reports/trivy/trivy-dockerimage-report.json \

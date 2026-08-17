@@ -12,11 +12,13 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    # Every shell step in a composite action MUST explicitly define the shell
     - name: Check out repository
       uses: actions/checkout@v6
       with:
         fetch-depth: 0
+      # This contains the compiled source code from the Build Stage
+      # SonarQube scans uncompiled source code, but it often requires compiled code (or a running build) to complete the analysis for strongly-typed and compiled languages.
+      # Even though the final bugs and vulnerabilities are mapped back to your raw text files, SonarQube's language analyzers rely on compiled binaries or build hooks to properly map dependencies, resolve types, and track data flow
     - name: Download Build Artefact
       uses: actions/download-artifact@v8
       with:
