@@ -99,6 +99,23 @@ runs:
           run: ./gradlew --no-daemon dependencies --write-locks build -x test
           shell: bash
 
+        - name: Verify Gradle dependency inputs
+          shell: bash
+          run: |
+            test -f build.gradle
+            test -f gradle.lockfile
+
+            echo "build.gradle:"
+            ls -lh build.gradle
+
+            echo
+            echo "gradle.lockfile:"
+            ls -lh gradle.lockfile
+
+            echo
+            echo "Gradle dependency graph:"
+            ./gradlew --no-daemon dependencies --configuration runtimeClasspath
+
         - name: Semgrep AppSec Platform Analysis
           env:
             SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
