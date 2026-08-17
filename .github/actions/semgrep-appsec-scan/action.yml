@@ -80,7 +80,25 @@ runs:
         #       --sarif-output=build/reports/semgrep/semgrep.sarif \
         #       --no-suppress-errors
         #   shell: bash
-          
+        - name: Cache Gradle and Maven
+          uses: actions/cache@v5
+          with:
+            path: |
+              ${{ runner.home }}/.gradle/caches
+              ${{ runner.home }}/.gradle/wrapper
+              ${{ runner.home }}/.m2/repository
+            key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+
+        - name: Get current date
+          id: date
+          run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+          shell: bash
+
+    
+        - name: Warm dependency cache
+          run: ./gradlew --no-daemon dependencies --write-locks build -x test
+          shell: bash
+
         - name: Semgrep AppSec Platform Analysis
           env:
             SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
