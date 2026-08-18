@@ -103,6 +103,8 @@ runs:
 
           CE_STATUS="$(jq -r '.task.status // empty' <<<"$CE_RESPONSE")"
           ANALYSIS_ID="$(jq -r '.task.analysisId // empty' <<<"$CE_RESPONSE")"
+          SONAR_BRANCH="$(jq -r '.task.branch // empty' <<<"$CE_RESPONSE")"
+          SONAR_BRANCH_TYPE="$(jq -r '.task.branchType // empty' <<<"$CE_RESPONSE")"
 
           case "$CE_STATUS" in
             SUCCESS)
@@ -132,6 +134,8 @@ runs:
           exit 1
         }
 
+        echo "SonarQube branch: ${SONAR_BRANCH:-N/A}"
+        echo "SonarQube branch type: ${SONAR_BRANCH_TYPE:-N/A}"
         echo "SonarQube analysis: ${ANALYSIS_ID}"
 
         # This response is the sole authority for the Quality Gate result.
@@ -143,6 +147,8 @@ runs:
 
         GATE_STATUS="$(jq -r '.projectStatus.status // empty' <<<"$GATE_RESPONSE")"
         GATE_STATUS="$(tr '[:lower:]' '[:upper:]' <<<"$GATE_STATUS")"
+        NEW_CODE_MODE="$(jq -r '.projectStatus.period.mode // "N/A"' <<<"$GATE_RESPONSE")"
+        NEW_CODE_DATE="$(jq -r '.projectStatus.period.date // "N/A"' <<<"$GATE_RESPONSE")"
 
         # Fail closed. An empty, malformed or unexpected response must never be
         # presented as PASSED.
@@ -156,6 +162,8 @@ runs:
             ;;
         esac
 
+        echo "SonarQube New Code mode: ${NEW_CODE_MODE}"
+        echo "SonarQube New Code baseline date: ${NEW_CODE_DATE}"
         echo "Authoritative SonarQube Quality Gate status: ${GATE_STATUS}"
         echo "gate-status=${GATE_STATUS}" >> "$GITHUB_OUTPUT"
         echo "analysis-id=${ANALYSIS_ID}" >> "$GITHUB_OUTPUT"
@@ -193,6 +201,11 @@ runs:
         {
           echo '<!-- sonarqube-analysis-comment -->'
           echo '## 🔍 SonarQube Analysis'
+          echo
+          echo "**Branch:** \`${SONAR_BRANCH:-N/A}\`"
+          echo "**Branch type:** \`${SONAR_BRANCH_TYPE:-N/A}\`"
+          echo "**New Code definition:** \`${NEW_CODE_MODE}\`"
+          [[ "$NEW_CODE_DATE" != 'N/A' ]] && echo "**New Code baseline:** \`${NEW_CODE_DATE}\`"
           echo
           echo "$GATE_HEADING"
           echo
@@ -236,7 +249,7 @@ runs:
                 else (.errorThreshold // "N/A")
                 end;
               .projectStatus.conditions[] |
-              "| \(.metricKey | friendly) | \(.actualValue // \"N/A\") | \(threshold) | \(if .status == \"OK\" then \"✅\" elif .status == \"ERROR\" then \"❌\" else \"⚠️\" end) |"
+              "| \(.metricKey | friendly) | \(.actualValue // "N/A") | \(threshold) | \(if .status == "OK" then "✅" elif .status == "ERROR" then "❌" else "⚠️" end) |"
             ' <<<"$GATE_RESPONSE"
           fi
 
