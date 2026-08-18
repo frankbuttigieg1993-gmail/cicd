@@ -24,24 +24,21 @@ permissions:
 jobs:
     Build:
       name: Build
-      runs-on: ubuntu-24.04
-      outputs:
-        APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      # outputs:
+      #   APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with: 
-          fetch-depth: 0 
-      - name: Dump GitHub PR Context
-        run: echo "${{ toJson(github.event.pull_request) }}"
-      - name: Set APP_VERSION Output 
-        id: app_version
-        run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
-      - name: Build with Gradle
-        run:  ./gradlew  dependencies build -x test -info --scan --write-locks 
-        continue-on-error: false
-      - name: Listing Files
-        run: find . -type f
+        with:
+          fetch-depth: 0
+      # - name: Set APP_VERSION Output 
+      #   id: app_version
+      #   run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
+      - name: Java Build
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/build@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}  
     Unit_Test:
       name: Unit_Test
       runs-on: ubuntu-24.04
