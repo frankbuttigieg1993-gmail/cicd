@@ -1,13 +1,17 @@
 name: 'Sonar Scan'
-description: 'Sonar Scan'
+description: 'Sonar Scan with SonarQube Quality Gate reporting for PRs and main'
 
 inputs:
   github-token:
-    description: 'The github token'
+    description: 'GitHub token used to create/update the PR comment'
     required: true
   sonar-token:
-    description: 'The sonar token'
+    description: 'SonarQube token'
     required: true
+  sonar-host-url:
+    description: 'SonarQube server URL reachable from the self-hosted runner'
+    required: false
+    default: 'http://10.0.2.15:9300'
 
 runs:
   using: 'composite'
@@ -16,19 +20,19 @@ runs:
       uses: actions/checkout@v6
       with:
         fetch-depth: 0
-      # This contains the compiled source code from the Build Stage
-      # SonarQube scans uncompiled source code, but it often requires compiled code (or a running build) to complete the analysis for strongly-typed and compiled languages.
-      # Even though the final bugs and vulnerabilities are mapped back to your raw text files, SonarQube's language analyzers rely on compiled binaries or build hooks to properly map dependencies, resolve types, and track data flow
+
     - name: Download Build Artefact
       uses: actions/download-artifact@v8
       with:
         name: build
         path: .
-    - name: Download Project Reports and Binaries
+
+    - name: Download Test Reports
       uses: actions/download-artifact@v8
       with:
         name: test-and-coverage-reports
         path: .
+
     - name: Cache Gradle and Maven
       uses: actions/cache@v5
       with:
@@ -37,32 +41,249 @@ runs:
           ${{ runner.home }}/.gradle/wrapper
           ${{ runner.home }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+
     - name: Cache SonarQube packages
       uses: actions/cache@v5
       with:
         path: ${{ runner.home }}/.sonar/cache
         key: ${{ runner.os }}-sonar
         restore-keys: ${{ runner.os }}-sonar
+
     - name: Execute Sonar Scan
       env:
         SONAR_TOKEN: ${{ inputs.sonar-token }}
+        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
       run: |
-        ./gradlew sonar -info --stacktrace
+        ./gradlew build sonar -info --stacktrace
       shell: bash
-    # The final standalone step that blocks the pipeline if rules fail
+
+    # Do not stop here when the gate fails. We need to publish the result first.
     - name: Verify SonarQube Quality Gate Status
+      id: sonarqube-quality-gate-check
+      continue-on-error: true
       uses: sonarsource/sonarqube-quality-gate-action@v1.2.0
       with:
         scanMetadataReportFile: build/sonar/report-task.txt
+        pollingTimeoutSec: 600
       env:
         SONAR_TOKEN: ${{ inputs.sonar-token }}
-        NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-        SONAR_HOST_URL: "http://10.0.2.15:9300"
-    - name: Publish to Step Summary
-      run: |
-        cat build/sonar/report-task.txt >> $GITHUB_STEP_SUMMARY
-        # The Analysis ID can be found by the CE Task
-        # http://127.0.0.1:9300/api/ce/task?id=8729e4ec-c77b-43b5-a24d-00f1b51e7c83 => returns analysis ID 863d9764-8e4a-4d62-9992-f6956e025203
-        # http://127.0.0.1:9300/project/activity?id=java-application&analysis=863d9764-8e4a-4d62-9992-f6956e025203
+        NODE_TLS_REJECT_UNAUTHORIZED: '0'
+        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+
+    - name: Build and publish SonarQube result
+      id: publish-sonarqube-result
+      if: always() && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+        QUALITY_GATE_STATUS: ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}
+        QUALITY_GATE_OUTCOME: ${{ steps.sonarqube-quality-gate-check.outcome }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        EVENT_NAME: ${{ github.event_name }}
+        GIT_REF: ${{ github.ref }}
+      run: |
+        set -euo pipefail
+
+        command -v curl >/dev/null 2>&1 || { echo 'curl is required on the self-hosted runner'; exit 1; }
+        command -v jq >/dev/null 2>&1 || { echo 'jq is required on the self-hosted runner'; exit 1; }
+
+        REPORT_FILE='build/sonar/report-task.txt'
+        if [[ ! -f "$REPORT_FILE" ]]; then
+          echo "SonarQube report file not found: $REPORT_FILE"
+          exit 1
+        fi
+
+        PROJECT_KEY="$(grep '^projectKey=' "$REPORT_FILE" | cut -d= -f2-)"
+        DASHBOARD_URL="$(grep '^dashboardUrl=' "$REPORT_FILE" | cut -d= -f2-)"
+        CE_TASK_ID="$(grep '^ceTaskId=' "$REPORT_FILE" | cut -d= -f2-)"
+
+        if [[ -z "$PROJECT_KEY" || -z "$CE_TASK_ID" ]]; then
+          echo 'Unable to read projectKey or ceTaskId from report-task.txt'
+          exit 1
+        fi
+
+        # The quality-gate action has already waited for Compute Engine processing,
+        # so the CE task should now contain the analysisId.
+        CE_RESPONSE="$(curl --fail --silent --show-error \
+          -u "${SONAR_TOKEN}:" \
+          "${SONAR_HOST_URL}/api/ce/task?id=${CE_TASK_ID}")"
+
+        ANALYSIS_ID="$(jq -r '.task.analysisId // empty' <<<"$CE_RESPONSE")"
+        if [[ -z "$ANALYSIS_ID" ]]; then
+          echo 'SonarQube did not return an analysisId.'
+          echo "$CE_RESPONSE" | jq .
+          exit 1
+        fi
+
+        GATE_RESPONSE="$(curl --fail --silent --show-error \
+          -u "${SONAR_TOKEN}:" \
+          "${SONAR_HOST_URL}/api/qualitygates/project_status?analysisId=${ANALYSIS_ID}")"
+
+        # These are project-level measures. For a normal Community Edition project
+        # this represents the latest analysis of the project.
+        METRICS_RESPONSE="$(curl --fail --silent --show-error \
+          -u "${SONAR_TOKEN}:" \
+          --get \
+          --data-urlencode "component=${PROJECT_KEY}" \
+          --data-urlencode 'metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density' \
+          "${SONAR_HOST_URL}/api/measures/component")"
+
+        GATE_STATUS="$(jq -r '.projectStatus.status // empty' <<<"$GATE_RESPONSE")"
+        if [[ -z "$GATE_STATUS" ]]; then
+          GATE_STATUS="${QUALITY_GATE_STATUS:-UNKNOWN}"
+        fi
+        GATE_STATUS="$(tr '[:lower:]' '[:upper:]' <<<"$GATE_STATUS")"
+
+        case "$GATE_STATUS" in
+          OK)    GATE_HEADING='### ✅ Quality Gate: PASSED' ;;
+          ERROR) GATE_HEADING='### ❌ Quality Gate: FAILED' ;;
+          WARN)  GATE_HEADING='### ⚠️ Quality Gate: WARNING' ;;
+          *)     GATE_HEADING="### ⚠️ Quality Gate: ${GATE_STATUS:-UNKNOWN}" ;;
+        esac
+
+        metric_value() {
+          local key="$1"
+          jq -r --arg key "$key" \
+            '.component.measures[]? | select(.metric == $key) | .value' \
+            <<<"$METRICS_RESPONSE" | head -n1
+        }
+
+        BUGS="$(metric_value bugs)"; BUGS="${BUGS:-N/A}"
+        VULNERABILITIES="$(metric_value vulnerabilities)"; VULNERABILITIES="${VULNERABILITIES:-N/A}"
+        CODE_SMELLS="$(metric_value code_smells)"; CODE_SMELLS="${CODE_SMELLS:-N/A}"
+        COVERAGE="$(metric_value coverage)"; COVERAGE="${COVERAGE:-N/A}"
+        DUPLICATIONS="$(metric_value duplicated_lines_density)"; DUPLICATIONS="${DUPLICATIONS:-N/A}"
+
+        [[ "$COVERAGE" != 'N/A' ]] && COVERAGE="${COVERAGE}%"
+        [[ "$DUPLICATIONS" != 'N/A' ]] && DUPLICATIONS="${DUPLICATIONS}%"
+
+        COMMENT_FILE="${RUNNER_TEMP}/sonarqube-report.md"
+        {
+          echo '<!-- sonarqube-analysis-comment -->'
+          echo '## 🔍 SonarQube Analysis'
+          echo
+          echo "$GATE_HEADING"
+          echo
+          echo '| Metric | Value |'
+          echo '|---|---:|'
+          echo "| 🐛 Bugs | ${BUGS} |"
+          echo "| 🔓 Vulnerabilities | ${VULNERABILITIES} |"
+          echo "| 🧹 Code Smells | ${CODE_SMELLS} |"
+          echo "| 📊 Coverage | ${COVERAGE} |"
+          echo "| 📋 Duplications | ${DUPLICATIONS} |"
+          echo
+          echo '### Quality Gate Conditions'
+          echo
+          echo '| Condition | Actual | Threshold | Result |'
+          echo '|---|---:|---:|:---:|'
+
+          jq -r '
+            def friendly:
+              if . == "new_coverage" then "New Coverage"
+              elif . == "coverage" then "Coverage"
+              elif . == "new_duplicated_lines_density" then "New Duplications"
+              elif . == "duplicated_lines_density" then "Duplications"
+              elif . == "new_bugs" then "New Bugs"
+              elif . == "bugs" then "Bugs"
+              elif . == "new_vulnerabilities" then "New Vulnerabilities"
+              elif . == "vulnerabilities" then "Vulnerabilities"
+              elif . == "new_code_smells" then "New Code Smells"
+              elif . == "code_smells" then "Code Smells"
+              else gsub("_"; " ")
+              end;
+            def threshold:
+              if .comparator == "GT" then "≤ " + (.errorThreshold // "N/A")
+              elif .comparator == "LT" then "≥ " + (.errorThreshold // "N/A")
+              else (.errorThreshold // "N/A")
+              end;
+            .projectStatus.conditions[]? |
+            "| \(.metricKey | friendly) | \(.actualValue // "N/A") | \(threshold) | \(if .status == "OK" then "✅" else "❌" end) |"
+          ' <<<"$GATE_RESPONSE"
+
+          echo
+          if [[ -n "$DASHBOARD_URL" ]]; then
+            echo "[View full analysis in SonarQube](${DASHBOARD_URL})"
+          fi
+          echo
+          echo "_Analysis: \`${ANALYSIS_ID}\` · Commit: \`${GITHUB_SHA:0:7}\`_"
+        } > "$COMMENT_FILE"
+
+        if [[ "$EVENT_NAME" == 'pull_request' ]]; then
+          # Find this action's existing sticky comment, if one exists.
+          COMMENTS_URL="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments"
+          EXISTING_COMMENT_ID="$(
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              "${COMMENTS_URL}?per_page=100" |
+            jq -r '[.[] | select(.body | contains("<!-- sonarqube-analysis-comment -->"))] | last | .id // empty'
+          )"
+
+          BODY_JSON="$(jq -Rs '{body: .}' < "$COMMENT_FILE")"
+
+          if [[ -n "$EXISTING_COMMENT_ID" ]]; then
+            echo "Updating existing SonarQube PR comment ${EXISTING_COMMENT_ID}"
+            curl --fail --silent --show-error \
+              --request PATCH \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'Content-Type: application/json' \
+              "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING_COMMENT_ID}" \
+              --data "$BODY_JSON" >/dev/null
+          else
+            echo 'Creating SonarQube PR comment'
+            curl --fail --silent --show-error \
+              --request POST \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'Content-Type: application/json' \
+              "$COMMENTS_URL" \
+              --data "$BODY_JSON" >/dev/null
+          fi
+
+          echo 'SonarQube PR result published successfully.'
+        elif [[ "$EVENT_NAME" == 'push' && "$GIT_REF" == 'refs/heads/main' ]]; then
+          # There is no PR conversation on a direct push/merge to main, so publish
+          # the same Markdown to the run summary.
+          cat "$COMMENT_FILE" >> "$GITHUB_STEP_SUMMARY"
+          echo 'SonarQube main-branch summary published successfully.'
+
+          # Also attach a commit status to the main-branch SHA.
+          case "$GATE_STATUS" in
+            OK) STATE='success'; DESCRIPTION='SonarQube Quality Gate passed' ;;
+            ERROR) STATE='failure'; DESCRIPTION='SonarQube Quality Gate failed' ;;
+            WARN) STATE='failure'; DESCRIPTION='SonarQube Quality Gate warning' ;;
+            *) STATE='error'; DESCRIPTION="SonarQube Quality Gate: ${GATE_STATUS:-UNKNOWN}" ;;
+          esac
+
+          STATUS_JSON="$(jq -n \
+            --arg state "$STATE" \
+            --arg target_url "$DASHBOARD_URL" \
+            --arg description "$DESCRIPTION" \
+            --arg context 'SonarQube Quality Gate' \
+            '{state:$state,target_url:$target_url,description:$description,context:$context}')"
+
+          curl --fail --silent --show-error \
+            --request POST \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'Content-Type: application/json' \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            --data "$STATUS_JSON" >/dev/null
+
+          echo 'SonarQube commit status published successfully.'
+        fi
+
+    # Preserve the original requirement: the Quality Gate still blocks the
+    # pipeline, but only after the PR result has had a chance to be published.
+    - name: Enforce SonarQube Quality Gate
+      if: always() && steps.sonarqube-quality-gate-check.outcome == 'failure'
+      shell: bash
+      run: |
+        echo '::error::SonarQube Quality Gate failed.'
+        exit 1
+
     - uses: tiacsys/clean-after-action@v4
+      if: always()
