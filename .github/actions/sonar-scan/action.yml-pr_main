@@ -1,5 +1,5 @@
 name: 'Sonar Scan'
-description: 'Sonar Scan with SonarQube Quality Gate reporting for PRs and any pushed branch'
+description: 'Sonar Scan with SonarQube Quality Gate reporting for PRs and main'
 
 inputs:
   github-token:
@@ -72,7 +72,8 @@ runs:
 
     - name: Build and publish SonarQube result
       id: publish-sonarqube-result
-      if: always() && (github.event_name == 'pull_request' || github.event_name == 'push')
+#      if: always() && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+      if: always() && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
@@ -244,13 +245,13 @@ runs:
           fi
 
           echo 'SonarQube PR result published successfully.'
-        elif [[ "$EVENT_NAME" == 'push' ]]; then
-          # A push event has no PR conversation to attach this result to, so publish
-          # the same Markdown to the run summary for any branch.
+        elif [[ "$EVENT_NAME" == 'push' && "$GIT_REF" == 'refs/heads/main' ]]; then
+          # There is no PR conversation on a direct push/merge to main, so publish
+          # the same Markdown to the run summary.
           cat "$COMMENT_FILE" >> "$GITHUB_STEP_SUMMARY"
-          echo "SonarQube branch summary published successfully for ${GIT_REF}."
+          echo 'SonarQube main-branch summary published successfully.'
 
-          # Also attach a commit status to the pushed branch SHA.
+          # Also attach a commit status to the main-branch SHA.
           case "$GATE_STATUS" in
             OK) STATE='success'; DESCRIPTION='SonarQube Quality Gate passed' ;;
             ERROR) STATE='failure'; DESCRIPTION='SonarQube Quality Gate failed' ;;
@@ -277,7 +278,7 @@ runs:
         fi
 
     # Preserve the original requirement: the Quality Gate still blocks the
-    # pipeline, but only after the GitHub result has had a chance to be published.
+    # pipeline, but only after the PR result has had a chance to be published.
     - name: Enforce SonarQube Quality Gate
       if: always() && steps.sonarqube-quality-gate-check.outcome == 'failure'
       shell: bash
