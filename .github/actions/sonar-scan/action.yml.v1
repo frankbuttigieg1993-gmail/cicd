@@ -1,0 +1,73 @@
+name: 'Sonar Scan'
+description: 'Sonar Scan'
+
+inputs:
+  github-token:
+    description: 'The github token'
+    required: true
+  sonar-token:
+    description: 'The sonar token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check out repository
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+      # This contains the compiled source code from the Build Stage
+      # SonarQube scans uncompiled source code, but it often requires compiled code (or a running build) to complete the analysis for strongly-typed and compiled languages.
+      # Even though the final bugs and vulnerabilities are mapped back to your raw text files, SonarQube's language analyzers rely on compiled binaries or build hooks to properly map dependencies, resolve types, and track data flow
+    - name: Download Build Artefact
+      uses: actions/download-artifact@v8
+      with:
+        name: build
+        path: .
+    - name: Download Test Reports 
+      uses: actions/download-artifact@v8
+      with:
+        name: test-and-coverage-reports
+        path: .
+    - name: Cache Gradle and Maven
+      uses: actions/cache@v5
+      with:
+        path: |
+          ${{ runner.home }}/.gradle/caches
+          ${{ runner.home }}/.gradle/wrapper
+          ${{ runner.home }}/.m2/repository
+        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+    - name: Cache SonarQube packages
+      uses: actions/cache@v5
+      with:
+        path: ${{ runner.home }}/.sonar/cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+    - name: Execute Sonar Scan
+      env:
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+      run: |
+        ./gradlew build sonar -info --stacktrace
+      shell: bash
+    # The final standalone step that blocks the pipeline if rules fail
+    - name: Verify SonarQube Quality Gate Status
+      uses: sonarsource/sonarqube-quality-gate-action@v1.2.0
+      with:
+        scanMetadataReportFile: build/sonar/report-task.txt
+        pollingTimeoutSec: 600
+      env:
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" 
+        SONAR_HOST_URL: "http://10.0.2.15:9300"
+    - name: Publish to Step Summary
+      run: |
+        echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}"
+        echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}" >> $GITHUB_STEP_SUMMARY
+        cat build/sonar/report-task.txt >> $GITHUB_STEP_SUMMARY
+        # The Analysis ID can be found by the CE Task
+        # http://127.0.0.1:9300/api/ce/task?id=8729e4ec-c77b-43b5-a24d-00f1b51e7c83 => returns analysis ID 863d9764-8e4a-4d62-9992-f6956e025203
+        # http://127.0.0.1:9300/project/activity?id=java-application&analysis=863d9764-8e4a-4d62-9992-f6956e025203
+      shell: bash
+      if: always()
+    - uses: tiacsys/clean-after-action@v4
+      if: always()

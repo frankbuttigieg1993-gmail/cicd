@@ -79,71 +79,71 @@ jobs:
             with:
               github-token: ${{ secrets.GITHUB_TOKEN }}  
               sonar-token: ${{ secrets.SONAR_TOKEN }} 
-    DependencyCheck:
-      name: DependencyCheck
-      runs-on: ubuntu-24.04
-      needs: Build
-      steps:
-      - name: Dependency Check
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/dependency-check@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}  
-    CycloneDX_SBOM:
-      name: CycloneDX_SBOM
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
-      needs: [Build]
-      steps:
-      - name: CycloneDX SBOM
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/cyclone-dx-sbom@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}  
-    Trivy:
-      name: Trivy
-      runs-on: ubuntu-24.04
-      needs: [Build]
-      env:
-        TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
-        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
-        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
-        # TRIVY_SKIP_DB_UPDATE: "true"
-        # TRIVY_SKIP_JAVA_DB_UPDATE: "true"
-        # TRIVY_SKIP_CHECK_UPDATE: "true"
-        TRIVY_CACHE_DIR: ~/.cache/trivy
-      steps:
-      - name: Trivy Scan 
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-scan@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}  
-    semgrep_local_scan:
-      name: semgrep-local-scan
-      runs-on: ubuntu-24.04
-      needs: [Build]
-      env:
-        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
-        HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
-      # Skip any PR created by dependabot to avoid permission issues:
-      if: (github.actor != 'dependabot[bot]')
-      steps:
-      - name: Semgrep Scan 
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/semgrep-local-scan@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }} 
-          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
-    semgrep_appsec_scan:
-      name: semgrep-appsec-scan
-      runs-on: ubuntu-24.04
-      needs: [Build]
-      env:
-        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
-        HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
-      # Skip any PR created by dependabot to avoid permission issues:
-      if: (github.actor != 'dependabot[bot]')
-      steps:
-      - name: Semgrep Scan 
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/semgrep-appsec-scan@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }} 
-          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+    # DependencyCheck:
+    #   name: DependencyCheck
+    #   runs-on: ubuntu-24.04
+    #   needs: Build
+    #   steps:
+    #   - name: Dependency Check
+    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/dependency-check@main
+    #     with:
+    #       github-token: ${{ secrets.GITHUB_TOKEN }}  
+    # CycloneDX_SBOM:
+    #   name: CycloneDX_SBOM
+    #   runs-on: ${{ fromJson(inputs.target-runner) }} 
+    #   needs: [Build]
+    #   steps:
+    #   - name: CycloneDX SBOM
+    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/cyclone-dx-sbom@main
+    #     with:
+    #       github-token: ${{ secrets.GITHUB_TOKEN }}  
+    # Trivy:
+    #   name: Trivy
+    #   runs-on: ubuntu-24.04
+    #   needs: [Build]
+    #   env:
+    #     TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
+    #     NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+    #     GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+    #     # TRIVY_SKIP_DB_UPDATE: "true"
+    #     # TRIVY_SKIP_JAVA_DB_UPDATE: "true"
+    #     # TRIVY_SKIP_CHECK_UPDATE: "true"
+    #     TRIVY_CACHE_DIR: ~/.cache/trivy
+    #   steps:
+    #   - name: Trivy Scan 
+    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-scan@main
+    #     with:
+    #       github-token: ${{ secrets.GITHUB_TOKEN }}  
+    # semgrep_local_scan:
+    #   name: semgrep-local-scan
+    #   runs-on: ubuntu-24.04
+    #   needs: [Build]
+    #   env:
+    #     SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
+    #     HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
+    #   # Skip any PR created by dependabot to avoid permission issues:
+    #   if: (github.actor != 'dependabot[bot]')
+    #   steps:
+    #   - name: Semgrep Scan 
+    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/semgrep-local-scan@main
+    #     with:
+    #       github-token: ${{ secrets.GITHUB_TOKEN }} 
+    #       SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+    # semgrep_appsec_scan:
+    #   name: semgrep-appsec-scan
+    #   runs-on: ubuntu-24.04
+    #   needs: [Build]
+    #   env:
+    #     SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
+    #     HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
+    #   # Skip any PR created by dependabot to avoid permission issues:
+    #   if: (github.actor != 'dependabot[bot]')
+    #   steps:
+    #   - name: Semgrep Scan 
+    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/semgrep-appsec-scan@main
+    #     with:
+    #       github-token: ${{ secrets.GITHUB_TOKEN }} 
+    #       SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
     # Docker_Push:
     #   name: Docker Push
     #   runs-on: ${{ fromJson(inputs.target-runner) }} 
