@@ -95,6 +95,7 @@ runs:
     - name: Warm dependency cache
       run: ./gradlew --no-daemon cyclonedxRuntimeBom cyclonedxAllConfigsBom cyclonedxBuildEnvironmentBom dependencies build -x test -info --scan --write-locks 
       shell: bash
+ 
 
 # This will scan all components in the CyloneDX SBOM which includes all configuration options (not just runtime) because it is a complete SBOM
 # # Trivy scans the project's dependency manifests/lock data for vulnerabilities.
@@ -124,6 +125,30 @@ runs:
           --output build/reports/trivy/trivy-srccode-report.html
 
       shell: bash
+
+
+    # - name: Trivy Dependency and License Scan
+    #   run: |
+    #     trivy fs \
+    #       --scanners vuln,license \
+    #       --ignore-unfixed \
+    #       --format json \
+    #       --output build/reports/trivy/trivy-srccode.json \
+    #       --timeout 40m \
+    #       .
+
+    #     # Convert JSON -> SARIF
+    #     trivy convert \
+    #       --format sarif \
+    #       --output build/reports/trivy/trivy-srccode.sarif \
+    #       build/reports/trivy/trivy-srccode.json
+
+    #     # Convert JSON -> HTML
+    #     trivy convert \
+    #       --format template \
+    #       --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
+    #       --output build/reports/trivy/trivy-srccode-report.html \
+    #       build/reports/trivy/trivy-srccode.json
 
     - name: Upload Trivy Trivy Dependency and License Scan SARIF
       if: always()
@@ -190,18 +215,25 @@ runs:
           --timeout 40m \
           build/jar-rootfs
 
-        # Convert JSON -> HTML
-        trivy convert \
-          --format template \
-          --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
-          --output build/reports/trivy/trivy-jar-report.html \
-          build/reports/trivy/trivy-jar-report.json
-
         # Convert JSON -> SARIF
         trivy convert \
           --format sarif \
           --output build/reports/trivy/trivy-jar-report.sarif \
           build/reports/trivy/trivy-jar-report.json
+
+        # Convert JSON -> HTML
+        
+        python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
+          --trivy build/reports/trivy/trivy-jar-report.json \
+          --sbom "build/reports/cyclonedx/all-configs-bom.json" \
+          --output build/reports/trivy/trivy-jar-report.html
+
+        # Convert JSON -> HTML
+        # trivy convert \
+        #   --format template \
+        #   --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
+        #   --output build/reports/trivy/trivy-jar-report.html \
+        #   build/reports/trivy/trivy-jar-report.json
 
     - name: Upload Trivy JAR SARIF
       if: always()
@@ -258,18 +290,23 @@ runs:
           --timeout 40m \
           "java-application:${GITHUB_SHA}"
 
-        # Convert JSON -> HTML
-        trivy convert \
-          --format template \
-          --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
-          --output build/reports/trivy/trivy-dockerimage-report.html \
-          build/reports/trivy/trivy-dockerimage-report.json
-
         # Convert JSON -> SARIF
         trivy convert \
           --format sarif \
           --output build/reports/trivy/trivy-dockerimage-report.sarif \
           build/reports/trivy/trivy-dockerimage-report.json
+
+        # Convert JSON -> HTML
+        # trivy convert \
+        #   --format template \
+        #   --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
+        #   --output build/reports/trivy/trivy-dockerimage-report.html \
+        #   build/reports/trivy/trivy-dockerimage-report.json
+
+        python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
+          --trivy build/reports/trivy/trivy-dockerimage-report.json \
+          --sbom "build/reports/cyclonedx/all-configs-bom.json" \
+          --output build/reports/trivy/trivy-dockerimage-report.html
 
     - name: Upload Trivy Docker Image SARIF
       if: always()
