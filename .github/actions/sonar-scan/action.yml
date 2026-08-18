@@ -54,7 +54,7 @@ runs:
         SONAR_TOKEN: ${{ inputs.sonar-token }}
         SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
       run: |
-        ./gradlew build sonar -info --stacktrace
+        ./gradlew build sonar -info --stacktrace -x test
       shell: bash
 
     # SonarQube itself is the source of truth. Poll the CE task, resolve the

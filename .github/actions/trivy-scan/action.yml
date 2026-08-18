@@ -120,7 +120,7 @@ runs:
         # dependency graph used to classify Java components as Direct/Transitive.
         python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
           --trivy build/reports/trivy/trivy-srccode.json \
-          --sbom-search-root build/reports/cyclonedx/all-configs-bom.json \        
+          --sbom "build/reports/cyclonedx/all-configs-bom.json" \
           --output build/reports/trivy/trivy-srccode-report.html
 
       shell: bash
