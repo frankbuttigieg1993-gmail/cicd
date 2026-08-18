@@ -89,26 +89,21 @@ runs:
         restore-keys: |
           trivy-db-${{ runner.os }}-
 
-    - name: Warm dependency cache
-      run: ./gradlew --no-daemon dependencies --write-locks build -x test
-      shell: bash
-
     # Generate a CycloneDX dependency graph. The custom source-code HTML report
     # uses this graph to classify vulnerable Java components as direct or transitive.
-    - name: Generate CycloneDX SBOM for Trivy dependency report
-      run: |
-        ./gradlew --no-daemon cyclonedxAllConfigsBom
 
+    - name: Warm dependency cache
+      run: ./gradlew --no-daemon cyclonedxRuntimeBom cyclonedxAllConfigsBom cyclonedxBuildEnvironmentBom dependencies build -x test -info --scan --write-locks 
       shell: bash
 
 # This will scan all components in the CyloneDX SBOM which includes all configuration options (not just runtime) because it is a complete SBOM
-# Trivy uses the Gradle Lock file  to scan the transitive and direct dependencies.
+# # Trivy scans the project's dependency manifests/lock data for vulnerabilities.
+# The CycloneDX all-configurations SBOM provides the resolved dependency graph used by the custom HTML report to classify dependencies as direct/transitive.
 
     - name: Trivy Dependency and License Scan
       run: |
         trivy fs \
           --scanners vuln,license \
-          --ignore-unfixed \
           --format json \
           --output build/reports/trivy/trivy-srccode.json \
           --timeout 40m \
@@ -125,7 +120,7 @@ runs:
         # dependency graph used to classify Java components as Direct/Transitive.
         python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
           --trivy build/reports/trivy/trivy-srccode.json \
-          --sbom-search-root build/reports/cyclonedx/all-configs-bom.json \
+          --sbom-search-root build/reports/cyclonedx/all-configs-bom.json \        
           --output build/reports/trivy/trivy-srccode-report.html
 
       shell: bash
@@ -189,7 +184,6 @@ runs:
         # Scan once and save the full result as JSON
         trivy rootfs \
           --scanners vuln,license \
-          --ignore-unfixed \
           --format json \
           --output build/reports/trivy/trivy-jar-report.json \
           --timeout 40m \
@@ -258,7 +252,6 @@ runs:
         # Scan once and save the complete result as JSON
         trivy image \
           --scanners vuln,license \
-          --ignore-unfixed \
           --format json \
           --output build/reports/trivy/trivy-dockerimage-report.json \
           --timeout 40m \
