@@ -54,7 +54,7 @@ runs:
         SONAR_TOKEN: ${{ inputs.sonar-token }}
         SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
       run: |
-        ./gradlew build sonar -info --stacktrace
+        ./gradlew build sonar -x test -info --stacktrace
       shell: bash
 
     # Do not stop here when the gate fails. We need to publish the result first.

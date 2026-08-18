@@ -93,14 +93,6 @@ runs:
       run: ./gradlew --no-daemon dependencies --write-locks build -x test
       shell: bash
 
-    # Generate a CycloneDX dependency graph. The custom source-code HTML report
-    # uses this graph to classify vulnerable Java components as direct or transitive.
-    - name: Generate CycloneDX SBOM for Trivy dependency report
-      run: |
-        ./gradlew --no-daemon cyclonedxAllConfigsBom
-
-      shell: bash
-
 # This will scan all components in the CyloneDX SBOM which includes all configuration options (not just runtime) because it is a complete SBOM
 # Trivy uses the Gradle Lock file  to scan the transitive and direct dependencies.
 
@@ -120,13 +112,12 @@ runs:
           --output build/reports/trivy/trivy-srccode.sarif \
           build/reports/trivy/trivy-srccode.json
 
-        # Generate the dependency-aware HTML report.
-        # Trivy supplies vulnerability/license findings; CycloneDX supplies the
-        # dependency graph used to classify Java components as Direct/Transitive.
-        python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
-          --trivy build/reports/trivy/trivy-srccode.json \
-          --sbom-search-root build/reports/cyclonedx/all-configs-bom.json \
-          --output build/reports/trivy/trivy-srccode-report.html
+        # Convert JSON -> HTML
+        trivy convert \
+          --format template \
+          --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
+          --output build/reports/trivy/trivy-srccode-report.html \
+          build/reports/trivy/trivy-srccode.json
 
       shell: bash
 
