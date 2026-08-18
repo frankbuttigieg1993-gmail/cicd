@@ -122,6 +122,7 @@ runs:
           uses: github/codeql-action/upload-sarif@v4
           with:
             sarif_file: build/reports/semgrep/semgrep-local-scan-results.sarif 
+            category: semgrep-local-scan
           if: always()
         - name: Generate HTML Reports
           run: |
