@@ -49,6 +49,21 @@ runs:
         key: ${{ runner.os }}-sonar
         restore-keys: ${{ runner.os }}-sonar
 
+    - name: Configure SonarQube New Code
+      shell: bash
+      env:
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+      run: |
+        curl --fail --silent --show-error \
+          -u "${SONAR_TOKEN}:" \
+          -X POST \
+          "${SONAR_HOST_URL}/api/new_code_periods/set" \
+          --data-urlencode "project=java-application" \
+          --data-urlencode "branch=${GITHUB_REF_NAME}" \
+          --data-urlencode "type=NUMBER_OF_DAYS" \
+          --data-urlencode "value=30"
+
     - name: Execute Sonar Scan
       env:
         SONAR_TOKEN: ${{ inputs.sonar-token }}
