@@ -172,6 +172,7 @@ runs:
           -u "${SONAR_TOKEN}:" \
           --get \
           --data-urlencode "component=${PROJECT_KEY}" \
+          --data-urlencode "branch=${SONAR_BRANCH}" \
           --data-urlencode 'metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density' \
           "${SONAR_HOST_URL}/api/measures/component")"
 
