@@ -48,6 +48,15 @@ jobs:
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
+    CycloneDX_SBOM:
+      name: CycloneDX_SBOM
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: [Build]
+      steps:
+      - name: CycloneDX SBOM
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/cyclone-dx-sbom@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}  
     sonar-scan:
         name: SonarQube Scan & Gate Check
         runs-on: ${{ fromJson(inputs.target-runner) }} 

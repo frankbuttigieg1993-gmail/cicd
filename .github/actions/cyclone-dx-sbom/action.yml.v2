@@ -88,9 +88,7 @@ runs:
         shell: bash 
 
       - name: Enforce Runtime SBOM CVSS Policy
-        id: runtime-sbom-policy
         if: github.event_name == 'pull_request'
-        continue-on-error: true
         run: |
           # The Gradle task writes a Markdown summary even when the policy fails.
           # Temporarily disable immediate exit so the summary can be published,
@@ -115,27 +113,6 @@ runs:
 
           exit "$GRADLE_EXIT_CODE"
         shell: bash
-
-      # Publish the report only when the CVSS policy step failed.
-      - name: Publish Runtime SBOM Policy to Pull Request
-        if: steps.runtime-sbom-policy.outcome == 'failure' && github.event_name == 'pull_request'
-        uses: actions/github-script@v8
-        env:
-          POLICY_REPORT_PATH: build/reports/cyclonedx/runtime-vulnerability-policy.md
-        with:
-          github-token: ${{ inputs.github-token }}
-          script: |
-            const publishPolicy = require('${{ github.action_path }}/resources/publish-runtime-sbom-policy.js');
-            await publishPolicy({ github, context, core });
-
-      # continue-on-error above is only used so the PR comment can be published.
-      # Restore the security gate's failure after the comment step has run.
-      - name: Fail Runtime SBOM CVSS Policy
-        if: steps.runtime-sbom-policy.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "Runtime SBOM CVSS policy failed."
-          exit 1
 
       - name: Upload Reports 
         uses: actions/upload-artifact@master
