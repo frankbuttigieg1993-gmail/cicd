@@ -122,7 +122,7 @@ runs:
 
       - name: Generate TRIVY Enhanced Complete SBOM Report
         run: |
-          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/all-configs-bom.json --trivy trivy-all-configs-bom.json --output build/reports/cyclonedx/all-configs-bom.html
+          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/all-configs-bom.json --trivy build/reports/cyclonedx/trivy-all-configs-bom.json --output build/reports/cyclonedx/all-configs-bom.html
         shell: bash 
 
 ##############################  Build Environment SBOM #########################################################
@@ -134,7 +134,7 @@ runs:
 
       - name: Scan Build Environment SBOM with Trivy
         run: |
-          trivy sbom --scanners vuln,license --format json --output trivy-build-environment-bom.json build/reports/cyclonedx/build-environment-bom.json
+          trivy sbom --scanners vuln,license --format json --output build/reports/cyclonedx/trivy-build-environment-bom.json build/reports/cyclonedx/build-environment-bom.json
         shell: bash 
 
       - name: Convert Build Application SBOM Vulnerabilities to SARIF
@@ -154,7 +154,7 @@ runs:
         
       - name: Generate TRIVY Enhanced Complete SBOM Report
         run: |
-          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/build-environment-bom.json --trivy trivy-build-environment-bom.json --output build/reports/cyclonedx/build-environment-bom.html
+          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/build-environment-bom.json --trivy build/reports/cyclonedx/trivy-build-environment-bom.json --output build/reports/cyclonedx/build-environment-bom.html
         shell: bash 
 
       - name: Upload Reports 

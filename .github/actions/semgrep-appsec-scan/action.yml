@@ -178,6 +178,7 @@ runs:
           --metrics=off \
           --sarif \
           --sarif-output=build/reports/semgrep/semgrep.sarif \
+          --exclude=".cache/" \
           --verbose \
           --no-suppress-errors
 
