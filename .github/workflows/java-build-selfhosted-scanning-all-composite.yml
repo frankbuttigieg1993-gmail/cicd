@@ -67,6 +67,15 @@ jobs:
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
+    CycloneDX_Runtime_Vulnerability:
+      name: CycloneDX Runtime Vulnerability Scan
+      runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: [Build]
+      steps:
+      - name: CycloneDX Runtime Vulnerability Scan
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/cyclonedx-runtime-sbom-vulnerabilities@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}  
     sonar-scan:
         name: SonarQube Scan & Gate Check
         runs-on: ${{ fromJson(inputs.target-runner) }} 
@@ -80,6 +89,22 @@ jobs:
             with:
               github-token: ${{ secrets.GITHUB_TOKEN }}  
               sonar-token: ${{ secrets.SONAR_TOKEN }} 
+    Secrets-Scan:
+        name: Secrets Scan 
+        runs-on: ${{ fromJson(inputs.target-runner) }} 
+        needs: Build
+        env:
+          NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
+          GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
+        steps:
+        - name: Gitleaks
+          uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
+          with:
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+        - name: Trivy Secrets Scan
+          uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitletrivy-secrets-scan@main
+          with:
+            github-token: ${{ secrets.GITHUB_TOKEN }}
     DependencyCheck:
       name: DependencyCheck
       runs-on: ubuntu-24.04
@@ -99,7 +124,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
     Trivy:
-      name: Trivy
+      name: Trivy Scan
       runs-on: ubuntu-24.04
       needs: [Build]
       env:
@@ -113,6 +138,18 @@ jobs:
       steps:
       - name: Trivy Scan 
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-scan@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}  
+    SpotBugs:
+      name: SpotBugs 
+      runs-on: ubuntu-24.04
+      needs: [Build]
+      env:
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+      steps:
+      - name: SpotBugs 
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/spot-bugs@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
     semgrep_local_scan:
