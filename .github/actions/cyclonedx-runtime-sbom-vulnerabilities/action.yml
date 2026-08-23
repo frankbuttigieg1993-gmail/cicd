@@ -1,5 +1,5 @@
-name: 'CycloneDX SBOM Analysis'
-description: 'CycloneDX SBOM Analysis'
+name: 'CycloneDX Runtime Vulnerabilities and Compliance Check'
+description: 'CycloneDX Runtime Vulnerabilities and Compliance Check'
 
 inputs:
   github-token:
@@ -60,110 +60,66 @@ runs:
             -info \
             --scan \
             --write-locks
-            
-##############################  Runtime SBOM #########################################################
 
-      - name: Generate CSV Version of Runtime SBOM 
-        run: |
-           cyclonedx convert --input-file build/reports/cyclonedx/runtime-bom.json --output-file build/reports/cyclonedx/runtime-bom.csv --output-format csv
-        shell: bash 
+##############################  Runtime SBOM Severity Level 6 Check #########################################################
 
-      - name: Scan Runtime SBOM with Trivy
+      - name: Enforce Runtime SBOM CVSS Policy
+        id: runtime-sbom-policy
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
         run: |
-          trivy sbom --scanners vuln,license --format json --output build/reports/cyclonedx/trivy-runtime-bom.json build/reports/cyclonedx/runtime-bom.json
-        shell: bash 
+          # The Gradle task writes a Markdown summary even when the policy fails.
+          # Temporarily disable immediate exit so the summary can be published,
+          # then return Gradle's original exit code to preserve the build gate.
+          set +e
+          ./gradlew --no-daemon verifyRuntimeSbomVulnerabilities
+          GRADLE_EXIT_CODE=$?
+          set -e
 
-      - name: Convert Runtime SBOM Vulnerabilities to SARIF
-        run: |
-          trivy convert \
-            --format sarif \
-            --output build/reports/cyclonedx/trivy-runtime-bom.sarif \
-            build/reports/cyclonedx/trivy-runtime-bom.json
+          POLICY_SUMMARY="build/reports/cyclonedx/runtime-vulnerability-policy.md"
+          if [ -f "$POLICY_SUMMARY" ]; then
+            cat "$POLICY_SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## Runtime SBOM Vulnerability Policy"
+              echo
+              echo "**Result:** ERROR"
+              echo
+              echo "The Gradle policy task did not produce its expected Markdown report."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          exit "$GRADLE_EXIT_CODE"
         shell: bash
 
-      - name: Upload Runtime SBOM SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+      # Publish the report only when the CVSS policy step failed.
+      - name: Publish Runtime SBOM Policy to Pull Request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        env:
+          POLICY_REPORT_PATH: build/reports/cyclonedx/runtime-vulnerability-policy.md
         with:
-          sarif_file: build/reports/cyclonedx/trivy-runtime-bom.sarif
-          category: trivy-runtime-sbom
+          github-token: ${{ inputs.github-token }}
+          script: |
+            const publishPolicy = require('${{ github.action_path }}/resources/publish-runtime-sbom-policy.js');
+            await publishPolicy({ github, context, core });
 
-      - name: Generate TRIVY Enhanced Runtime SBOM Report
-        run: |
-          python3 ${{ github.workspace }}/trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/runtime-bom.json --trivy build/reports/cyclonedx/trivy-runtime-bom.json --output build/reports/cyclonedx/runtime-bom.html
-        shell: bash 
-
-##############################  Application SBOM #########################################################
-
-      - name: Generate CSV Version of Complete Application SBOM 
-        run: |
-           cyclonedx convert --input-file build/reports/cyclonedx/all-configs-bom.json --output-file build/reports/cyclonedx/all-configs-bom.csv --output-format csv
-        shell: bash 
-
-      - name: Scan Complete Application SBOM with Trivy
-        run: |
-          trivy sbom --scanners vuln,license --format json --output trivy-all-configs-bom.json build/reports/cyclonedx/all-configs-bom.json
-        shell: bash 
-
-      - name: Convert Complete Application SBOM Vulnerabilities to SARIF
-        run: |
-          trivy convert \
-            --format sarif \
-            --output build/reports/cyclonedx/trivy-all-configs-bom.sarif \
-            build/reports/cyclonedx/trivy-all-configs-bom.json
+      # continue-on-error above is only used so the PR comment can be published.
+      # Restore the security gate's failure after the comment step has run.
+      - name: Fail Runtime SBOM CVSS Policy
+        if: steps.runtime-sbom-policy.outcome == 'failure'
         shell: bash
-
-      - name: Upload Complete Application SBOM SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: build/reports/cyclonedx/trivy-all-configs-bom.sarif
-          category: trivy-application-sbom
-
-      - name: Generate TRIVY Enhanced Complete SBOM Report
         run: |
-          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/all-configs-bom.json --trivy trivy-all-configs-bom.json --output build/reports/cyclonedx/all-configs-bom.html
-        shell: bash 
-
-##############################  Build Environment SBOM #########################################################
-
-      - name: Generate CSV Version of Build Environment SBOM 
-        run: |
-           cyclonedx convert --input-file build/reports/cyclonedx/build-environment-bom.json --output-file build/reports/cyclonedx/build-environment-bom.csv --output-format csv
-        shell: bash    
-
-      - name: Scan Build Environment SBOM with Trivy
-        run: |
-          trivy sbom --scanners vuln,license --format json --output trivy-build-environment-bom.json build/reports/cyclonedx/build-environment-bom.json
-        shell: bash 
-
-      - name: Convert Build Application SBOM Vulnerabilities to SARIF
-        run: |
-          trivy convert \
-            --format sarif \
-            --output build/reports/cyclonedx/trivy-build-environment-bom.sarif \
-            build/reports/cyclonedx/trivy-build-environment-bom.json
-        shell: bash
-
-      - name: Upload Complete Application SBOM SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: build/reports/cyclonedx/trivy-build-environment-bom.sarif
-          category: trivy-build-environment-sbom
-        
-      - name: Generate TRIVY Enhanced Complete SBOM Report
-        run: |
-          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/build-environment-bom.json --trivy trivy-build-environment-bom.json --output build/reports/cyclonedx/build-environment-bom.html
-        shell: bash 
+          echo "Runtime SBOM CVSS policy failed."
+          exit 1
 
       - name: Upload Reports 
         uses: actions/upload-artifact@master
         if: always()
         with:
-            name: sbom-reports
+            name: cyclonedx-runtime-sbom-vulnerabilities-report
             path: | 
-             build/reports/cyclonedx/
+             build/reports/cyclonedx/runtime-vulnerability-policy.*
             retention-days: 1
       - uses: tiacsys/clean-after-action@v4
         if: always()

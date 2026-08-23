@@ -1,0 +1,231 @@
+name: 'SpotBugs and FindSecBugs'
+description: 'Runs SpotBugs with FindSecBugs, produces SARIF and HTML reports, uploads SARIF, comments on PRs when critical findings are present, and fails on critical findings.'
+
+inputs:
+  github-token:
+    description: 'GitHub token used for SARIF upload and PR comments.'
+    required: true
+  spotbugs-plugin-version:
+    description: 'SpotBugs Gradle plugin version.'
+    required: false
+    default: '6.5.10'
+  findsecbugs-version:
+    description: 'FindSecBugs plugin version.'
+    required: false
+    default: '1.14.0'
+  effort:
+    description: 'SpotBugs effort: MIN, DEFAULT, or MAX.'
+    required: false
+    default: 'MAX'
+  report-level:
+    description: 'SpotBugs report confidence: HIGH, MEDIUM, or LOW.'
+    required: false
+    default: 'LOW'
+  upload-sarif:
+    description: 'Upload SARIF to GitHub Code Scanning.'
+    required: false
+    default: 'true'
+  upload-report:
+    description: 'Upload HTML/SARIF/XML reports as an artifact.'
+    required: false
+    default: 'true'
+  pr-comment:
+    description: 'Create or update a PR comment when critical findings are present.'
+    required: false
+    default: 'true'
+  enforce-policy:
+    description: 'Fail when one or more critical findings are present.'
+    required: false
+    default: 'true'
+
+outputs:
+  critical-count:
+    description: 'Number of critical findings.'
+    value: ${{ steps.spotbugs-policy.outputs.critical-count }}
+  finding-count:
+    description: 'Total findings.'
+    value: ${{ steps.spotbugs-policy.outputs.finding-count }}
+  sarif-file:
+    description: 'SARIF report path.'
+    value: build/reports/spotbugs/main/spotbugs.sarif
+  html-file:
+    description: 'HTML report path.'
+    value: build/reports/spotbugs/main/spotbugs.html
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare SpotBugs reports
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p build/reports/spotbugs/main
+
+    - name: Build production classes
+      shell: bash
+      run: ./gradlew --no-daemon classes
+
+    - name: Create SpotBugs init script
+      shell: bash
+      env:
+        SPOTBUGS_PLUGIN_VERSION: ${{ inputs.spotbugs-plugin-version }}
+        FINDSECBUGS_VERSION: ${{ inputs.findsecbugs-version }}
+        SPOTBUGS_EFFORT: ${{ inputs.effort }}
+        SPOTBUGS_REPORT_LEVEL: ${{ inputs.report-level }}
+      run: |
+        set -euo pipefail
+        cat > "$RUNNER_TEMP/spotbugs-init.gradle" <<'EOF'
+        initscript {
+            repositories {
+                gradlePluginPortal()
+                mavenCentral()
+            }
+            dependencies {
+                classpath "com.github.spotbugs:com.github.spotbugs.gradle.plugin:${System.getenv('SPOTBUGS_PLUGIN_VERSION')}"
+            }
+        }
+        allprojects {
+            plugins.withId('java') {
+                if (!plugins.hasPlugin('com.github.spotbugs')) {
+                    apply plugin: 'com.github.spotbugs'
+                }
+                dependencies {
+                    spotbugsPlugins "com.h3xstream.findsecbugs:findsecbugs-plugin:${System.getenv('FINDSECBUGS_VERSION')}"
+                }
+                spotbugs {
+                    ignoreFailures = true
+                    effort = com.github.spotbugs.snom.Effort.valueOf(System.getenv('SPOTBUGS_EFFORT'))
+                    reportLevel = com.github.spotbugs.snom.Confidence.valueOf(System.getenv('SPOTBUGS_REPORT_LEVEL'))
+                    showStackTraces = true
+                    showProgress = false
+                    maxHeapSize = '1g'
+                    reportsDir = file("$buildDir/reports/spotbugs")
+                }
+                tasks.matching { it.name == 'spotbugsMain' }.configureEach {
+                    reports {
+                        xml {
+                            required = true
+                            outputLocation = file("$buildDir/reports/spotbugs/main/spotbugs.xml")
+                        }
+                        html {
+                            required = true
+                            outputLocation = file("$buildDir/reports/spotbugs/main/spotbugs.html")
+                            stylesheet = 'fancy-hist.xsl'
+                        }
+                    }
+                }
+            }
+        }
+        EOF
+
+    - name: Run SpotBugs and FindSecBugs
+      id: spotbugs
+      shell: bash
+      run: |
+        set +e
+        ./gradlew --no-daemon spotbugsMain -I "$RUNNER_TEMP/spotbugs-init.gradle"
+        GRADLE_EXIT_CODE=$?
+        set -e
+        echo "gradle-exit-code=${GRADLE_EXIT_CODE}" >> "$GITHUB_OUTPUT"
+        if [[ ! -f build/reports/spotbugs/main/spotbugs.xml ]]; then
+          echo "SpotBugs XML report was not generated."
+          exit "$GRADLE_EXIT_CODE"
+        fi
+        python3 "${{ github.action_path }}/resources/spotbugs-xml-to-sarif.py" \
+          --xml build/reports/spotbugs/main/spotbugs.xml \
+          --output build/reports/spotbugs/main/spotbugs.sarif
+        exit 0
+
+    - name: Evaluate SpotBugs security policy
+      id: spotbugs-policy
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 "${{ github.action_path }}/resources/check-spotbugs-critical.py" \
+          --sarif build/reports/spotbugs/main/spotbugs.sarif \
+          --github-output "$GITHUB_OUTPUT" \
+          --summary build/reports/spotbugs/main/spotbugs-summary.md
+
+    - name: Add SpotBugs report to GitHub Step Summary
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ -f build/reports/spotbugs/main/spotbugs-summary.md ]]; then
+          cat build/reports/spotbugs/main/spotbugs-summary.md >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Upload SpotBugs SARIF
+      if: ${{ always() && inputs.upload-sarif == 'true' }}
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: build/reports/spotbugs/main/spotbugs.sarif
+        category: spotbugs-findsecbugs
+
+    - name: Upload SpotBugs reports
+      if: ${{ always() && inputs.upload-report == 'true' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: spotbugs-findsecbugs-reports
+        path: |
+          build/reports/spotbugs/main/spotbugs.html
+          build/reports/spotbugs/main/spotbugs.sarif
+          build/reports/spotbugs/main/spotbugs.xml
+          build/reports/spotbugs/main/spotbugs-summary.md
+        retention-days: 7
+
+    - name: Publish critical findings to Pull Request
+      if: ${{ always() && inputs.pr-comment == 'true' && github.event_name == 'pull_request' && steps.spotbugs-policy.outputs.critical-count != '0' }}
+      uses: actions/github-script@v8
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require('fs');
+          const marker = '<!-- spotbugs-findsecbugs-critical-report -->';
+          const path = 'build/reports/spotbugs/main/spotbugs-summary.md';
+          const report = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '## SpotBugs / FindSecBugs Security Gate\n\nReport unavailable.';
+          const body = `${marker}\n${report}\n\n---\n_Generated by SpotBugs + FindSecBugs._`;
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            per_page: 100
+          });
+          const existing = comments.find(c => c.body?.includes(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+          }
+
+    - name: Enforce critical SpotBugs policy
+      if: ${{ always() && inputs.enforce-policy == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        CRITICAL_COUNT="${{ steps.spotbugs-policy.outputs.critical-count || '0' }}"
+        GRADLE_EXIT_CODE="${{ steps.spotbugs.outputs.gradle-exit-code || '0' }}"
+        if [[ "$CRITICAL_COUNT" -gt 0 ]]; then
+          echo "SpotBugs / FindSecBugs policy failed: ${CRITICAL_COUNT} critical finding(s)."
+          exit 1
+        fi
+        if [[ "$GRADLE_EXIT_CODE" -ne 0 ]]; then
+          echo "SpotBugs execution failed with Gradle exit code ${GRADLE_EXIT_CODE}."
+          exit 1
+        fi
+        echo "SpotBugs / FindSecBugs policy passed: no critical findings."
+
+    - name: Clean up SpotBugs workspace
+      if: always()
+      uses: tiacsys/clean-after-action@v4

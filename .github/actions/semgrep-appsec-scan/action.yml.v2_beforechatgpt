@@ -1,0 +1,163 @@
+# Local scan
+# # semgrep scan --config auto src/
+# #         │
+# #         └── Java source-code analysis
+# #              └── src/**/*.java
+
+
+# # Platform scan
+# # semgrep ci --code --supply-chain
+# #         │
+# #         ├── Code/SAST analysis
+# #         │
+# #         └── Supply Chain/SCA
+# #              └── gradle.lockfile
+# #                   └── vulnerable dependencies
+# local scan is your fast, source-only SAST,
+
+# Semgrep analyzes source code; scanning compiled .class and .jar artifacts doesn't give you additional Java SAST coverage
+name: 'Semgrep Scan'
+description: 'Semgrep Scan'
+
+inputs:
+  github-token:
+    description: 'The github token'
+    required: true
+  SEMGREP_APP_TOKEN:
+    description: 'The SEMGREP_APP_TOKEN'
+    required: true
+ 
+runs:
+  using: 'composite'
+  steps:
+        # Fetch project source with GitHub Actions Checkout.
+        - name: Checkout repository
+          uses: actions/checkout@v6
+        # Gradle generated this file so the transitive dependencies are included. Semgrep scans the transitive dependencies better when it has the gradle lock file
+        - name: Download Build Artefact
+          uses: actions/download-artifact@v8
+          with:
+            name: build
+            path: .
+        # - name: Semgrep AppSec Platform Analysis
+        #   uses: docker://returntocorp/semgrep:1.163.0-nonroot
+        #   with: 
+        #     args: semgrep ci --supply-chain --code --metrics=off --sarif --sarif-output=semgrep.sarif  --no-suppress-errors
+        # - name: Write corporate CA cert
+        #   run: |
+        #     echo "$CORP_CA_B64" | base64 -d > corp-ca.pem
+        #   env:
+        #     CORP_CA_B64: ${{ secrets.CORP_CA_B64 }}
+        - name: Bootstrap 
+          run: |
+            mkdir -p build/reports/semgrep
+          shell: bash 
+# -w overrides the working directory for the container. 
+# This is scanning everything inside the repository since $pwd is mapped to /src and we are configuring the scanner to look at /src
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: "3.11"
+
+        - name: Install Semgrep
+          run: |
+            python -m pip install --upgrade pip
+            python -m pip install semgrep==1.163.0
+            python -m pip install Jinja2
+          shell: bash
+
+        # - name: Semgrep AppSec Platform Analysis
+        #   env:
+        #     SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
+        #     SSL_CERT_FILE: ${{ github.workspace }}/corp-ca.pem
+        #     REQUESTS_CA_BUNDLE: ${{ github.workspace }}/corp-ca.pem
+        #   run: |
+        #     semgrep ci \
+        #       --supply-chain \
+        #       --code \
+        #       --metrics=off \
+        #       --sarif \
+        #       --sarif-output=build/reports/semgrep/semgrep.sarif \
+        #       --no-suppress-errors
+        #   shell: bash
+        - name: Cache Gradle and Maven
+          uses: actions/cache@v5
+          with:
+            path: |
+              ${{ runner.home }}/.gradle/caches
+              ${{ runner.home }}/.gradle/wrapper
+              ${{ runner.home }}/.m2/repository
+            key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+
+        - name: Get current date
+          id: date
+          run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+          shell: bash
+
+    
+        - name: Warm dependency cache
+          run: ./gradlew --no-daemon dependencies --write-locks build -x test
+          shell: bash
+
+        - name: Verify Gradle dependency inputs
+          shell: bash
+          run: |
+            test -f build.gradle
+            test -f gradle.lockfile
+
+            echo "build.gradle:"
+            ls -lh build.gradle
+
+            echo
+            echo "gradle.lockfile:"
+            ls -lh gradle.lockfile
+
+            echo
+            echo "Gradle dependency graph:"
+            ./gradlew --no-daemon dependencies --configuration runtimeClasspath
+
+        - name: Semgrep AppSec Platform Analysis
+          env:
+            SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
+          run: |
+            echo "========================================"
+            echo "Starting Semgrep AppSec Platform Scan"
+            echo "========================================"
+
+            /usr/bin/time -v semgrep ci \
+              --supply-chain \
+              --code \
+              --metrics=off \
+              --sarif \
+              --sarif-output=build/reports/semgrep/semgrep.sarif \
+              --verbose \
+              --no-suppress-errors
+
+            echo "========================================"
+            echo "Finished Semgrep AppSec Platform Scan"
+            echo "========================================"
+          shell: bash
+
+        # ChatGPT recommended the following if I'm not using the Semgrep AppSec Platform: semgrep ci --supply-chain --code --oss-only --metrics=off 
+        # run: semgrep scan -q --sarif --config auto ./src --time --sarif-output=semgrep-results.sarif
+
+        - name: Upload Semgrep AppSec Platform to the GitHub Security Dashboard
+          uses: github/codeql-action/upload-sarif@v4
+          with:
+            sarif_file: build/reports/semgrep/semgrep.sarif
+            category: semgrep-appsec
+          if: always()
+
+        - name: Generate HTML Reports
+          run: |
+            python3 trivy/parse-semgrep-sarif.py --input build/reports/semgrep/semgrep.sarif --output build/reports/semgrep/semgrep-appsec-report.html --project-name "Java Application SemGrep AppSec Scan" --only INFO,WARNING,ERROR
+#            python3 trivy/parse-semgrep.py --input semgrep-local-scan-results.json --output semgrep-local-scan-report.html --project-name "Java Application SemgGrep Local" --only INFO,WARNING,ERROR
+          shell: bash 
+        - name: Publish Semgrep Reports 
+          uses: actions/upload-artifact@v7
+          with:
+            name: semgrep-appsec-reports
+            path: build/reports/semgrep/
+            retention-days: 1
+        - uses: tiacsys/clean-after-action@v4
+          if: always()
