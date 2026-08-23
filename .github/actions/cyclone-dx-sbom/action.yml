@@ -60,7 +60,7 @@ runs:
             -info \
             --scan \
             --write-locks
-            
+
 ##############################  Runtime SBOM #########################################################
 
       - name: Generate CSV Version of Runtime SBOM 
@@ -102,7 +102,7 @@ runs:
 
       - name: Scan Complete Application SBOM with Trivy
         run: |
-          trivy sbom --scanners vuln,license --format json --output trivy-all-configs-bom.json build/reports/cyclonedx/all-configs-bom.json
+          trivy sbom --scanners vuln,license --format json --output build/reports/cyclonedx/trivy-all-configs-bom.json build/reports/cyclonedx/all-configs-bom.json
         shell: bash 
 
       - name: Convert Complete Application SBOM Vulnerabilities to SARIF
