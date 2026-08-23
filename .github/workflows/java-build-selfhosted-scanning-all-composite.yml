@@ -149,7 +149,7 @@ jobs:
         GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
       steps:
       - name: SpotBugs 
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/spot-bugs@main
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/spotbugs@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
     semgrep_local_scan:

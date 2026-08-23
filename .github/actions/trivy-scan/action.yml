@@ -28,7 +28,7 @@ inputs:
     required: false
     default: 'v0.73.0'
   image-ref:
-    description: 'Container image reference to scan. If empty, the action builds java-application:${{ github.sha }}.'
+    description: 'Container image reference to scan'
     required: false
     default: ''
   scan-image:
