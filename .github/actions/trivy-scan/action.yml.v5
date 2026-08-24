@@ -70,18 +70,13 @@ runs:
         name: build
         path: .
 
-    - name: Download SBOM Reports
-      uses: actions/download-artifact@v8
-      with:
-        name: sbom-reports
-        path: build/reports/cyclonedx
-
     - name: Cache Gradle and Maven
       uses: actions/cache@v5
       with:
         path: |
           ${{ env.GRADLE_USER_HOME }}/caches
           ${{ env.GRADLE_USER_HOME }}/wrapper
+          ${{ github.workspace }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
     - name: Get current date
       id: date
@@ -97,6 +92,22 @@ runs:
         key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
         restore-keys: |
           trivy-db-${{ runner.os }}-
+
+    # Generate a CycloneDX dependency graph. The custom source-code HTML report
+    # uses this graph to classify vulnerable Java components as direct or transitive.
+    - name: Warm dependency cache and generate SBOMs
+      shell: bash
+      run: |
+        set -euo pipefail
+        ./gradlew --no-daemon \
+          cyclonedxRuntimeBom \
+          cyclonedxAllConfigsBom \
+          cyclonedxBuildEnvironmentBom \
+          dependencies \
+          build \
+          -x test \
+          -info \
+          --scan
 
 # This will scan all components in the CyloneDX SBOM which includes all configuration options (not just runtime) because it is a complete SBOM
 # Trivy scans the project's dependency manifests/lock data for vulnerabilities.

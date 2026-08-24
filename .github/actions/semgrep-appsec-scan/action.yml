@@ -97,46 +97,10 @@ runs:
         python -m pip install Jinja2
       shell: bash
 
-    - name: Cache Gradle and Maven
-      uses: actions/cache@v5
-      with:
-        path: |
-          ${{ github.workspace }}/.gradle/caches
-          ${{ github.workspace }}/.gradle/wrapper
-          ${{ github.workspace }}/.m2/repository
-        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
-    - name: Configure Gradle user home
-      shell: bash
-      run: |
-        echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
-
     - name: Get current date
       id: date
       run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
       shell: bash
-
-    # Preserved from your existing action because the generated lockfile is used
-    # by Semgrep Supply Chain. This also ensures the dependency graph is present.
-    - name: Warm dependency cache and generate lockfile
-      run: ./gradlew --no-daemon dependencies --write-locks build -x test
-      shell: bash
-
-    - name: Verify Gradle dependency inputs
-      shell: bash
-      run: |
-        test -f build.gradle
-        test -f gradle.lockfile
-
-        echo "build.gradle:"
-        ls -lh build.gradle
-
-        echo
-        echo "gradle.lockfile:"
-        ls -lh gradle.lockfile
-
-        echo
-        echo "Gradle dependency graph:"
-        ./gradlew --no-daemon dependencies --configuration runtimeClasspath
 
     # Semgrep AppSec Platform supports diff-aware scanning by setting
     # SEMGREP_BASELINE_REF. Only set it for pull requests; push/scheduled runs
@@ -211,37 +175,7 @@ runs:
     - name: Summarize Semgrep SARIF results
       id: semgrep-summary
       shell: bash
-      run: |
-        set -euo pipefail
-
-        python - <<'PY'
-        import json
-        from pathlib import Path
-
-        sarif_path = Path('build/reports/semgrep/semgrep.sarif')
-        data = json.loads(sarif_path.read_text(encoding='utf-8'))
-
-        counts = {'error': 0, 'warning': 0, 'note': 0, 'total': 0}
-        for run in data.get('runs', []):
-            for result in run.get('results', []):
-                level = result.get('level', 'none')
-                counts['total'] += 1
-                if level in counts:
-                    counts[level] += 1
-
-        output = Path(__import__('os').environ['GITHUB_OUTPUT'])
-        with output.open('a', encoding='utf-8') as f:
-            f.write(f"error-count={counts['error']}\n")
-            f.write(f"warning-count={counts['warning']}\n")
-            f.write(f"note-count={counts['note']}\n")
-            f.write(f"total-findings={counts['total']}\n")
-
-        print('Semgrep findings:')
-        print(f"  error:   {counts['error']}")
-        print(f"  warning: {counts['warning']}")
-        print(f"  note:    {counts['note']}")
-        print(f"  total:   {counts['total']}")
-        PY
+      run: python3 "${{ github.action_path }}/scripts/summarize-semgrep-sarif.py"
 
     - name: Upload Semgrep AppSec Platform to GitHub Security Dashboard
       if: ${{ always() && inputs.upload-sarif == 'true' && hashFiles('build/reports/semgrep/semgrep.sarif') != '' }}
@@ -319,58 +253,7 @@ runs:
         REPOSITORY: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
       shell: bash
-      run: |
-        set -euo pipefail
-
-        python - <<'PY'
-        import json
-        import os
-        import urllib.error
-        import urllib.request
-        from pathlib import Path
-
-        token = os.environ['GH_TOKEN']
-        repository = os.environ['REPOSITORY']
-        pr_number = os.environ['PR_NUMBER']
-        api_root = f'https://api.github.com/repos/{repository}'
-
-        headers = {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': f'Bearer {token}',
-            'X-GitHub-Api-Version': '2022-11-28',
-            'User-Agent': 'semgrep-composite-action',
-        }
-
-        def request(url, method='GET', body=None):
-            data = None if body is None else json.dumps(body).encode('utf-8')
-            req = urllib.request.Request(url, data=data, headers=headers, method=method)
-            with urllib.request.urlopen(req) as response:
-                payload = response.read()
-                return response.status, json.loads(payload) if payload else None
-
-        comments = []
-        page = 1
-        while True:
-            url = f'{api_root}/issues/{pr_number}/comments?per_page=100&page={page}'
-            _, page_data = request(url)
-            comments.extend(page_data or [])
-            if not page_data or len(page_data) < 100:
-                break
-            page += 1
-
-        marker = '<!-- semgrep-security-report -->'
-        existing = next((c for c in comments if marker in c.get('body', '')), None)
-        body = Path('semgrep-comment.md').read_text(encoding='utf-8')
-
-        if existing:
-            url = f"{api_root}/issues/comments/{existing['id']}"
-            request(url, method='PATCH', body={'body': body})
-            print(f"Updated Semgrep PR comment {existing['id']}.")
-        else:
-            url = f'{api_root}/issues/{pr_number}/comments'
-            _, created = request(url, method='POST', body={'body': body})
-            print(f"Created Semgrep PR comment {created['id']}.")
-        PY
+      run: python3 "${{ github.action_path }}/scripts/update-semgrep-pr-comment.py"
 
     - name: Publish Semgrep Reports
       if: ${{ always() && inputs.upload-report == 'true' && hashFiles('build/reports/semgrep/**') != '' }}

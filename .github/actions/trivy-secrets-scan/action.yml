@@ -23,10 +23,6 @@ inputs:
   github-token:
     description: 'GitHub token used for PR comments. Permissions are configured by the calling workflow.'
     required: true
-  trivy-version:
-    description: 'Trivy CLI version to install.'
-    required: false
-    default: 'v0.73.0'
   pr-comment:
     description: 'Create or update a sticky pull request comment for Trivy secret scans.'
     required: false
@@ -97,17 +93,6 @@ runs:
         mkdir -p "${GITHUB_WORKSPACE}/.gradle"
         mkdir -p "${GITHUB_WORKSPACE}/.cache/trivy"
         mkdir -p build/reports/trivy-secrets
-
-    # Trivy CLI is installed once and reused by all secret scans below.
-    - name: Setup Trivy CLI
-      uses: aquasecurity/setup-trivy@v0.3.1
-      with:
-        version: ${{ inputs.trivy-version }}
-        cache: true
-
-    - name: Verify Trivy version
-      shell: bash
-      run: trivy --version
 
     - name: Get current date
       id: date

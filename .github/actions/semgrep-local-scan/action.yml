@@ -79,27 +79,9 @@ runs:
         #       --sarif-output=build/reports/semgrep/semgrep-local-scan-results.sarif
         #   shell: bash
 
-        - name: Cache Gradle and Maven
-          uses: actions/cache@v5
-          with:
-            path: |
-              ${{ github.workspace }}/.gradle/caches
-              ${{ github.workspace }}/.gradle/wrapper
-              ${{ github.workspace }}/.m2/repository
-            key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
-        - name: Configure Gradle user home
-          shell: bash
-          run: |
-            echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
-
         - name: Get current date
           id: date
           run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
-          shell: bash
-
-    
-        - name: Warm dependency cache
-          run: ./gradlew --no-daemon dependencies --write-locks build -x test
           shell: bash
 
         - name: Run Local Scan

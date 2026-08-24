@@ -126,7 +126,7 @@ jobs:
     # Trivy:
     #   name: Trivy Scan
     #   runs-on: ubuntu-24.04
-    #   needs: [Build]
+    #   needs: [Build, CycloneDX_SBOM]
     #   env:
     #     TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
     #     NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
