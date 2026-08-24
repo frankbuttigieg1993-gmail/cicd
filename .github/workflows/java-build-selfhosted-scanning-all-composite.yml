@@ -103,14 +103,12 @@ jobs:
           uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
           with:
             github-token: ${{ secrets.GITHUB_TOKEN }}
-
         - name: Trivy Secrets Scan
           id: trivy
           continue-on-error: true
           uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-secrets-scan@main
           with:
             github-token: ${{ secrets.GITHUB_TOKEN }}
-
         - name: Check Secrets Scan Results
           if: always()
           shell: bash

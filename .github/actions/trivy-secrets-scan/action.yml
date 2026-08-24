@@ -93,6 +93,7 @@ runs:
       run: |
         set -euo pipefail
         echo "TRIVY_CACHE_DIR=${GITHUB_WORKSPACE}/.cache/trivy" >> "$GITHUB_ENV"
+        echo "TRIVY_SECRET_CONFIG=${{ github.action_path }}/resources/trivy-secret.yaml" >> "$GITHUB_ENV"
         mkdir -p "${GITHUB_WORKSPACE}/.cache/trivy" build/reports/trivy-secrets
 
     - name: Install Trivy
