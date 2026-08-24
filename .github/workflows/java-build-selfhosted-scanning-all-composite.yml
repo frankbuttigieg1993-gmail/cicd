@@ -97,14 +97,31 @@ jobs:
           NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
           GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
         steps:
-        # - name: Gitleaks
-        #   uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
-        #   with:
-        #     github-token: ${{ secrets.GITHUB_TOKEN }}
+        - name: Gitleaks
+          id: gitleaks
+          continue-on-error: true
+          uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
+          with:
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+
         - name: Trivy Secrets Scan
+          id: trivy
+          continue-on-error: true
           uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-secrets-scan@main
           with:
             github-token: ${{ secrets.GITHUB_TOKEN }}
+
+        - name: Check Secrets Scan Results
+          if: always()
+          shell: bash
+          run: |
+            echo "Gitleaks result: ${{ steps.gitleaks.outcome }}"
+            echo "Trivy result:    ${{ steps.trivy.outcome }}"
+
+            if [[ "${{ steps.gitleaks.outcome }}" != "success" ]] || [[ "${{ steps.trivy.outcome }}" != "success" ]]; then
+              echo "::error::One or more secret scanners failed."
+              exit 1
+            fi
     # DependencyCheck:
     #   name: DependencyCheck
     #   runs-on: ubuntu-24.04
