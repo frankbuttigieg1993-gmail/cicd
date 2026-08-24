@@ -101,10 +101,14 @@ runs:
       uses: actions/cache@v5
       with:
         path: |
-          ${{ runner.home }}/.gradle/caches
-          ${{ runner.home }}/.gradle/wrapper
-          ${{ runner.home }}/.m2/repository
+          ${{ github.workspace }}/.gradle/caches
+          ${{ github.workspace }}/.gradle/wrapper
+          ${{ github.workspace }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+    - name: Configure Gradle user home
+      shell: bash
+      run: |
+        echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
 
     - name: Get current date
       id: date

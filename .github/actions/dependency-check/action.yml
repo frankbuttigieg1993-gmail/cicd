@@ -20,7 +20,7 @@ runs:
   - name: Cache Dependency-Check data
     uses: actions/cache@v5
     with:
-      path: ${{ runner.home }}/.cache/dependency-check
+      path: ${{ github.workspace }}/.cache/dependency-check
       key: odc-${{ runner.os }}-12.2.2-${{ hashFiles('**/gradle.lockfile', '**/build.gradle', '**/settings.gradle') }}
       restore-keys: |
         odc-${{ runner.os }}-12.2.2-
@@ -28,10 +28,14 @@ runs:
     uses: actions/cache@v5
     with:
       path: |
-        ${{ runner.home }}/.gradle/caches
-        ${{ runner.home }}/.gradle/wrapper
-        ${{ runner.home }}/.m2/repository
+        ${{ github.workspace }}/.gradle/caches
+        ${{ github.workspace }}/.gradle/wrapper
+        ${{ github.workspace }}/.m2/repository
       key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+  - name: Configure Gradle user home
+    shell: bash
+    run: |
+      echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
   - name: Run Gradle DependencyCheckAnalyse 
     env:
       GITHUB_TOKEN: ${{ inputs.github-token }}  

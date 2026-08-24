@@ -39,6 +39,14 @@ inputs:
     description: 'Run the historical WebGoat scanner test fixture. Disabled by default.'
     required: false
     default: 'false'
+  upload-sarif:
+    description: 'Upload SARIF reports to GitHub Code Scanning.'
+    required: false
+    default: 'true'
+  upload-report:
+    description: 'Upload Trivy reports as a workflow artifact.'
+    required: false
+    default: 'true'
 
 runs:
   using: 'composite'
@@ -49,10 +57,14 @@ runs:
       with:
         fetch-depth: 0
 
-    - name: Bootstrap
+    - name: Configure workspace-local cache directories
       shell: bash
       run: |
         set -euo pipefail
+        echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
+        echo "TRIVY_CACHE_DIR=${GITHUB_WORKSPACE}/.cache/trivy" >> "$GITHUB_ENV"
+        mkdir -p "${GITHUB_WORKSPACE}/.gradle"
+        mkdir -p "${GITHUB_WORKSPACE}/.cache/trivy"
         mkdir -p build/reports/trivy
 
     # Trivy CLI is installed once and then reused by all scans below.
@@ -78,21 +90,20 @@ runs:
       uses: actions/cache@v5
       with:
         path: |
-          ${{ runner.home }}/.gradle/caches
-          ${{ runner.home }}/.gradle/wrapper
-          ${{ runner.home }}/.m2/repository
+          ${{ env.GRADLE_USER_HOME }}/caches
+          ${{ env.GRADLE_USER_HOME }}/wrapper
+          ${{ github.workspace }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
-
     - name: Get current date
       id: date
       shell: bash
-      run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+      run: echo "date=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
 
     - name: Cache Trivy databases
       uses: actions/cache@v5
       with:
         path: |
-          ${{ runner.home }}/.cache/trivy
+          ${{ env.TRIVY_CACHE_DIR }}
         # Refresh the database cache once a day, while allowing older caches to restore.
         key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
         restore-keys: |
@@ -126,6 +137,7 @@ runs:
 
         # Scan once and save the full result as JSON
         trivy fs \
+          --cache-dir "$TRIVY_CACHE_DIR" \
           --scanners vuln,license \
           --format json \
           --output build/reports/trivy/trivy-srccode.json \
@@ -183,6 +195,7 @@ runs:
 
         # Scan once and save the full result as JSON
         trivy rootfs \
+          --cache-dir "$TRIVY_CACHE_DIR" \
           --scanners vuln,license \
           --format json \
           --output build/reports/trivy/trivy-jar-report.json \
@@ -241,6 +254,7 @@ runs:
 
         # Scan once and save the complete result as JSON
         trivy image \
+          --cache-dir "$TRIVY_CACHE_DIR" \
           --scanners vuln,license \
           --format json \
           --output build/reports/trivy/trivy-dockerimage-report.json \
@@ -278,6 +292,7 @@ runs:
 
         # Scan once and save the complete result as JSON
         trivy config \
+          --cache-dir "$TRIVY_CACHE_DIR" \
           --format json \
           --output build/reports/trivy/trivy-config-report.json \
           --timeout 10m \
@@ -316,6 +331,7 @@ runs:
           https://github.com/WebGoat/WebGoat/releases/download/v2025.3/webgoat-2025.3.jar
 
         trivy rootfs \
+          --cache-dir "$TRIVY_CACHE_DIR" \
           --scanners vuln,license \
           --ignore-unfixed \
           --format template \

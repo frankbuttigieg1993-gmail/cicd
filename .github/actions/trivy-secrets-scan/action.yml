@@ -92,6 +92,10 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
+        echo "TRIVY_CACHE_DIR=${GITHUB_WORKSPACE}/.cache/trivy" >> "$GITHUB_ENV"
+        mkdir -p "${GITHUB_WORKSPACE}/.gradle"
+        mkdir -p "${GITHUB_WORKSPACE}/.cache/trivy"
         mkdir -p build/reports/trivy-secrets
 
     # Trivy CLI is installed once and reused by all secret scans below.
@@ -108,13 +112,12 @@ runs:
     - name: Get current date
       id: date
       shell: bash
-      run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+      run: echo "date=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
 
     - name: Cache Trivy databases
       uses: actions/cache@v5
       with:
-        path: |
-          ${{ runner.home }}/.cache/trivy
+        path: ${{ github.workspace }}/.cache/trivy
         # Refresh the database cache once a day, while allowing older caches to restore.
         key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
         restore-keys: |
@@ -128,34 +131,13 @@ runs:
       if: ${{ inputs.scan-filesystem == 'true' }}
       shell: bash
       run: |
-        set +e
-        trivy fs \
-          --scanners secret \
+        bash "${{ github.action_path }}/resources/run-secret-scan.sh" \
+          fs . \
+          build/reports/trivy-secrets/trivy-filesystem-secrets.json \
+          build/reports/trivy-secrets/trivy-filesystem-secrets.sarif \
           --skip-dirs .git \
           --skip-dirs .gradle \
-          --skip-dirs build/reports \
-          --format json \
-          --output build/reports/trivy-secrets/trivy-filesystem-secrets.json \
-          --timeout 20m \
-          .
-        COMMAND_EXIT=$?
-        set -e
-
-        if [[ ! -f build/reports/trivy-secrets/trivy-filesystem-secrets.json ]]; then
-          echo "count=0" >> "$GITHUB_OUTPUT"
-          echo "scan-error=1" >> "$GITHUB_OUTPUT"
-          echo "Trivy filesystem secret scan did not produce a report (command exit ${COMMAND_EXIT})."
-          exit 0
-        fi
-
-        trivy convert --format sarif \
-          --output build/reports/trivy-secrets/trivy-filesystem-secrets.sarif \
-          build/reports/trivy-secrets/trivy-filesystem-secrets.json
-
-        COUNT=$(jq '[.Results[]?.Secrets[]?] | length' build/reports/trivy-secrets/trivy-filesystem-secrets.json)
-        echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
-        echo "scan-error=0" >> "$GITHUB_OUTPUT"
-        echo "Trivy filesystem secret findings: ${COUNT}"
+          --skip-dirs build/reports
 
     - name: Upload filesystem secrets SARIF
       if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-filesystem == 'true' && steps.fs-secrets.outputs.scan-error != '1' }}
@@ -176,51 +158,18 @@ runs:
       id: jar-prepare
       if: ${{ inputs.scan-jar == 'true' }}
       shell: bash
-      run: |
-        set -euo pipefail
-        JAR=$(find build/libs -maxdepth 1 -type f -name '*.jar' | head -n 1 || true)
-        if [[ -z "$JAR" ]]; then
-          echo "available=false" >> "$GITHUB_OUTPUT"
-          echo "No packaged JAR found under build/libs."
-          exit 0
-        fi
-        rm -rf build/trivy-secret-jar-rootfs
-        mkdir -p build/trivy-secret-jar-rootfs
-        cd build/trivy-secret-jar-rootfs
-        jar xf "../libs/$(basename "$JAR")"
-        echo "available=true" >> "$GITHUB_OUTPUT"
+      run: bash "${{ github.action_path }}/resources/prepare-jar.sh"
 
     - name: Trivy packaged JAR secret scan
       id: jar-secrets
       if: ${{ inputs.scan-jar == 'true' && steps.jar-prepare.outputs.available == 'true' }}
       shell: bash
       run: |
-        set +e
-        trivy rootfs \
-          --scanners secret \
-          --skip-dirs META-INF/maven \
-          --format json \
-          --output build/reports/trivy-secrets/trivy-jar-secrets.json \
-          --timeout 20m \
-          build/trivy-secret-jar-rootfs
-        COMMAND_EXIT=$?
-        set -e
-
-        if [[ ! -f build/reports/trivy-secrets/trivy-jar-secrets.json ]]; then
-          echo "count=0" >> "$GITHUB_OUTPUT"
-          echo "scan-error=1" >> "$GITHUB_OUTPUT"
-          echo "Trivy packaged JAR secret scan did not produce a report (command exit ${COMMAND_EXIT})."
-          exit 0
-        fi
-
-        trivy convert --format sarif \
-          --output build/reports/trivy-secrets/trivy-jar-secrets.sarif \
-          build/reports/trivy-secrets/trivy-jar-secrets.json
-
-        COUNT=$(jq '[.Results[]?.Secrets[]?] | length' build/reports/trivy-secrets/trivy-jar-secrets.json)
-        echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
-        echo "scan-error=0" >> "$GITHUB_OUTPUT"
-        echo "Trivy packaged JAR secret findings: ${COUNT}"
+        bash "${{ github.action_path }}/resources/run-secret-scan.sh" \
+          rootfs build/trivy-secret-jar-rootfs \
+          build/reports/trivy-secrets/trivy-jar-secrets.json \
+          build/reports/trivy-secrets/trivy-jar-secrets.sarif \
+          --skip-dirs META-INF/maven
 
     - name: Upload packaged JAR secrets SARIF
       if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-jar == 'true' && steps.jar-prepare.outputs.available == 'true' && steps.jar-secrets.outputs.scan-error != '1' }}
@@ -254,31 +203,10 @@ runs:
       env:
         IMAGE_REF: ${{ steps.docker-image.outputs.image-ref }}
       run: |
-        set +e
-        trivy image \
-          --scanners secret \
-          --format json \
-          --output build/reports/trivy-secrets/trivy-image-secrets.json \
-          --timeout 20m \
-          "$IMAGE_REF"
-        COMMAND_EXIT=$?
-        set -e
-
-        if [[ ! -f build/reports/trivy-secrets/trivy-image-secrets.json ]]; then
-          echo "count=0" >> "$GITHUB_OUTPUT"
-          echo "scan-error=1" >> "$GITHUB_OUTPUT"
-          echo "Trivy image secret scan did not produce a report (command exit ${COMMAND_EXIT})."
-          exit 0
-        fi
-
-        trivy convert --format sarif \
-          --output build/reports/trivy-secrets/trivy-image-secrets.sarif \
-          build/reports/trivy-secrets/trivy-image-secrets.json
-
-        COUNT=$(jq '[.Results[]?.Secrets[]?] | length' build/reports/trivy-secrets/trivy-image-secrets.json)
-        echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
-        echo "scan-error=0" >> "$GITHUB_OUTPUT"
-        echo "Trivy image secret findings: ${COUNT}"
+        bash "${{ github.action_path }}/resources/run-secret-scan.sh" \
+          image "$IMAGE_REF" \
+          build/reports/trivy-secrets/trivy-image-secrets.json \
+          build/reports/trivy-secrets/trivy-image-secrets.sarif
 
     - name: Upload Docker image secrets SARIF
       if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-image == 'true' && steps.image-secrets.outputs.scan-error != '1' }}
@@ -310,43 +238,10 @@ runs:
         JAR_COUNT: ${{ steps.secret-summary.outputs.jar }}
         IMAGE_COUNT: ${{ steps.secret-summary.outputs.image }}
         TOTAL_COUNT: ${{ steps.secret-summary.outputs.total }}
-      run: |
-        set -euo pipefail
-        FS_ERROR="${{ steps.fs-secrets.outputs.scan-error || '0' }}"
-        JAR_ERROR="${{ steps.jar-secrets.outputs.scan-error || '0' }}"
-        IMAGE_ERROR="${{ steps.image-secrets.outputs.scan-error || '0' }}"
-
-        if (( TOTAL_COUNT > 0 )); then
-          STATUS="BLOCKED"
-          MESSAGE="One or more potential secrets were detected by Trivy. Investigate and rotate any genuine credentials before merging."
-        elif [[ "$FS_ERROR" == "1" || "$JAR_ERROR" == "1" || "$IMAGE_ERROR" == "1" ]]; then
-          STATUS="SCAN ERROR"
-          MESSAGE="One or more enabled Trivy secret scans failed. Do not treat the repository as clean until the scan error is resolved."
-        else
-          STATUS="PASSED"
-          MESSAGE="No secrets were detected by the enabled Trivy secret scans."
-        fi
-
-        cat > build/reports/trivy-secrets/trivy-secrets-comment.md <<EOF
-        <!-- trivy-secrets-security-report -->
-
-        ## Trivy Secret Security Report
-
-        | Scan stage | Findings | Policy |
-        |---|---:|---|
-        | Source filesystem | ${FS_COUNT} | **BLOCK** if findings are detected |
-        | Packaged JAR | ${JAR_COUNT} | **BLOCK** if findings are detected |
-        | Container image | ${IMAGE_COUNT} | **BLOCK** if findings are detected |
-        | **Total** | **${TOTAL_COUNT}** | |
-
-        ### Secrets Gate: ${STATUS}
-
-        ${MESSAGE}
-
-        No secret values are included in this comment. Detailed findings are available in GitHub Code Scanning and the Trivy secret report artifact.
-
-        _This comment is automatically updated on subsequent scans._
-        EOF
+        FS_ERROR: ${{ steps.fs-secrets.outputs.scan-error || '0' }}
+        JAR_ERROR: ${{ steps.jar-secrets.outputs.scan-error || '0' }}
+        IMAGE_ERROR: ${{ steps.image-secrets.outputs.scan-error || '0' }}
+      run: bash "${{ github.action_path }}/resources/build-pr-comment.sh"
 
     - name: Generate Trivy secret HTML report
       if: always()
@@ -371,24 +266,7 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         REPOSITORY: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: |
-        set -euo pipefail
-        COMMENT_ID="$({
-          gh api --paginate \
-            "/repos/${REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
-            --jq '.[] | select(.body | contains("<!-- trivy-secrets-security-report -->")) | .id' \
-            | head -n 1
-        } || true)"
-
-        if [[ -n "$COMMENT_ID" ]]; then
-          gh api --method PATCH \
-            "/repos/${REPOSITORY}/issues/comments/${COMMENT_ID}" \
-            --raw-field body="$(cat build/reports/trivy-secrets/trivy-secrets-comment.md)"
-        else
-          gh api --method POST \
-            "/repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" \
-            --raw-field body="$(cat build/reports/trivy-secrets/trivy-secrets-comment.md)"
-        fi
+      run: bash "${{ github.action_path }}/resources/upsert-pr-comment.sh"
 
     - name: Determine Trivy secret gate
       id: secret-gate

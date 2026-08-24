@@ -41,7 +41,7 @@ runs:
         uses: actions/cache@v5
         with:
           path: |
-            ${{ runner.home }}/.cache/trivy
+            ${{ github.workspace }}/.cache/trivy
           # Refresh the database cache once a day, while allowing older caches to restore.
           key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
           restore-keys: |
