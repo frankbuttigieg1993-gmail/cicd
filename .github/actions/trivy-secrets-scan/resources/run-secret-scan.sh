@@ -7,7 +7,18 @@ JSON_OUTPUT="${3:?JSON output path is required}"
 SARIF_OUTPUT="${4:?SARIF output path is required}"
 shift 4
 
-mkdir -p "$(dirname "$JSON_OUTPUT")"
+mkdir -p "$(dirname "$JSON_OUTPUT")" "$(dirname "$SARIF_OUTPUT")"
+
+ERROR_OUTPUT="${JSON_OUTPUT%.json}.error.log"
+rm -f "$JSON_OUTPUT" "$SARIF_OUTPUT" "$ERROR_OUTPUT"
+
+if ! command -v trivy >/dev/null 2>&1; then
+  echo "::error::Trivy CLI is not available on PATH."
+  echo "count=0" >> "$GITHUB_OUTPUT"
+  echo "scan-error=1" >> "$GITHUB_OUTPUT"
+  echo "command-exit-code=127" >> "$GITHUB_OUTPUT"
+  exit 0
+fi
 
 set +e
 trivy "$SCAN_TYPE" \
@@ -17,24 +28,54 @@ trivy "$SCAN_TYPE" \
   --format json \
   --output "$JSON_OUTPUT" \
   --timeout 20m \
-  "$TARGET"
+  "$TARGET" \
+  2>"$ERROR_OUTPUT"
 COMMAND_EXIT=$?
 set -e
 
-if [[ ! -f "$JSON_OUTPUT" ]]; then
+echo "command-exit-code=${COMMAND_EXIT}" >> "$GITHUB_OUTPUT"
+
+if [[ "$COMMAND_EXIT" -ne 0 || ! -s "$JSON_OUTPUT" ]]; then
   echo "count=0" >> "$GITHUB_OUTPUT"
   echo "scan-error=1" >> "$GITHUB_OUTPUT"
-  echo "Trivy ${SCAN_TYPE} secret scan did not produce a report (command exit ${COMMAND_EXIT})."
+  echo "::error::Trivy ${SCAN_TYPE} secret scan failed with exit code ${COMMAND_EXIT}."
+
+  if [[ -s "$ERROR_OUTPUT" ]]; then
+    echo "----- Trivy error output -----"
+    cat "$ERROR_OUTPUT"
+    echo "------------------------------"
+  fi
   exit 0
 fi
 
-trivy convert \
-  --format sarif \
-  --cache-dir "$TRIVY_CACHE_DIR" \
-  --output "$SARIF_OUTPUT" \
-  "$JSON_OUTPUT"
+COUNT="$(python3 - "$JSON_OUTPUT" <<'PY'
+import json
+import sys
 
-COUNT=$(jq '[.Results[]?.Secrets[]?] | length' "$JSON_OUTPUT")
+with open(sys.argv[1], encoding="utf-8") as f:
+    data = json.load(f)
+
+print(sum(len(result.get("Secrets") or []) for result in data.get("Results") or []))
+PY
+)"
+
 echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
 echo "scan-error=0" >> "$GITHUB_OUTPUT"
-echo "Trivy secret findings: ${COUNT}"
+
+set +e
+trivy "$SCAN_TYPE" \
+  --cache-dir "$TRIVY_CACHE_DIR" \
+  --scanners secret \
+  "$@" \
+  --format sarif \
+  --output "$SARIF_OUTPUT" \
+  --timeout 20m \
+  "$TARGET" \
+  2>>"$ERROR_OUTPUT"
+SARIF_EXIT=$?
+set -e
+
+if [[ "$SARIF_EXIT" -ne 0 || ! -s "$SARIF_OUTPUT" ]]; then
+  echo "::warning::Trivy JSON scan succeeded, but SARIF generation failed with exit code ${SARIF_EXIT}."
+  rm -f "$SARIF_OUTPUT"
+fi
