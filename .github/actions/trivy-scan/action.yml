@@ -56,11 +56,7 @@ runs:
     - name: Configure workspace-local cache directories
       shell: bash
       run: |
-        set -euo pipefail
-        echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
-        echo "TRIVY_CACHE_DIR=${GITHUB_WORKSPACE}/.cache/trivy" >> "$GITHUB_ENV"
-        mkdir -p "${GITHUB_WORKSPACE}/.gradle"
-        mkdir -p "${GITHUB_WORKSPACE}/.cache/trivy"
+        echo "TRIVY_CACHE_DIR=${HOME}/.gradle-runners/${{ runner.name }}.cache/trivy" >> "$GITHUB_ENV"
         mkdir -p build/reports/trivy
 
     # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included.
@@ -76,27 +72,20 @@ runs:
         name: sbom-reports
         path: build/reports/cyclonedx
 
-    - name: Cache Gradle and Maven
-      uses: actions/cache@v5
-      with:
-        path: |
-          ${{ env.GRADLE_USER_HOME }}/caches
-          ${{ env.GRADLE_USER_HOME }}/wrapper
-        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
     - name: Get current date
       id: date
       shell: bash
       run: echo "date=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
 
-    - name: Cache Trivy databases
-      uses: actions/cache@v5
-      with:
-        path: |
-          ${{ env.TRIVY_CACHE_DIR }}
-        # Refresh the database cache once a day, while allowing older caches to restore.
-        key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
-        restore-keys: |
-          trivy-db-${{ runner.os }}-
+    # - name: Cache Trivy databases
+    #   uses: actions/cache@v5
+    #   with:
+    #     path: |
+    #       ${{ env.TRIVY_CACHE_DIR }}
+    #     # Refresh the database cache once a day, while allowing older caches to restore.
+    #     key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
+    #     restore-keys: |
+    #       trivy-db-${{ runner.os }}-
 
 # This will scan all components in the CyloneDX SBOM which includes all configuration options (not just runtime) because it is a complete SBOM
 # Trivy scans the project's dependency manifests/lock data for vulnerabilities.

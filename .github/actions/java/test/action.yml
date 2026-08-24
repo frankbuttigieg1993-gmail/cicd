@@ -24,17 +24,25 @@ runs:
       with:
         name: build
         path: .
-    - name: Cache Gradle and Maven
-      uses: actions/cache@v5
-      with:
-        path: |
-          ${{ github.workspace }}/.gradle/caches
-          ${{ github.workspace }}/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
-    - name: Configure Gradle user home
+# We have 3 runners on a self hosted VM. We need relative gradle and trivy directories to avoid conflicts. We cater for this through 'cache directories' step above
+# This configuration is useful when you aren't using self hosted slaves (eg: github runners or ephemeral slaves)
+
+      # - name: Cache Gradle and Maven
+      #   uses: actions/cache@v5
+      #   with:
+      #     path: |
+      #       ~/.gradle/caches
+      #       ~/.gradle/wrapper
+      #       ~/m2/repository
+      #     key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+
+      # Setup Cache Directories for Self Hosted Runners. You don't want runners to share the gradle cache directory. 
+      # Gradle is smart at managing task dependencies and perform gradle tasks simulatenously that it's aware of however it won't be aware of other gradle tasks being managed by other runners 
+      # Therefore a separate gradle cache per runner makes the most sense since only 1 job can execute at any given time per runner. 
+    - name: Configure cache directories
       shell: bash
       run: |
-        echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
+        echo "GRADLE_USER_HOME=${HOME}/.gradle-runners/${{ runner.name }}.cache/gradle" >> "$GITHUB_ENV"
     - name: Run Tests and Coverage
       run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue
       continue-on-error: true

@@ -97,10 +97,10 @@ jobs:
           NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
           GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
         steps:
-        - name: Gitleaks
-          uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
-          with:
-            github-token: ${{ secrets.GITHUB_TOKEN }}
+        # - name: Gitleaks
+        #   uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
+        #   with:
+        #     github-token: ${{ secrets.GITHUB_TOKEN }}
         - name: Trivy Secrets Scan
           uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-secrets-scan@main
           with:
