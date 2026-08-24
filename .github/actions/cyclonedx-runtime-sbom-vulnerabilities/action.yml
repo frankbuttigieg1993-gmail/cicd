@@ -5,14 +5,6 @@ inputs:
   github-token:
     description: 'The github token'
     required: true
-  sonar-token:
-    description: 'The sonar token'
-    required: true
-  trivy-version:
-    description: 'Trivy CLI version'
-    required: false
-    default: '0.72.0'
-# pipx install cyclonedx-bom
 
 runs:
   using: 'composite'
@@ -32,35 +24,6 @@ runs:
         shell: bash
         run: |
           echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
-          echo "TRIVY_CACHE_DIR=${GITHUB_WORKSPACE}/.cache/trivy" >> "$GITHUB_ENV"
-
-      # Use a daily Trivy DB key. If today's cache does not exist, actions/cache
-      # restores the newest cache for this OS and Trivy can update it as needed.
-      - name: Get Trivy database cache date
-        id: trivy-cache-date
-        shell: bash
-        run: |
-          echo "date=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Trivy Databases
-        uses: actions/cache@v5
-        with:
-          path: ${{ github.workspace }}/.cache/trivy
-          key: trivy-db-${{ runner.os }}-${{ steps.trivy-cache-date.outputs.date }}
-          restore-keys: |
-            trivy-db-${{ runner.os }}-
-
-      # Trivy CLI is installed once and then reused by all scans below.
-      # The setup action version is deliberately independent from the Trivy CLI version.
-      - name: Setup Trivy CLI
-        uses: aquasecurity/setup-trivy@v0.3.1
-        with:
-          version: ${{ inputs.trivy-version }}
-          cache: true
-
-      - name: Verify Trivy version
-        run: trivy --version
-        shell: bash
 
       - name: Cache Gradle and Maven
         uses: actions/cache@v5
@@ -68,24 +31,15 @@ runs:
           path: |
             ${{ github.workspace }}/.gradle/caches
             ${{ github.workspace }}/.gradle/wrapper
-            ${{ github.workspace }}/.m2/repository
           key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
       # Generate a CycloneDX dependency graph. The custom source-code HTML report
       # uses this graph to classify vulnerable Java components as direct or transitive.
-      - name: Warm dependency cache and generate SBOMs
+      - name: Generate SBOM
         shell: bash
         run: |
           set -euo pipefail
           ./gradlew --no-daemon \
-            cyclonedxRuntimeBom \
-            cyclonedxAllConfigsBom \
-            cyclonedxBuildEnvironmentBom \
-            dependencies \
-            build \
-            -x test \
-            -info \
-            --scan \
-            --write-locks
+      cyclonedxRuntimeBom
 
 ##############################  Runtime SBOM Severity Level 6 Check #########################################################
 

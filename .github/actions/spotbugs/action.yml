@@ -5,18 +5,6 @@ inputs:
   github-token:
     description: 'GitHub token used for SARIF upload and PR comments.'
     required: true
-  findsecbugs-version:
-    description: 'FindSecBugs plugin version.'
-    required: false
-    default: '1.14.0'
-  effort:
-    description: 'SpotBugs effort: MIN, DEFAULT, or MAX.'
-    required: false
-    default: 'MAX'
-  report-level:
-    description: 'SpotBugs report confidence: HIGH, MEDIUM, or LOW.'
-    required: false
-    default: 'LOW'
   upload-sarif:
     description: 'Upload SARIF to GitHub Code Scanning.'
     required: false
@@ -67,7 +55,6 @@ runs:
         path: |
           ${{ github.workspace }}/.gradle/caches
           ${{ github.workspace }}/.gradle/wrapper
-          ${{ github.workspace }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
     - name: Configure Gradle user home
       shell: bash
@@ -76,54 +63,14 @@ runs:
 
     - name: Build production classes
       shell: bash
-      run: ./gradlew --no-daemon dependencies classes --write-locks
-
-    - name: Create SpotBugs init script
-      shell: bash
-      env:
-        FINDSECBUGS_VERSION: ${{ inputs.findsecbugs-version }}
-        SPOTBUGS_EFFORT: ${{ inputs.effort }}
-        SPOTBUGS_REPORT_LEVEL: ${{ inputs.report-level }}
-      run: |
-        set -euo pipefail
-        cat > "$RUNNER_TEMP/spotbugs-init.gradle" <<'EOF'
-        allprojects {
-            plugins.withId('com.github.spotbugs') {
-                dependencies {
-                    spotbugsPlugins "com.h3xstream.findsecbugs:findsecbugs-plugin:${System.getenv('FINDSECBUGS_VERSION')}"
-                }
-                spotbugs {
-                    ignoreFailures = true
-                    effort = com.github.spotbugs.snom.Effort.valueOf(System.getenv('SPOTBUGS_EFFORT'))
-                    reportLevel = com.github.spotbugs.snom.Confidence.valueOf(System.getenv('SPOTBUGS_REPORT_LEVEL'))
-                    showStackTraces = true
-                    showProgress = false
-                    maxHeapSize = '1g'
-                    reportsDir = file("$buildDir/reports/spotbugs")
-                }
-                tasks.matching { it.name == 'spotbugsMain' }.configureEach {
-                    reports {
-                        xml {
-                            required = true
-                            outputLocation = file("$buildDir/reports/spotbugs/main/spotbugs.xml")
-                        }
-                        html {
-                            required = true
-                            outputLocation = file("$buildDir/reports/spotbugs/main/spotbugs.html")
-                            stylesheet = 'fancy-hist.xsl'
-                        }
-                    }
-                }
-            }
-        }
-        EOF
+      run: ./gradlew --no-daemon dependencies classes  
 
     - name: Run SpotBugs and FindSecBugs
       id: spotbugs
       shell: bash
       run: |
         set +e
-        ./gradlew --no-daemon spotbugsMain -I "$RUNNER_TEMP/spotbugs-init.gradle"
+        ./gradlew --no-daemon spotbugsMain
         GRADLE_EXIT_CODE=$?
         set -e
         echo "gradle-exit-code=${GRADLE_EXIT_CODE}" >> "$GITHUB_OUTPUT"

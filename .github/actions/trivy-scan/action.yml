@@ -23,10 +23,6 @@ name: 'Trivy Security Scan'
 description: 'Trivy dependency, license, packaged JAR, container, and configuration scanning with SARIF and workflow artifacts.'
 
 inputs:
-  trivy-version:
-    description: 'Trivy CLI version to install.'
-    required: false
-    default: 'v0.73.0'
   image-ref:
     description: 'Container image reference to scan'
     required: false
@@ -67,18 +63,6 @@ runs:
         mkdir -p "${GITHUB_WORKSPACE}/.cache/trivy"
         mkdir -p build/reports/trivy
 
-    # Trivy CLI is installed once and then reused by all scans below.
-    # The setup action version is deliberately independent from the Trivy CLI version.
-    - name: Setup Trivy CLI
-      uses: aquasecurity/setup-trivy@v0.3.1
-      with:
-        version: ${{ inputs.trivy-version }}
-        cache: true
-
-    - name: Verify Trivy version
-      shell: bash
-      run: trivy --version
-
     # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included.
     - name: Download Build Artefact
       uses: actions/download-artifact@v8
@@ -86,13 +70,18 @@ runs:
         name: build
         path: .
 
+    - name: Download SBOM Reports
+      uses: actions/download-artifact@v8
+      with:
+        name: sbom-reports
+        path: build/reports/cyclonedx
+
     - name: Cache Gradle and Maven
       uses: actions/cache@v5
       with:
         path: |
           ${{ env.GRADLE_USER_HOME }}/caches
           ${{ env.GRADLE_USER_HOME }}/wrapper
-          ${{ github.workspace }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
     - name: Get current date
       id: date
@@ -108,23 +97,6 @@ runs:
         key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
         restore-keys: |
           trivy-db-${{ runner.os }}-
-
-    # Generate a CycloneDX dependency graph. The custom source-code HTML report
-    # uses this graph to classify vulnerable Java components as direct or transitive.
-    - name: Warm dependency cache and generate SBOMs
-      shell: bash
-      run: |
-        set -euo pipefail
-        ./gradlew --no-daemon \
-          cyclonedxRuntimeBom \
-          cyclonedxAllConfigsBom \
-          cyclonedxBuildEnvironmentBom \
-          dependencies \
-          build \
-          -x test \
-          -info \
-          --scan \
-          --write-locks
 
 # This will scan all components in the CyloneDX SBOM which includes all configuration options (not just runtime) because it is a complete SBOM
 # Trivy scans the project's dependency manifests/lock data for vulnerabilities.

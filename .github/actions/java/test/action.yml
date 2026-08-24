@@ -30,7 +30,6 @@ runs:
         path: |
           ${{ github.workspace }}/.gradle/caches
           ${{ github.workspace }}/.gradle/wrapper
-          ${{ github.workspace }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
     - name: Configure Gradle user home
       shell: bash
