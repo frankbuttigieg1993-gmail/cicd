@@ -17,7 +17,6 @@ inputs:
 runs:
   using: 'composite'
   steps:
-#    Every shell step in a composite action MUST explicitly define the shell
       - name: Checkout
         uses: actions/checkout@v6
       - name: Download Build Artefact
