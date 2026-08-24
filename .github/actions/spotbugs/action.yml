@@ -67,7 +67,7 @@ runs:
 
     - name: Build production classes
       shell: bash
-      run: ./gradlew --no-daemon classes
+      run: ./gradlew --no-daemon dependencies classes --write-locks
 
     - name: Create SpotBugs init script
       shell: bash

@@ -56,7 +56,7 @@ inputs:
     required: false
     default: 'true'
   image-ref:
-    description: 'Container image reference to scan. If empty and scan-image is true, the action builds java-application:${{ github.sha }}.'
+    description: 'Container image reference to scan''
     required: false
     default: ''
   build-artifact-name:
