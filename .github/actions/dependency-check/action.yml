@@ -20,28 +20,31 @@ runs:
   - name: Cache Dependency-Check data
     uses: actions/cache@v5
     with:
-      path: ${{ github.workspace }}/.cache/dependency-check
+      path: ~/.cache/dependency-check
       key: odc-${{ runner.os }}-12.2.2-${{ hashFiles('**/gradle.lockfile', '**/build.gradle', '**/settings.gradle') }}
       restore-keys: |
         odc-${{ runner.os }}-12.2.2-
-  - name: Cache Gradle and Maven
-    uses: actions/cache@v5
-    with:
-      path: |
-        ${{ github.workspace }}/.gradle/caches
-        ${{ github.workspace }}/.gradle/wrapper
-        ${{ github.workspace }}/.m2/repository
-      key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
-  - name: Configure Gradle user home
+  # - name: Cache Gradle and Maven
+  #   uses: actions/cache@v5
+  #   with:
+  #     path: |
+  #       ${{ github.workspace }}/.gradle/caches
+  #       ${{ github.workspace }}/.gradle/wrapper
+  #       ${{ github.workspace }}/.m2/repository
+  #     key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+      # Setup Cache Directories for Self Hosted Runners. You don't want runners to share the gradle cache directory. 
+      # Gradle is smart at managing task dependencies and perform gradle tasks simulatenously that it's aware of however it won't be aware of other gradle tasks being managed by other runners 
+      # Therefore a separate gradle cache per runner makes the most sense since only 1 job can execute at any given time per runner. 
+  - name: Configure cache directories
     shell: bash
     run: |
-      echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
+      echo "GRADLE_USER_HOME=${HOME}/.gradle-runners/${{ runner.name }}.cache/gradle" >> "$GITHUB_ENV"
   - name: Run Gradle DependencyCheckAnalyse 
     env:
       GITHUB_TOKEN: ${{ inputs.github-token }}  
       NODE_TLS_REJECT_UNAUTHORIZED: "0" 
 #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
-    run: ./gradlew build dependencies dependencyCheckAnalyze -info --scan -x test
+    run: ./gradlew  dependencyCheckAnalyze 
     shell: bash 
   - name: Publish Report
     uses: actions/upload-artifact@master
