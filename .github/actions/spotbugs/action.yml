@@ -100,7 +100,7 @@ runs:
         fi
 
     - name: Upload SpotBugs SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && steps.spotbugs.outputs.sarif-generated == 'true' }}
+      if: ${{ always() && inputs.upload-sarif == 'true' && steps.spotbugs.outputs.sarif-generated == 'true' && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/spotbugs/main/spotbugs.sarif
