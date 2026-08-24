@@ -61,6 +61,19 @@ runs:
         set -euo pipefail
         mkdir -p build/reports/spotbugs/main
 
+    - name: Cache Gradle and Maven
+      uses: actions/cache@v5
+      with:
+        path: |
+          ${{ github.workspace }}/.gradle/caches
+          ${{ github.workspace }}/.gradle/wrapper
+          ${{ github.workspace }}/.m2/repository
+        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+    - name: Configure Gradle user home
+      shell: bash
+      run: |
+        echo "GRADLE_USER_HOME=${GITHUB_WORKSPACE}/.gradle" >> "$GITHUB_ENV"
+
     - name: Build production classes
       shell: bash
       run: ./gradlew --no-daemon dependencies classes --write-locks

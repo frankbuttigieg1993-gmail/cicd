@@ -68,9 +68,9 @@ runs:
       uses: actions/cache@v5
       with:
         path: |
-          ${{ runner.home }}/.gradle/caches
-          ${{ runner.home }}/.gradle/wrapper
-          ${{ runner.home }}/.m2/repository
+          ${{ github.workspace }}/.gradle/caches
+          ${{ github.workspace }}/.gradle/wrapper
+          ${{ github.workspace }}/.m2/repository
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
 
     - name: Get current date
@@ -82,7 +82,7 @@ runs:
       uses: actions/cache@v5
       with:
         path: |
-          ${{ runner.home }}/.cache/trivy
+          ${{ github.workspace }}/.cache/trivy
         # Refresh the database cache once a day, while allowing older caches to restore.
         key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
         restore-keys: |

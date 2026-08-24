@@ -1,0 +1,241 @@
+set -euo pipefail
+
+command -v curl >/dev/null 2>&1 || { echo '::error::curl is required on the self-hosted runner'; exit 1; }
+command -v jq >/dev/null 2>&1 || { echo '::error::jq is required on the self-hosted runner'; exit 1; }
+
+REPORT_FILE='build/sonar/report-task.txt'
+[[ -f "$REPORT_FILE" ]] || { echo "::error::SonarQube report file not found: $REPORT_FILE"; exit 1; }
+
+PROJECT_KEY="$(grep '^projectKey=' "$REPORT_FILE" | cut -d= -f2-)"
+DASHBOARD_URL="$(grep '^dashboardUrl=' "$REPORT_FILE" | cut -d= -f2-)"
+CE_TASK_ID="$(grep '^ceTaskId=' "$REPORT_FILE" | cut -d= -f2-)"
+
+[[ -n "$PROJECT_KEY" && -n "$CE_TASK_ID" ]] || {
+  echo '::error::Unable to read projectKey or ceTaskId from report-task.txt'
+  exit 1
+}
+
+echo "SonarQube project: ${PROJECT_KEY}"
+echo "SonarQube CE task: ${CE_TASK_ID}"
+
+# Wait for SonarQube Compute Engine processing. Do not infer the gate from
+# a GitHub step outcome; wait until SonarQube has produced the analysis.
+ANALYSIS_ID=''
+CE_STATUS=''
+for attempt in $(seq 1 120); do
+  CE_RESPONSE="$(curl --fail --silent --show-error \
+    -u "${SONAR_TOKEN}:" \
+    "${SONAR_HOST_URL}/api/ce/task?id=${CE_TASK_ID}")"
+
+  CE_STATUS="$(jq -r '.task.status // empty' <<<"$CE_RESPONSE")"
+  ANALYSIS_ID="$(jq -r '.task.analysisId // empty' <<<"$CE_RESPONSE")"
+  SONAR_BRANCH="$(jq -r '.task.branch // empty' <<<"$CE_RESPONSE")"
+  SONAR_BRANCH_TYPE="$(jq -r '.task.branchType // empty' <<<"$CE_RESPONSE")"
+
+  case "$CE_STATUS" in
+    SUCCESS)
+      [[ -n "$ANALYSIS_ID" ]] || {
+        echo '::error::SonarQube CE task succeeded but returned no analysisId.'
+        exit 1
+      }
+      break
+      ;;
+    FAILED|CANCELED)
+      echo "::error::SonarQube Compute Engine task finished with status ${CE_STATUS}."
+      jq . <<<"$CE_RESPONSE"
+      exit 1
+      ;;
+    PENDING|IN_PROGRESS)
+      sleep 5
+      ;;
+    *)
+      echo "Waiting for SonarQube CE task; status=${CE_STATUS:-UNKNOWN} (attempt ${attempt}/120)"
+      sleep 5
+      ;;
+  esac
+done
+
+[[ "$CE_STATUS" == 'SUCCESS' && -n "$ANALYSIS_ID" ]] || {
+  echo '::error::Timed out waiting for SonarQube Compute Engine processing.'
+  exit 1
+}
+
+echo "SonarQube branch: ${SONAR_BRANCH:-N/A}"
+echo "SonarQube branch type: ${SONAR_BRANCH_TYPE:-N/A}"
+echo "SonarQube analysis: ${ANALYSIS_ID}"
+
+# This response is the sole authority for the Quality Gate result.
+GATE_RESPONSE="$(curl --fail --silent --show-error \
+  -u "${SONAR_TOKEN}:" \
+  --get \
+  --data-urlencode "analysisId=${ANALYSIS_ID}" \
+  "${SONAR_HOST_URL}/api/qualitygates/project_status")"
+
+GATE_STATUS="$(jq -r '.projectStatus.status // empty' <<<"$GATE_RESPONSE")"
+GATE_STATUS="$(tr '[:lower:]' '[:upper:]' <<<"$GATE_STATUS")"
+NEW_CODE_MODE="$(jq -r '.projectStatus.period.mode // "N/A"' <<<"$GATE_RESPONSE")"
+NEW_CODE_DATE="$(jq -r '.projectStatus.period.date // "N/A"' <<<"$GATE_RESPONSE")"
+
+# Fail closed. An empty, malformed or unexpected response must never be
+# presented as PASSED.
+case "$GATE_STATUS" in
+  OK|ERROR|WARN|NONE) ;;
+  *)
+    echo "::error::Unable to determine SonarQube Quality Gate status for analysis ${ANALYSIS_ID}."
+    echo 'SonarQube quality-gate response:'
+    jq . <<<"$GATE_RESPONSE" || printf '%s\n' "$GATE_RESPONSE"
+    exit 1
+    ;;
+esac
+
+echo "SonarQube New Code mode: ${NEW_CODE_MODE}"
+echo "SonarQube New Code baseline date: ${NEW_CODE_DATE}"
+echo "Authoritative SonarQube Quality Gate status: ${GATE_STATUS}"
+echo "gate-status=${GATE_STATUS}" >> "$GITHUB_OUTPUT"
+echo "analysis-id=${ANALYSIS_ID}" >> "$GITHUB_OUTPUT"
+
+METRICS_RESPONSE="$(curl --fail --silent --show-error \
+  -u "${SONAR_TOKEN}:" \
+  --get \
+  --data-urlencode "component=${PROJECT_KEY}" \
+  --data-urlencode "branch=${SONAR_BRANCH}" \
+  --data-urlencode 'metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density' \
+  "${SONAR_HOST_URL}/api/measures/component")"
+
+case "$GATE_STATUS" in
+  OK)    GATE_HEADING='### ✅ Quality Gate: PASSED' ;;
+  ERROR) GATE_HEADING='### ❌ Quality Gate: FAILED' ;;
+  WARN)  GATE_HEADING='### ⚠️ Quality Gate: WARNING' ;;
+  NONE)  GATE_HEADING='### ⚪ Quality Gate: NONE' ;;
+esac
+
+metric_value() {
+  local key="$1"
+  jq -r --arg key "$key" \
+    '.component.measures[]? | select(.metric == $key) | .value' \
+    <<<"$METRICS_RESPONSE" | head -n1
+}
+
+BUGS="$(metric_value bugs)"; BUGS="${BUGS:-N/A}"
+VULNERABILITIES="$(metric_value vulnerabilities)"; VULNERABILITIES="${VULNERABILITIES:-N/A}"
+CODE_SMELLS="$(metric_value code_smells)"; CODE_SMELLS="${CODE_SMELLS:-N/A}"
+COVERAGE="$(metric_value coverage)"; COVERAGE="${COVERAGE:-N/A}"
+DUPLICATIONS="$(metric_value duplicated_lines_density)"; DUPLICATIONS="${DUPLICATIONS:-N/A}"
+[[ "$COVERAGE" != 'N/A' ]] && COVERAGE="${COVERAGE}%"
+[[ "$DUPLICATIONS" != 'N/A' ]] && DUPLICATIONS="${DUPLICATIONS}%"
+
+COMMENT_FILE="${RUNNER_TEMP}/sonarqube-report.md"
+{
+  echo '<!-- sonarqube-analysis-comment -->'
+  echo '## 🔍 SonarQube Analysis'
+  echo
+  echo "**Branch:** \`${SONAR_BRANCH:-N/A}\`"
+  echo "**Branch type:** \`${SONAR_BRANCH_TYPE:-N/A}\`"
+  echo "**New Code definition:** \`${NEW_CODE_MODE}\`"
+  [[ "$NEW_CODE_DATE" != 'N/A' ]] && echo "**New Code baseline:** \`${NEW_CODE_DATE}\`"
+  echo
+  echo "$GATE_HEADING"
+  echo
+  echo '| Metric | Value |'
+  echo '|---|---:|'
+  echo "| 🐛 Bugs | ${BUGS} |"
+  echo "| 🔓 Vulnerabilities | ${VULNERABILITIES} |"
+  echo "| 🧹 Code Smells | ${CODE_SMELLS} |"
+  echo "| 📊 Coverage | ${COVERAGE} |"
+  echo "| 📋 Duplications | ${DUPLICATIONS} |"
+  echo
+  echo '### Quality Gate Conditions'
+  echo
+  echo '| Condition | Actual | Threshold | Result |'
+  echo '|---|---:|---:|:---:|'
+
+  CONDITION_COUNT="$(jq '.projectStatus.conditions // [] | length' <<<"$GATE_RESPONSE")"
+  if [[ "$CONDITION_COUNT" -eq 0 ]]; then
+    echo '| _No condition details returned by this SonarQube API response_ | — | — | — |'
+  else
+    jq -r '
+      def friendly:
+        if . == "new_coverage" then "New Coverage"
+        elif . == "coverage" then "Coverage"
+        elif . == "new_duplicated_lines_density" then "New Duplications"
+        elif . == "duplicated_lines_density" then "Duplications"
+        elif . == "new_violations" then "New Issues"
+        elif . == "new_bugs" then "New Bugs"
+        elif . == "bugs" then "Bugs"
+        elif . == "new_vulnerabilities" then "New Vulnerabilities"
+        elif . == "vulnerabilities" then "Vulnerabilities"
+        elif . == "new_code_smells" then "New Code Smells"
+        elif . == "code_smells" then "Code Smells"
+        else gsub("_"; " ")
+        end;
+      def threshold:
+        if .comparator == "GT" then "≤ " + (.errorThreshold // "N/A")
+        elif .comparator == "LT" then "≥ " + (.errorThreshold // "N/A")
+        elif .comparator == "EQ" then "= " + (.errorThreshold // "N/A")
+        elif .comparator == "NE" then "≠ " + (.errorThreshold // "N/A")
+        else (.errorThreshold // "N/A")
+        end;
+      .projectStatus.conditions[] |
+      "| \(.metricKey | friendly) | \(.actualValue // "N/A") | \(threshold) | \(if .status == "OK" then "✅" elif .status == "ERROR" then "❌" else "⚠️" end) |"
+    ' <<<"$GATE_RESPONSE"
+  fi
+
+  echo
+  [[ -n "$DASHBOARD_URL" ]] && echo "[View full analysis in SonarQube](${DASHBOARD_URL})"
+  echo
+  echo "_Analysis: \`${ANALYSIS_ID}\` · Commit: \`${GITHUB_SHA:0:7}\`_"
+} > "$COMMENT_FILE"
+
+if [[ "$EVENT_NAME" == 'pull_request' ]]; then
+  COMMENTS_URL="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments"
+  EXISTING_COMMENT_ID="$(
+    curl --fail --silent --show-error \
+      -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+      -H 'Accept: application/vnd.github+json' \
+      "${COMMENTS_URL}?per_page=100" |
+    jq -r '[.[] | select(.body | contains("<!-- sonarqube-analysis-comment -->"))] | last | .id // empty'
+  )"
+
+  BODY_JSON="$(jq -Rs '{body: .}' < "$COMMENT_FILE")"
+  if [[ -n "$EXISTING_COMMENT_ID" ]]; then
+    curl --fail --silent --show-error --request PATCH \
+      -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+      -H 'Accept: application/vnd.github+json' \
+      -H 'Content-Type: application/json' \
+      "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING_COMMENT_ID}" \
+      --data "$BODY_JSON" >/dev/null
+  else
+    curl --fail --silent --show-error --request POST \
+      -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+      -H 'Accept: application/vnd.github+json' \
+      -H 'Content-Type: application/json' \
+      "$COMMENTS_URL" --data "$BODY_JSON" >/dev/null
+  fi
+  echo 'SonarQube PR result published successfully.'
+
+elif [[ "$EVENT_NAME" == 'push' ]]; then
+  cat "$COMMENT_FILE" >> "$GITHUB_STEP_SUMMARY"
+  echo "SonarQube branch summary published successfully for ${GIT_REF}."
+
+  case "$GATE_STATUS" in
+    OK) STATE='success'; DESCRIPTION='SonarQube Quality Gate passed' ;;
+    ERROR) STATE='failure'; DESCRIPTION='SonarQube Quality Gate failed' ;;
+    WARN) STATE='failure'; DESCRIPTION='SonarQube Quality Gate warning' ;;
+    NONE) STATE='error'; DESCRIPTION='SonarQube Quality Gate not configured' ;;
+  esac
+
+  STATUS_JSON="$(jq -n \
+    --arg state "$STATE" \
+    --arg target_url "$DASHBOARD_URL" \
+    --arg description "$DESCRIPTION" \
+    --arg context 'SonarQube Quality Gate' \
+    '{state:$state,target_url:$target_url,description:$description,context:$context}')"
+
+  curl --fail --silent --show-error --request POST \
+    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+    -H 'Accept: application/vnd.github+json' \
+    -H 'Content-Type: application/json' \
+    "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+    --data "$STATUS_JSON" >/dev/null
+  echo 'SonarQube commit status published successfully.'
+fi
