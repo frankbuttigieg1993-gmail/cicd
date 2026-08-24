@@ -34,7 +34,7 @@ runs:
         NODE_TLS_REJECT_UNAUTHORIZED: "0" 
     #        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
 #      run: ./gradlew compileJava compileTestJava build -x test cyclonedxBom cyclonedxDirectBomRuntime dependencies -info --scan --write-locks
-      run: ./gradlew build -x test -info --scan
+      run: ./gradlew assemble -info
       shell: bash 
     - name: Upload Build Artefact
       uses: actions/upload-artifact@v7
