@@ -24,6 +24,7 @@ set +e
 trivy "$SCAN_TYPE" \
   --cache-dir "$TRIVY_CACHE_DIR" \
   --scanners secret \
+  --secret-config "$TRIVY_SECRET_CONFIG" \
   --secret-config "${TRIVY_SECRET_CONFIG:?TRIVY_SECRET_CONFIG is required}" \
   "$@" \
   --format json \
@@ -67,6 +68,7 @@ set +e
 trivy "$SCAN_TYPE" \
   --cache-dir "$TRIVY_CACHE_DIR" \
   --scanners secret \
+  --secret-config "$TRIVY_SECRET_CONFIG" \
   --secret-config "${TRIVY_SECRET_CONFIG:?TRIVY_SECRET_CONFIG is required}" \
   "$@" \
   --format sarif \

@@ -1,12 +1,13 @@
-# Detailed Trivy secret HTML report
+# Trivy secret scanner YAML fix
 
-Changes:
-- The composite action passes filesystem, packaged-JAR and image JSON reports into the HTML generator.
-- The HTML lists severity, title, rule ID, category, scan stage, target/file and line range.
-- Each finding has an expandable investigation section with remediation guidance.
-- Actual secret values and matching source-code excerpts are deliberately omitted from HTML.
-- The existing artifact upload already uploads `build/reports/trivy-secrets/`, so the detailed HTML is included automatically.
-- JSON and SARIF remain available for machine processing and GitHub Code Scanning.
+This revision:
+- replaces YAML block-scalar regexes with simpler plain-scalar regexes;
+- writes `trivy-secret.yaml` as UTF-8 without BOM and LF line endings;
+- adds a validation step before any Trivy scan;
+- checks that the file starts with `rules:` and has a regex for every rule;
+- explicitly exports `TRIVY_SECRET_CONFIG`;
+- keeps the detailed, redacted HTML report from the previous revision.
 
-Security recommendation:
-Treat raw Trivy JSON/SARIF artifacts as security-sensitive because scanner-native output can contain matched secret material.
+The validator intentionally does not print secret values.
+
+If Trivy still rejects the file, the validation step will show the exact config path and first 12 non-secret policy lines before scanning.

@@ -143,6 +143,23 @@ runs:
     # Secret scan of the current source/build workspace. Git metadata, Gradle caches and generated reports
     # are skipped to reduce duplicate findings. The build directory is not globally excluded because the
     # packaged JAR is scanned separately and may have been downloaded into build/libs.
+    - name: Validate Trivy secret configuration
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        CONFIG="${{ github.action_path }}/resources/trivy-secret.yaml"
+
+        if [[ ! -s "$CONFIG" ]]; then
+          echo "::error::Trivy secret configuration is missing or empty: $CONFIG"
+          exit 1
+        fi
+
+        python3 "${{ github.action_path }}/resources/validate-trivy-secret-config.py" "$CONFIG"
+
+        echo "Using Trivy secret configuration: $CONFIG"
+        sed -n '1,12p' "$CONFIG"
+
     - name: Trivy filesystem secret scan
       id: fs-secrets
       if: ${{ inputs.scan-filesystem == 'true' }}
