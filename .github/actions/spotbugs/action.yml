@@ -5,10 +5,6 @@ inputs:
   github-token:
     description: 'GitHub token used for SARIF upload and PR comments.'
     required: true
-  spotbugs-plugin-version:
-    description: 'SpotBugs Gradle plugin version.'
-    required: false
-    default: '6.5.10'
   findsecbugs-version:
     description: 'FindSecBugs plugin version.'
     required: false
@@ -72,27 +68,14 @@ runs:
     - name: Create SpotBugs init script
       shell: bash
       env:
-        SPOTBUGS_PLUGIN_VERSION: ${{ inputs.spotbugs-plugin-version }}
         FINDSECBUGS_VERSION: ${{ inputs.findsecbugs-version }}
         SPOTBUGS_EFFORT: ${{ inputs.effort }}
         SPOTBUGS_REPORT_LEVEL: ${{ inputs.report-level }}
       run: |
         set -euo pipefail
         cat > "$RUNNER_TEMP/spotbugs-init.gradle" <<'EOF'
-        initscript {
-            repositories {
-                gradlePluginPortal()
-                mavenCentral()
-            }
-            dependencies {
-                classpath "com.github.spotbugs:com.github.spotbugs.gradle.plugin:${System.getenv('SPOTBUGS_PLUGIN_VERSION')}"
-            }
-        }
         allprojects {
-            plugins.withId('java') {
-                if (!plugins.hasPlugin('com.github.spotbugs')) {
-                    apply plugin: 'com.github.spotbugs'
-                }
+            plugins.withId('com.github.spotbugs') {
                 dependencies {
                     spotbugsPlugins "com.h3xstream.findsecbugs:findsecbugs-plugin:${System.getenv('FINDSECBUGS_VERSION')}"
                 }
