@@ -178,7 +178,7 @@ runs:
       run: python3 "${{ github.action_path }}/scripts/summarize-semgrep-sarif.py"
 
     - name: Upload Semgrep AppSec Platform to GitHub Security Dashboard
-      if: ${{ always() && inputs.upload-sarif == 'true' && hashFiles('build/reports/semgrep/semgrep.sarif') != '' }}
+      if: ${{ always() && inputs.upload-sarif == 'true' && github.event_name != 'pull_request' && hashFiles('build/reports/semgrep/semgrep.sarif') != '' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/semgrep/semgrep.sarif

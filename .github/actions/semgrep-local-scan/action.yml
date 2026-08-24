@@ -109,7 +109,8 @@ runs:
           with:
             sarif_file: build/reports/semgrep/semgrep-local-scan-results.sarif 
             category: semgrep-local-scan
-          if: always()
+          if: ${{ always() && github.event_name != 'pull_request' }}
+          
         - name: Generate HTML Reports
           run: |
             python3 trivy/parse-semgrep-sarif.py --input build/reports/semgrep/semgrep-local-scan-results.sarif --output build/reports/semgrep/semgrep-local-report.html --project-name "Java Application SemGrep Local Scan"
