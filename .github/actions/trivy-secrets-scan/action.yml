@@ -274,6 +274,9 @@ runs:
       run: |
         set -euo pipefail
         python3 "${{ github.action_path }}/resources/generate-trivy-secrets-html.py" \
+          --filesystem build/reports/trivy-secrets/trivy-filesystem-secrets.json \
+          --jar build/reports/trivy-secrets/trivy-jar-secrets.json \
+          --image build/reports/trivy-secrets/trivy-image-secrets.json \
           --output build/reports/trivy-secrets/trivy-secrets-report.html
 
     - name: Create or update Trivy secret PR comment

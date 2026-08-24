@@ -97,7 +97,7 @@ runs:
           --output build/reports/gitleaks/gitleaks-report.html
 
     - name: Upload Gitleaks SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' }}
+      if: ${{ always() && github.event_name != 'pull_request' && inputs.upload-sarif == 'true' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/gitleaks/gitleaks.sarif
