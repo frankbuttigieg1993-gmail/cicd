@@ -41,6 +41,7 @@ jobs:
     Build:
       name: Build
       runs-on: ${{ fromJson(inputs.target-runner) }} 
+      needs: [Bootstrap]
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -122,13 +123,13 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
 # This would purely be from an informative perspective for the Pull Request as the main thing we are concerned about is runtime vulnerabilities
-    CycloneDX_SBOM:
-      name: CycloneDX_SBOM
+    SBOM_Generator:
+      name: Generate SBOMs
       runs-on: ${{ fromJson(inputs.target-runner) }} 
       needs: [Build]
       steps:
       - name: CycloneDX SBOM
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/cyclone-dx-sbom@main
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/sbom-generator@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
     semgrep_appsec_scan:

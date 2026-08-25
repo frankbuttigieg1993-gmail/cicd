@@ -3,25 +3,23 @@ import json
 import os
 from pathlib import Path
 
-sarif_path = Path("build/reports/semgrep/semgrep.sarif")
-data = json.loads(sarif_path.read_text(encoding="utf-8"))
+path = Path("build/reports/semgrep/semgrep.sarif")
+counts = {"error": 0, "warning": 0, "note": 0}
 
-counts = {"error": 0, "warning": 0, "note": 0, "total": 0}
-for run in data.get("runs", []):
-    for result in run.get("results", []):
-        level = result.get("level", "none")
-        counts["total"] += 1
-        if level in counts:
+if path.exists():
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for run in data.get("runs", []):
+        for result in run.get("results", []):
+            level = result.get("level", "warning")
+            if level not in counts:
+                level = "warning"
             counts[level] += 1
 
-with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as f:
-    f.write(f"error-count={counts['error']}\n")
-    f.write(f"warning-count={counts['warning']}\n")
-    f.write(f"note-count={counts['note']}\n")
-    f.write(f"total-findings={counts['total']}\n")
+total = sum(counts.values())
+print(f"Semgrep SARIF: errors={counts['error']}, warnings={counts['warning']}, notes={counts['note']}, total={total}")
 
-print("Semgrep findings:")
-print(f"  error:   {counts['error']}")
-print(f"  warning: {counts['warning']}")
-print(f"  note:    {counts['note']}")
-print(f"  total:   {counts['total']}")
+with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+    out.write(f"error-count={counts['error']}\n")
+    out.write(f"warning-count={counts['warning']}\n")
+    out.write(f"note-count={counts['note']}\n")
+    out.write(f"total-findings={total}\n")
