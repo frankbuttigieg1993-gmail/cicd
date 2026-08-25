@@ -1,3 +1,11 @@
+# SpotBugs scan is an application production-code static analysis scan of the Gradle main source set, enhanced with FindSecBugs security detectors.
+# This composite action performs a Main application bytecode, broad/deep SpotBugs analysis, plus FindSecBugs security detectors.
+
+# Target	Your SpotBugs scan?
+# src/main/java compiled classes	Yes
+# Production application bytecode	Yes
+# FindSecBugs security patterns	Yes
+
 name: 'SpotBugs and FindSecBugs'
 description: 'Runs SpotBugs with FindSecBugs, produces SARIF and HTML reports, uploads SARIF, comments on PRs when critical findings are present, and fails on critical findings.'
 
