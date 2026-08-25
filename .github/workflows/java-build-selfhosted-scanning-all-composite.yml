@@ -67,13 +67,13 @@ jobs:
     #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
     #     with:
     #       github-token: ${{ secrets.GITHUB_TOKEN }}  
-    # CycloneDX_Runtime_Vulnerability:
-    #   name: CycloneDX Runtime Vulnerability Scan
+    # Runtime_Vulnerability_Scan:
+    #   name: Runtime Vulnerability Scan
     #   runs-on: ${{ fromJson(inputs.target-runner) }} 
     #   needs: [Build]
     #   steps:
-    #   - name: CycloneDX Runtime Vulnerability Scan
-    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/cyclonedx-runtime-sbom-vulnerabilities@main
+    #   - name: Runtime Vulnerability Scan
+    #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/runtime-vulnerability-scan@main
     #     with:
     #       github-token: ${{ secrets.GITHUB_TOKEN }}  
     # sonar-scan:

@@ -25,16 +25,11 @@ jobs:
     Build:
       name: Build
       runs-on: ${{ fromJson(inputs.target-runner) }} 
-      # outputs:
-      #   APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
       steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # - name: Set APP_VERSION Output 
-      #   id: app_version
-      #   run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
       - name: Java Build
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/build@main
         with:
@@ -57,22 +52,50 @@ jobs:
           GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
         steps:
         - name: Gitleaks
+          id: gitleaks
+          continue-on-error: true
           uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
           with:
             github-token: ${{ secrets.GITHUB_TOKEN }}
         - name: Trivy Secrets Scan
-          uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitletrivy-secrets-scan@main
+          id: trivy
+          continue-on-error: true
+          uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-secrets-scan@main
           with:
             github-token: ${{ secrets.GITHUB_TOKEN }}
-    CycloneDX_Runtime_Vulnerability:
-      name: CycloneDX Runtime Vulnerability Scan
+        - name: Check Secrets Scan Results
+          if: always()
+          shell: bash
+          run: |
+            echo "Gitleaks result: ${{ steps.gitleaks.outcome }}"
+            echo "Trivy result:    ${{ steps.trivy.outcome }}"
+
+            if [[ "${{ steps.gitleaks.outcome }}" != "success" ]] || [[ "${{ steps.trivy.outcome }}" != "success" ]]; then
+              echo "::error::One or more secret scanners failed."
+              exit 1
+            fi
+    Runtime_Vulnerability_Scan:
+      name: Runtime Vulnerability Scan
       runs-on: ${{ fromJson(inputs.target-runner) }} 
       needs: [Build]
       steps:
-      - name: CycloneDX Runtime Vulnerability Scan
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/cyclonedx-runtime-sbom-vulnerabilities@main
+      - name: Runtime Vulnerability Scan
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/runtime-vulnerability-scan@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
+    SpotBugs:
+      name: SpotBugs 
+      runs-on: ubuntu-24.04
+      needs: [Build]
+      env:
+        NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+        GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+      steps:
+      - name: SpotBugs 
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/spotbugs@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}  
+# This would purely be from an informative perspective for the Pull Request as the main thing we are concerned about is runtime vulnerabilities
     CycloneDX_SBOM:
       name: CycloneDX_SBOM
       runs-on: ${{ fromJson(inputs.target-runner) }} 
@@ -82,32 +105,31 @@ jobs:
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/cyclone-dx-sbom@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
-    sonar-scan:
-        name: SonarQube Scan & Gate Check
-        runs-on: ${{ fromJson(inputs.target-runner) }} 
-        needs: Unit_Test
-        env:
-          NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
-          GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
-        steps:
-          - name: Sonar Scan Java Application
-            uses: frankbuttigieg1993-gmail/cicd/.github/actions/sonar-scan@main
-            with:
-              github-token: ${{ secrets.GITHUB_TOKEN }}  
-              sonar-token: ${{ secrets.SONAR_TOKEN }} 
-      # - name: Upload Test Report files
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: unit-test-report
-      #     path: build/test-results/sample/
-      # - name: Publish Test Report To GitHub
-      #   uses: dorny/test-reporter@v2
-      #   with:
-      #     artifact: unit-test-report  # artifact name
-      #     name: unit-test-report                  # Name of the check run which will be created
-      #     path: '*.xml'                     # Path to test results (inside artifact .zip)
-      #     reporter: jest-junit              # Format of test results
-      #     fail-on-error: 'false'
-      # - name: Run Unit Tests
-      #   run: ./gradlew test --no-daemon
-      #   continue-on-error: false
+    semgrep_appsec_scan:
+      name: semgrep-appsec-scan
+      runs-on: ubuntu-24.04
+      needs: [Build]
+      env:
+        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
+        HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
+      # Skip any PR created by dependabot to avoid permission issues:
+      if: (github.actor != 'dependabot[bot]')
+      steps:
+      - name: Semgrep Scan 
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/semgrep-appsec-scan@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }} 
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+    # sonar-scan:
+    #     name: SonarQube Scan & Gate Check
+    #     runs-on: ${{ fromJson(inputs.target-runner) }} 
+    #     needs: Unit_Test
+    #     env:
+    #       NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
+    #       GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
+    #     steps:
+    #       - name: Sonar Scan Java Application
+    #         uses: frankbuttigieg1993-gmail/cicd/.github/actions/sonar-scan@main
+    #         with:
+    #           github-token: ${{ secrets.GITHUB_TOKEN }}  
+    #           sonar-token: ${{ secrets.SONAR_TOKEN }} 
