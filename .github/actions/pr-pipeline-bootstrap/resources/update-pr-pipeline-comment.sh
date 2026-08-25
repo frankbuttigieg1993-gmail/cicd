@@ -10,16 +10,24 @@ set -euo pipefail
 
 MARKER="<!-- java-pr-pipeline-summary -->"
 
+# BODY=$(cat <<EOF
+# ${MARKER}
+# ## Java PR Pipeline
+
+# [View the latest PR pipeline run](${RUN_URL})
+
+# **Run:** ${RUN_NUMBER}  
+# **Attempt:** ${RUN_ATTEMPT}
+# EOF
+# )
+
 BODY=$(cat <<EOF
-${MARKER}
-## Java PR Pipeline
+# ${MARKER}
+# ## Java PR Pipeline
 
-[View the latest PR pipeline run](${RUN_URL})
-
-**Run:** ${RUN_NUMBER}  
-**Attempt:** ${RUN_ATTEMPT}
-EOF
-)
+# [View the latest PR pipeline run](${RUN_URL})
+# EOF
+# )
 
 EXISTING_COMMENT_ID="$(
   gh api \

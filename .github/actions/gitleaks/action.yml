@@ -200,9 +200,8 @@ runs:
           echo "Gitleaks policy failed: exit=${EXIT_CODE}, findings=${FINDINGS}"
           exit 1
         fi
-
         echo "Gitleaks policy passed."
-
-    - name: Clean up Gitleaks workspace
-      if: always()
-      uses: tiacsys/clean-after-action@v4
+    # The 'Secrets Scan' job runs the Gitleaks and then Trivy Secrets composite actions so we don't want to clean the directory after gitleaks runs
+    # - name: Clean up Gitleaks workspace
+    #   if: always()
+    #   uses: tiacsys/clean-after-action@v4
