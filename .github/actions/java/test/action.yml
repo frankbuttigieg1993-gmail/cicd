@@ -11,6 +11,9 @@ inputs:
     description: Number of days to retain the uploaded test reports.
     required: false
     default: "2"
+  github-token:
+    description: 'The github token'
+    required: true
 
 runs:
   using: composite
@@ -19,6 +22,10 @@ runs:
       uses: actions/checkout@v6
       with:
         fetch-depth: 0
+    - name: Configure cache directories
+      shell: bash
+      run: |
+        echo "GRADLE_USER_HOME=${HOME}/.gradle-runners/${{ runner.name }}.cache/gradle" >> "$GITHUB_ENV"
     - name: Run Unit Tests
       id: tests
       shell: bash
@@ -94,7 +101,7 @@ runs:
         FAILED_TESTS="${{ steps.test-results.outputs.failed-tests || '0' }}"
         COVERAGE_FAILED="${{ steps.coverage.outcome }}"
         echo "Failed unit tests: ${FAILED_TESTS}"
-        echo "Coverage verification outcome: ${COVERAGE_FAILED}"
+        # echo "Coverage verification outcome: ${COVERAGE_FAILED}"
         if [[ "${FAILED_TESTS}" -gt 0 ]]; then
           echo "::error::Unit test quality gate failed: ${FAILED_TESTS} unit test(s) failed."
           exit 1

@@ -150,7 +150,9 @@ runs:
         EOF2
 
     - name: Create or update Gitleaks PR comment
+      id: gitleaks-pr-comment
       if: ${{ always() && inputs.pr-comment == 'true' && github.event_name == 'pull_request' }}
+      continue-on-error: true
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
@@ -178,6 +180,12 @@ runs:
             "/repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" \
             --raw-field body="$(cat build/reports/gitleaks/gitleaks-comment.md)"
         fi
+
+    - name: Warn when Gitleaks PR comment cannot be published
+      if: ${{ always() && steps.gitleaks-pr-comment.outcome == 'failure' }}
+      shell: bash
+      run: |
+        echo "::warning::Gitleaks findings were processed, but the PR comment could not be published. Check workflow permissions for pull-requests/issues write access."
 
     - name: Enforce Gitleaks policy
       if: ${{ always() && inputs.enforce-policy == 'true' }}
