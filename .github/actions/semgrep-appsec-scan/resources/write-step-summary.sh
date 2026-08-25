@@ -2,7 +2,7 @@
 set -euo pipefail
 
 RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-
+SEMGREP_SCAN_URL="${PROJECT_URL}/scans/${SCAN_ID}
 if [[ "$SEMGREP_EXIT_CODE" != "0" ]]; then
   STATUS="BLOCKED"
 elif (( ERROR_COUNT > 0 || WARNING_COUNT > 0 || NOTE_COUNT > 0 )); then
@@ -18,7 +18,7 @@ fi
   echo
   echo "**Baseline:** ${BASELINE:-N/A}"
   echo
-  echo "**Scan ID:** ${SCAN_ID}](${SCAN_URL}"
+  echo "**Scan ID:** ${SCAN_ID:-Unavailable}"
   echo
   echo "| SARIF level | Findings |"
   echo "|---|---:|"
@@ -30,14 +30,8 @@ fi
   echo "### Security gate: ${STATUS}"
   echo
   echo "[Open Semgrep AppSec Project](${PROJECT_URL})"
-  if [[ -n "${SCAN_URL:-}" && -n "${SCAN_ID:-}" ]]; then
-    echo
-    echo "[Open Semgrep Scan](${SCAN_ID}${SCAN_URL})"
-#    echo "**Exact scan:** [Semgrep scan ${SCAN_ID}](${SCAN_URL})"
-  else
-    echo
-    echo "**Exact Semgrep scan link unavailable:** scan ID could not be extracted."
-  fi
+  echo
+  echo "[Open Semgrep Scan](${SEMGREP_SCAN_URL})"
   echo
   echo "[View GitHub Actions Run](${RUN_URL})"
 } >> "$GITHUB_STEP_SUMMARY"

@@ -72,6 +72,13 @@ runs:
         name: sbom-reports
         path: build/reports/cyclonedx
 
+    - name: Install Trivy
+      shell: bash
+      env:
+        TRIVY_VERSION: ${{ inputs.trivy-version }}
+      run: |
+        bash "${{ github.action_path }}/resources/install-trivy.sh"
+        
     - name: Get current date
       id: date
       shell: bash
