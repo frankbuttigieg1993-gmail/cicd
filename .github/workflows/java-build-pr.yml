@@ -20,6 +20,9 @@ permissions:
   id-token: write
   security-events: write
   actions: write
+  pull-requests: write
+  issues: write
+  statuses: write
 
 jobs:
     Build:
