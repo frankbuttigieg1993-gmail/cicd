@@ -10,6 +10,14 @@ set -euo pipefail
 
 MARKER="<!-- java-pr-pipeline-summary -->"
 
+BODY=$(cat <<EOF
+${MARKER}
+## Java PR Pipeline
+
+[View the latest PR pipeline run](${RUN_URL})
+EOF
+)
+
 # BODY=$(cat <<EOF
 # ${MARKER}
 # ## Java PR Pipeline
@@ -18,14 +26,6 @@ MARKER="<!-- java-pr-pipeline-summary -->"
 
 # **Run:** ${RUN_NUMBER}  
 # **Attempt:** ${RUN_ATTEMPT}
-# EOF
-# )
-
-BODY=$(cat <<EOF
-# ${MARKER}
-# ## Java PR Pipeline
-
-# [View the latest PR pipeline run](${RUN_URL})
 # EOF
 # )
 
@@ -39,13 +39,16 @@ EXISTING_COMMENT_ID="$(
 
 if [[ -n "${EXISTING_COMMENT_ID}" ]]; then
   echo "Updating existing PR pipeline comment ${EXISTING_COMMENT_ID}."
+
   gh api \
     --method PATCH \
     "/repos/${GH_REPO}/issues/comments/${EXISTING_COMMENT_ID}" \
     -f body="${BODY}"
 else
   echo "Creating PR pipeline comment."
-  gh pr comment "${PR_NUMBER}" \
-    --repo "${GH_REPO}" \
-    --body "${BODY}"
+
+  gh api \
+    --method POST \
+    "/repos/${GH_REPO}/issues/${PR_NUMBER}/comments" \
+    -f body="${BODY}"
 fi
