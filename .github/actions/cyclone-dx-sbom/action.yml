@@ -12,7 +12,10 @@ inputs:
     description: 'Should I produce the complete Build Environment SBOM'
     required: false
     default: 'false'
-# pipx install cyclonedx-bom
+  trivy-version:
+    description: 'Trivy CLI version to install and use'
+    required: false
+    default: '0.74.0'
 
 runs:
   using: 'composite'
