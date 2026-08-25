@@ -1,0 +1,34 @@
+name: PR Pipeline Summary
+description: Create or update a single PR comment linking to the latest pipeline run.
+
+inputs:
+  github-token:
+    description: GitHub token used to create or update the PR comment.
+    required: true
+  pr-number:
+    description: Pull request number.
+    required: true
+  run-url:
+    description: URL of the current GitHub Actions workflow run.
+    required: true
+  run-number:
+    description: GitHub Actions workflow run number.
+    required: true
+  run-attempt:
+    description: GitHub Actions workflow run attempt.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Create or update PR pipeline comment
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        GH_REPO: ${{ github.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        RUN_URL: ${{ inputs.run-url }}
+        RUN_NUMBER: ${{ inputs.run-number }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+      run: |
+        bash "${{ github.action_path }}/resources/update-pr-pipeline-comment.sh"

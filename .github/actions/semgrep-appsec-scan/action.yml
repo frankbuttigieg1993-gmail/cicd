@@ -180,7 +180,7 @@ runs:
     - name: Summarize Semgrep SARIF results
       id: semgrep-summary
       shell: bash
-      run: python3 "${{ github.action_path }}/scripts/summarize-semgrep-sarif.py"
+      run: python3 "${{ github.action_path }}/resources/summarize-semgrep-sarif.py"
 
     - name: Upload Semgrep AppSec Platform to GitHub Security Dashboard
       if: ${{ always() && inputs.upload-sarif == 'true' && github.event_name != 'pull_request' && hashFiles('build/reports/semgrep/semgrep.sarif') != '' }}
@@ -258,7 +258,7 @@ runs:
         REPOSITORY: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
       shell: bash
-      run: python3 "${{ github.action_path }}/scripts/update-semgrep-pr-comment.py"
+      run: python3 "${{ github.action_path }}/resources/update-semgrep-pr-comment.py"
 
     - name: Publish Semgrep Reports
       if: ${{ always() && inputs.upload-report == 'true' && hashFiles('build/reports/semgrep/**') != '' }}

@@ -142,3 +142,23 @@ jobs:
     #         with:
     #           github-token: ${{ secrets.GITHUB_TOKEN }}  
     #           sonar-token: ${{ secrets.SONAR_TOKEN }} 
+    PR_Pipeline_Summary:
+      name: PR Pipeline Summary
+      runs-on: ubuntu-24.04
+      needs:
+        - Unit_Test
+        - Secrets-Scan
+        - Runtime_Vulnerability_Scan
+        - SpotBugs
+        - CycloneDX_SBOM
+        - semgrep_appsec_scan
+      if: ${{ always() }}
+      steps:
+        - name: PR Pipeline Summary
+          uses: frankbuttigieg1993-gmail/cicd/.github/actions/pr-pipeline-summary@main
+          with:
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+            pr-number: ${{ github.event.pull_request.number }}
+            run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            run-number: ${{ github.run_number }}
+            run-attempt: ${{ github.run_attempt }}
