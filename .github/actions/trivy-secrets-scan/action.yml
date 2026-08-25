@@ -101,30 +101,7 @@ runs:
       env:
         TRIVY_VERSION: ${{ inputs.trivy-version }}
       run: |
-        set -euo pipefail
-
-        VERSION="${TRIVY_VERSION#v}"
-        ARCH="$(uname -m)"
-        case "$ARCH" in
-          x86_64|amd64) TRIVY_ARCH="64bit" ;;
-          aarch64|arm64) TRIVY_ARCH="ARM64" ;;
-          *)
-            echo "::error::Unsupported runner architecture: ${ARCH}"
-            exit 1
-            ;;
-        esac
-
-        TMP_DIR="$(mktemp -d)"
-        trap 'rm -rf "$TMP_DIR"' EXIT
-
-        curl --fail --silent --show-error --location           "https://github.com/aquasecurity/trivy/releases/download/v${VERSION}/trivy_${VERSION}_Linux-${TRIVY_ARCH}.tar.gz"           --output "${TMP_DIR}/trivy.tar.gz"
-
-        tar -xzf "${TMP_DIR}/trivy.tar.gz" -C "$TMP_DIR" trivy
-        mkdir -p "${RUNNER_TEMP}/trivy-bin"
-        install -m 0755 "${TMP_DIR}/trivy" "${RUNNER_TEMP}/trivy-bin/trivy"
-        echo "${RUNNER_TEMP}/trivy-bin" >> "$GITHUB_PATH"
-
-        "${RUNNER_TEMP}/trivy-bin/trivy" --version
+        bash "${{ github.action_path }}/resources/install-trivy.sh"
 
     - name: Get current date
       id: date
