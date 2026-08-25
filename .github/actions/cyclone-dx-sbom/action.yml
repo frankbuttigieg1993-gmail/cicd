@@ -63,7 +63,7 @@ runs:
       #     key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
       
 #      Generate a CycloneDX dependency graph. The custom source-code HTML report  uses this graph to classify vulnerable Java components as direct or transitive.
-      - name: Warm dependency cache and generate SBOMs
+      - name: Generate Runtime and Application SBOM
         shell: bash
         run: |
           set -euo pipefail

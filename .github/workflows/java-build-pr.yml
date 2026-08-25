@@ -63,6 +63,16 @@ jobs:
           uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-secrets-scan@main
           with:
             github-token: ${{ secrets.GITHUB_TOKEN }}
+        - name: Publish Secrets Scan Reports
+          if: ${{ always() }}
+          uses: actions/upload-artifact@v7
+          with:
+            name: secrets-scan-reports 
+            path: |
+             build/reports/trivy-secrets/
+             build/reports/gitleaks/
+            retention-days: 2
+            if-no-files-found: warn
         - name: Check Secrets Scan Results
           if: always()
           shell: bash
@@ -106,16 +116,15 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
     semgrep_appsec_scan:
-      name: semgrep-appsec-scan
+      name: Semgrep AppSec Scan 
       runs-on: ubuntu-24.04
       needs: [Build]
       env:
-        SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }} 
         HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
       # Skip any PR created by dependabot to avoid permission issues:
       if: (github.actor != 'dependabot[bot]')
       steps:
-      - name: Semgrep Scan 
+      - name: Semgrep AppSec Scan 
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/semgrep-appsec-scan@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }} 

@@ -325,13 +325,6 @@ runs:
         fi
         echo "exit-code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
 
-    - name: Upload Trivy secret reports
-      if: ${{ always() && inputs.upload-report == 'true' }}
-      uses: actions/upload-artifact@v7
-      with:
-        name: trivy-secret-reports
-        path: build/reports/trivy-secrets/
-
     # Enforcement is deliberately last so SARIF, artifacts and the PR summary are still published on failure.
     - name: Enforce Trivy secret policy
       if: ${{ always() && inputs.enforce-policy == 'true' }}

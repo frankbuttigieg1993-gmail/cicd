@@ -1,0 +1,72 @@
+name: 'Run Java Tests'
+description: 'Run Java Tests'
+
+inputs:
+  github-token:
+    description: 'The github token'
+    required: true
+
+# HTML test report	build/reports/tests/test/index.html
+# JUnit XML results	build/test-results/test/
+# JaCoCo HTML coverage	build/reports/jacoco/test/html/index.html
+# JaCoCo XML coverage	build/reports/jacoco/test/jacocoTestReport.xml
+
+runs:
+  using: 'composite'
+  steps:
+    # Every shell step in a composite action MUST explicitly define the shell
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        
+    - name: Download Build Artefact
+      uses: actions/download-artifact@v8
+      with:
+        name: build
+        path: .
+# We have 3 runners on a self hosted VM. We need relative gradle and trivy directories to avoid conflicts. We cater for this through 'cache directories' step above
+# This configuration is useful when you aren't using self hosted slaves (eg: github runners or ephemeral slaves)
+
+      # - name: Cache Gradle and Maven
+      #   uses: actions/cache@v5
+      #   with:
+      #     path: |
+      #       ~/.gradle/caches
+      #       ~/.gradle/wrapper
+      #       ~/m2/repository
+      #     key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+
+      # Setup Cache Directories for Self Hosted Runners. You don't want runners to share the gradle cache directory. 
+      # Gradle is smart at managing task dependencies and perform gradle tasks simulatenously that it's aware of however it won't be aware of other gradle tasks being managed by other runners 
+      # Therefore a separate gradle cache per runner makes the most sense since only 1 job can execute at any given time per runner. 
+    - name: Configure cache directories
+      shell: bash
+      run: |
+        echo "GRADLE_USER_HOME=${HOME}/.gradle-runners/${{ runner.name }}.cache/gradle" >> "$GITHUB_ENV"
+    - name: Run Tests and Coverage
+      run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue
+      continue-on-error: true
+      shell: bash
+    - name: Publish Test Report to GitHub
+      uses: dorny/test-reporter@v1
+      with:
+        name: junit-test-results
+        path: 'build/test-results/test/*.xml'
+        reporter: java-junit
+        fail-on-empty: false
+        only-summary: 'true'
+  #          list-suites: all
+  #          list-tests: all
+  #          use-actions-summary: true
+        fail-on-error: false
+    - name: Upload test and coverage reports
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: test-reports
+        path: | 
+          build/reports/
+          build/test-results/
+        retention-days: 1
+    - uses: tiacsys/clean-after-action@v4
