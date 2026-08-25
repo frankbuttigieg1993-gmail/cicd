@@ -43,6 +43,10 @@ inputs:
     description: 'Upload Trivy reports as a workflow artifact.'
     required: false
     default: 'true'
+  trivy-version:
+    description: 'Trivy CLI version to install and use'
+    required: false
+    default: '0.74.0'
 
 runs:
   using: 'composite'
@@ -78,7 +82,7 @@ runs:
         TRIVY_VERSION: ${{ inputs.trivy-version }}
       run: |
         bash "${{ github.action_path }}/resources/install-trivy.sh"
-        
+
     - name: Get current date
       id: date
       shell: bash

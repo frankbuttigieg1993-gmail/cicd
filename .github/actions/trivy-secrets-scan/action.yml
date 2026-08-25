@@ -151,7 +151,7 @@ runs:
           --skip-dirs build/reports
 
     - name: Upload filesystem secrets SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-filesystem == 'true' && steps.fs-secrets.outputs.scan-error != '1' }}
+      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-filesystem == 'true' && github.event_name != 'pull_request' && steps.fs-secrets.outputs.scan-error != '1' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/trivy-secrets/trivy-filesystem-secrets.sarif
@@ -183,7 +183,7 @@ runs:
           --skip-dirs META-INF/maven
 
     - name: Upload packaged JAR secrets SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-jar == 'true' && steps.jar-prepare.outputs.available == 'true' && steps.jar-secrets.outputs.scan-error != '1' }}
+      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-jar == 'true' && steps.jar-prepare.outputs.available == 'true' && steps.jar-secrets.outputs.scan-error != '1' && github.event_name != 'pull_request'}}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/trivy-secrets/trivy-jar-secrets.sarif
@@ -220,7 +220,7 @@ runs:
           build/reports/trivy-secrets/trivy-image-secrets.sarif
 
     - name: Upload Docker image secrets SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-image == 'true' && steps.image-secrets.outputs.scan-error != '1' }}
+      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-image == 'true' && steps.image-secrets.outputs.scan-error != '1' && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/trivy-secrets/trivy-image-secrets.sarif
