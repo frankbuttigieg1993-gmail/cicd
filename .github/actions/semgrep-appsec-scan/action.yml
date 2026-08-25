@@ -1,74 +1,61 @@
-# Local scan
-# # semgrep scan --config auto src/
-# #         │
-# #         └── Java source-code analysis
-# #              └── src/**/*.java
-
-
-# # Platform scan
-# # semgrep ci --code --supply-chain
-# #         │
-# #         ├── Code/SAST analysis
-# #         │
-# #         └── Supply Chain/SCA
-# #              └── gradle.lockfile
-# #                   └── vulnerable dependencies
-# local scan is your fast, source-only SAST,
-
-# Semgrep analyzes source code; scanning compiled .class and .jar artifacts doesn't give you additional Java SAST coverage
-
-name: 'Semgrep Scan'
-description: 'Run Semgrep AppSec Platform Code and Supply Chain scans, publish SARIF/HTML reports, summarize findings, and maintain a sticky PR comment.'
+name: Semgrep Scan
+description: Run Semgrep AppSec Platform Code and Supply Chain scans, publish SARIF/HTML reports, summarize findings, maintain a sticky PR comment, and link to the Semgrep project/scan.
 
 inputs:
   github-token:
-    description: 'GitHub token used to upload SARIF and create/update the PR comment. The calling workflow controls its permissions.'
+    description: GitHub token used to upload SARIF and create/update the PR comment. The calling workflow controls its permissions.
     required: true
   SEMGREP_APP_TOKEN:
-    description: 'Semgrep AppSec Platform CI token.'
+    description: Semgrep AppSec Platform CI token.
     required: true
+  semgrep-project-url:
+    description: Semgrep AppSec Platform project URL.
+    required: false
+    default: 'https://semgrep.dev/orgs/frank_buttigieg_1993_personal_org/projects/6365517'
+  semgrep-scan-url:
+    description: Optional exact Semgrep scan URL. When supplied, it is used in the Step Summary and PR comment.
+    required: false
+    default: ''
   pr-comment:
-    description: 'Create or update the sticky Semgrep summary comment for pull requests.'
+    description: Create or update the sticky Semgrep summary comment for pull requests.
     required: false
     default: 'true'
   upload-sarif:
-    description: 'Upload the Semgrep SARIF report to GitHub Code Scanning.'
+    description: Upload the Semgrep SARIF report to GitHub Code Scanning.
     required: false
     default: 'true'
   upload-report:
-    description: 'Upload Semgrep SARIF and HTML reports as a workflow artifact.'
+    description: Upload Semgrep SARIF and HTML reports as a workflow artifact.
     required: false
     default: 'true'
   enforce-policy:
-    description: 'Fail the composite action after reporting when semgrep ci returns a non-zero result.'
+    description: Fail the composite action after reporting when semgrep ci returns a non-zero result.
     required: false
     default: 'true'
 
 outputs:
   exit-code:
-    description: 'Exit code returned by semgrep ci.'
+    description: Exit code returned by semgrep ci.
     value: ${{ steps.semgrep-scan.outputs.exit-code }}
   sarif-file:
-    description: 'Path to the Semgrep SARIF report.'
+    description: Path to the Semgrep SARIF report.
     value: ${{ steps.semgrep-scan.outputs.sarif-file }}
   error-count:
-    description: 'Number of SARIF error-level findings.'
+    description: Number of SARIF error-level findings.
     value: ${{ steps.semgrep-summary.outputs.error-count }}
   warning-count:
-    description: 'Number of SARIF warning-level findings.'
+    description: Number of SARIF warning-level findings.
     value: ${{ steps.semgrep-summary.outputs.warning-count }}
   note-count:
-    description: 'Number of SARIF note-level findings.'
+    description: Number of SARIF note-level findings.
     value: ${{ steps.semgrep-summary.outputs.note-count }}
   total-findings:
-    description: 'Total number of SARIF findings.'
+    description: Total number of SARIF findings.
     value: ${{ steps.semgrep-summary.outputs.total-findings }}
 
 runs:
-  using: 'composite'
+  using: composite
   steps:
-    # Full Git history is required so Semgrep can resolve the PR merge base for
-    # diff-aware scans. Non-PR runs continue to perform full repository scans.
     - name: Checkout repository
       uses: actions/checkout@v6
       with:
@@ -81,9 +68,10 @@ runs:
         path: .
 
     - name: Bootstrap
-      run: |
-        mkdir -p build/reports/semgrep
       shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p build/reports/semgrep
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -91,191 +79,179 @@ runs:
         python-version: '3.11'
 
     - name: Install Semgrep
+      shell: bash
       run: |
         python -m pip install --upgrade pip
         python -m pip install semgrep==1.163.0
         python -m pip install Jinja2
-      shell: bash
 
     - name: Get current date
       id: date
+      shell: bash
       run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
-      shell: bash
 
-    # Semgrep AppSec Platform supports diff-aware scanning by setting
-    # SEMGREP_BASELINE_REF. Only set it for pull requests; push/scheduled runs
-    # deliberately leave it unset so they remain full repository scans.
-    - name: Configure Semgrep scan mode
-      id: semgrep-mode
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          BASELINE="${{ github.event.pull_request.base.sha }}"
-          echo "SEMGREP_BASELINE_REF=${BASELINE}" >> "$GITHUB_ENV"
-          echo "mode=diff-aware" >> "$GITHUB_OUTPUT"
-          echo "baseline=${BASELINE}" >> "$GITHUB_OUTPUT"
-          echo "Semgrep scan mode: diff-aware"
-          echo "Semgrep baseline: ${BASELINE}"
-        else
-          echo "mode=full" >> "$GITHUB_OUTPUT"
-          echo "baseline=" >> "$GITHUB_OUTPUT"
-          echo "Semgrep scan mode: full repository"
-        fi
-
-    - name: Semgrep AppSec Platform Analysis
+    - name: Run Semgrep AppSec Platform Analysis
       id: semgrep-scan
+      shell: bash
       env:
         SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
-      shell: bash
       run: |
         set +e
 
-        if [[ -z "${SEMGREP_APP_TOKEN:-}" ]]; then
-          echo "::error::SEMGREP_APP_TOKEN was not supplied."
-          exit 1
+        BASELINE=""
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          BASELINE="${{ github.event.pull_request.base.sha }}"
         fi
 
         echo "========================================"
         echo "Starting Semgrep AppSec Platform Scan"
-        echo "Scan mode: ${{ steps.semgrep-mode.outputs.mode }}"
-        if [[ "${{ steps.semgrep-mode.outputs.mode }}" == "diff-aware" ]]; then
-          echo "Baseline: ${{ steps.semgrep-mode.outputs.baseline }}"
-        fi
+        echo "Scan mode: $([[ -n "$BASELINE" ]] && echo "diff-aware" || echo "full")"
+        echo "Baseline: ${BASELINE:-none}"
         echo "========================================"
 
-        /usr/bin/time -v semgrep ci \
-          --supply-chain \
-          --code \
-          --metrics=off \
-          --sarif \
-          --sarif-output=build/reports/semgrep/semgrep.sarif \
-          --exclude=".cache/" \
-          --verbose \
+        ARGS=(
+          ci
+          --supply-chain
+          --code
+          --metrics=off
+          --sarif
+          --sarif-output=build/reports/semgrep/semgrep.sarif
+          --exclude=.cache/
+          --verbose
           --no-suppress-errors
+        )
 
-        SEMGREP_EXIT_CODE=$?
+        if [[ -n "$BASELINE" ]]; then
+          ARGS+=(--baseline-commit "$BASELINE")
+        fi
 
-        echo "========================================"
-        echo "Finished Semgrep AppSec Platform Scan"
-        echo "Semgrep exit code: ${SEMGREP_EXIT_CODE}"
-        echo "========================================"
+        semgrep "${ARGS[@]}"
+        EXIT_CODE=$?
 
-        echo "exit-code=${SEMGREP_EXIT_CODE}" >> "$GITHUB_OUTPUT"
+        echo "exit-code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
         echo "sarif-file=build/reports/semgrep/semgrep.sarif" >> "$GITHUB_OUTPUT"
 
-        # Keep the action alive so SARIF, HTML, artifact, and PR-comment reporting
-        # can complete. Enforcement happens in the final step.
         exit 0
 
-    - name: Check Semgrep SARIF exists
-      shell: bash
-      run: |
-        if [[ ! -f build/reports/semgrep/semgrep.sarif ]]; then
-          echo 'Semgrep SARIF report was not produced.'
-          exit 1
-        fi
-
-    - name: Summarize Semgrep SARIF results
+    - name: Summarise Semgrep SARIF
       id: semgrep-summary
+      if: always()
       shell: bash
-      run: python3 "${{ github.action_path }}/resources/summarize-semgrep-sarif.py"
-
-    - name: Upload Semgrep AppSec Platform to GitHub Security Dashboard
-      if: ${{ always() && inputs.upload-sarif == 'true' && github.event_name != 'pull_request' && hashFiles('build/reports/semgrep/semgrep.sarif') != '' }}
-      uses: github/codeql-action/upload-sarif@v4
-      with:
-        sarif_file: build/reports/semgrep/semgrep.sarif
-        category: semgrep-appsec
-        wait-for-processing: true
-        token: ${{ inputs.github-token }}
-
-    - name: Generate HTML Reports
-      if: ${{ always() && hashFiles('build/reports/semgrep/semgrep.sarif') != '' }}
       run: |
-        python3 trivy/parse-semgrep-sarif.py \
-          --input build/reports/semgrep/semgrep.sarif \
-          --output build/reports/semgrep/semgrep-appsec-report.html \
-          --project-name 'Java Application SemGrep AppSec Scan' \
-          --only INFO,WARNING,ERROR
-      shell: bash
+        python3 "${{ github.action_path }}/resources/summarize-semgrep-sarif.py"           --sarif build/reports/semgrep/semgrep.sarif           --github-output "$GITHUB_OUTPUT"
 
-    - name: Build Semgrep PR comment
-      if: ${{ always() && github.event_name == 'pull_request' && inputs.pr-comment == 'true' && hashFiles('build/reports/semgrep/semgrep.sarif') != '' }}
-      env:
-        ERROR_COUNT: ${{ steps.semgrep-summary.outputs.error-count }}
-        WARNING_COUNT: ${{ steps.semgrep-summary.outputs.warning-count }}
-        NOTE_COUNT: ${{ steps.semgrep-summary.outputs.note-count }}
-        TOTAL_FINDINGS: ${{ steps.semgrep-summary.outputs.total-findings }}
-        SEMGREP_EXIT_CODE: ${{ steps.semgrep-scan.outputs.exit-code }}
-        SCAN_MODE: ${{ steps.semgrep-mode.outputs.mode }}
-        BASELINE: ${{ steps.semgrep-mode.outputs.baseline }}
+    - name: Determine Semgrep links
+      id: semgrep-links
+      if: always()
       shell: bash
+      env:
+        PROJECT_URL: ${{ inputs.semgrep-project-url }}
+        PROVIDED_SCAN_URL: ${{ inputs.semgrep-scan-url }}
       run: |
         set -euo pipefail
 
-        if [[ "$SEMGREP_EXIT_CODE" != '0' ]]; then
-          STATUS='BLOCKED'
-          MESSAGE='Semgrep AppSec Platform returned a non-zero result. Review the Semgrep findings and policy configuration.'
-        elif (( WARNING_COUNT > 0 || NOTE_COUNT > 0 )); then
-          STATUS='REVIEW'
-          MESSAGE='No blocking Semgrep policy result was returned, but findings are present and should be reviewed.'
-        else
-          STATUS='PASSED'
-          MESSAGE='No Semgrep findings were returned for this PR scan.'
+        SCAN_URL="$PROVIDED_SCAN_URL"
+
+        if [[ -z "$SCAN_URL" ]]; then
+          # The CLI does not expose a stable scan URL as a documented output.
+          # Use the supplied project URL as the durable platform destination.
+          SCAN_URL="$PROJECT_URL"
         fi
 
-        cat > semgrep-comment.md <<EOF2
-        <!-- semgrep-security-report -->
+        echo "project-url=$PROJECT_URL" >> "$GITHUB_OUTPUT"
+        echo "scan-url=$SCAN_URL" >> "$GITHUB_OUTPUT"
 
-        ## Semgrep AppSec Security Report
+    - name: Generate Semgrep Step Summary
+      if: always()
+      shell: bash
+      env:
+        PROJECT_URL: ${{ steps.semgrep-links.outputs.project-url }}
+        SCAN_URL: ${{ steps.semgrep-links.outputs.scan-url }}
+        TOTAL: ${{ steps.semgrep-summary.outputs.total-findings || '0' }}
+        ERRORS: ${{ steps.semgrep-summary.outputs.error-count || '0' }}
+        WARNINGS: ${{ steps.semgrep-summary.outputs.warning-count || '0' }}
+        NOTES: ${{ steps.semgrep-summary.outputs.note-count || '0' }}
+        EXIT_CODE: ${{ steps.semgrep-scan.outputs.exit-code || '0' }}
+      run: |
+        {
+          echo "## Semgrep AppSec Platform"
+          echo
+          echo "**Total findings:** ${TOTAL}"
+          echo
+          echo "| Level | Count |"
+          echo "|---|---:|"
+          echo "| Error | ${ERRORS} |"
+          echo "| Warning | ${WARNINGS} |"
+          echo "| Note | ${NOTES} |"
+          echo
+          echo "[Open Semgrep AppSec Project](${PROJECT_URL})"
+          echo
+          echo "[Open Semgrep Scan](${SCAN_URL})"
+          echo
+          echo "[View GitHub Actions Run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
+          echo
+          echo "**Semgrep exit code:** ${EXIT_CODE}"
+        } >> "$GITHUB_STEP_SUMMARY"
 
-        **Products:** Semgrep Code + Semgrep Supply Chain  
-        **Scan mode:** ${SCAN_MODE}  
-        **Baseline:** ${BASELINE:-N/A}
+    - name: Build Semgrep PR Comment
+      id: semgrep-pr-comment
+      if: ${{ always() && inputs.pr-comment == 'true' && github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        PROJECT_URL: ${{ steps.semgrep-links.outputs.project-url }}
+        SCAN_URL: ${{ steps.semgrep-links.outputs.scan-url }}
+        TOTAL: ${{ steps.semgrep-summary.outputs.total-findings || '0' }}
+        ERRORS: ${{ steps.semgrep-summary.outputs.error-count || '0' }}
+        WARNINGS: ${{ steps.semgrep-summary.outputs.warning-count || '0' }}
+        NOTES: ${{ steps.semgrep-summary.outputs.note-count || '0' }}
+      run: |
+        cat > build/reports/semgrep/semgrep-comment.md <<EOF
+        <!-- semgrep-appsec-summary -->
+        ## Semgrep AppSec Platform
 
-        | SARIF level | Findings | Treatment |
-        |---|---:|---|
-        | Error | ${ERROR_COUNT} | Security finding |
-        | Warning | ${WARNING_COUNT} | Review |
-        | Note | ${NOTE_COUNT} | Report |
-        | **Total** | **${TOTAL_FINDINGS}** | |
+        **Total findings:** ${TOTAL}  
+        **Errors:** ${ERRORS}  
+        **Warnings:** ${WARNINGS}  
+        **Notes:** ${NOTES}
 
-        ### Security gate: ${STATUS}
-
-        ${MESSAGE}
-
-        Detailed findings are available in **GitHub Code Scanning**. Semgrep AppSec Platform policy determines which findings are configured to monitor, comment, or block.
-
-        _This comment is automatically updated on subsequent scans._
-        EOF2
+        [Open Semgrep AppSec Project](${PROJECT_URL})  
+        [Open Semgrep Scan](${SCAN_URL})  
+        [View GitHub Actions Run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
+        EOF
 
     - name: Create or update Semgrep PR comment
-      if: ${{ always() && github.event_name == 'pull_request' && inputs.pr-comment == 'true' && hashFiles('semgrep-comment.md') != '' }}
+      if: ${{ always() && inputs.pr-comment == 'true' && github.event_name == 'pull_request' }}
+      shell: bash
+      continue-on-error: true
       env:
         GH_TOKEN: ${{ inputs.github-token }}
-        REPOSITORY: ${{ github.repository }}
+        GH_REPO: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
-      shell: bash
-      run: python3 "${{ github.action_path }}/resources/update-semgrep-pr-comment.py"
+      run: |
+        python3 "${{ github.action_path }}/resources/update-semgrep-pr-comment.py"           --repo "$GH_REPO"           --pr "$PR_NUMBER"           --body-file build/reports/semgrep/semgrep-comment.md           --token "$GH_TOKEN"
 
-    - name: Publish Semgrep Reports
-      if: ${{ always() && inputs.upload-report == 'true' && hashFiles('build/reports/semgrep/**') != '' }}
+    - name: Upload Semgrep SARIF
+      if: ${{ always() && inputs.upload-sarif == 'true' && github.event_name != 'pull_request' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: build/reports/semgrep/semgrep.sarif
+        category: semgrep-appsec
+
+    - name: Upload Semgrep Reports
+      if: ${{ always() && inputs.upload-report == 'true' }}
       uses: actions/upload-artifact@v7
       with:
-        name: semgrep-appsec-reports
+        name: semgrep-reports
         path: build/reports/semgrep/
-        retention-days: 1
+        retention-days: 2
 
-    - name: Enforce Semgrep AppSec Platform policy
-      if: ${{ always() && inputs.enforce-policy == 'true' && steps.semgrep-scan.outputs.exit-code != '0' }}
+    - name: Enforce Semgrep Policy
+      if: ${{ always() && inputs.enforce-policy == 'true' }}
       shell: bash
       run: |
-        echo "Semgrep AppSec Platform returned exit code ${{ steps.semgrep-scan.outputs.exit-code }}."
-        echo 'Blocking/CI policy enforcement is controlled in Semgrep AppSec Platform.'
-        exit 1
-
-    - name: Clean workspace
-      if: always()
-      uses: tiacsys/clean-after-action@v4
+        EXIT_CODE="${{ steps.semgrep-scan.outputs.exit-code || '0' }}"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+          echo "::error::Semgrep AppSec policy failed with exit code ${EXIT_CODE}."
+          exit "$EXIT_CODE"
+        fi
+        echo "Semgrep AppSec policy passed."
