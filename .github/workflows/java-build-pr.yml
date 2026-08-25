@@ -128,8 +128,9 @@ jobs:
       runs-on: ${{ fromJson(inputs.target-runner) }} 
       needs: [Build]
       steps:
-      - name: CycloneDX SBOM
+      - name: Generate SBOMs
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/sbom-generator@main
+        continue-on-error: true
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}  
     semgrep_appsec_scan:
