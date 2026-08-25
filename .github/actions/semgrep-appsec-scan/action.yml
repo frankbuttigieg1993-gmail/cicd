@@ -132,6 +132,11 @@ runs:
       run: |
         set +e
 
+        if [[ -z "${SEMGREP_APP_TOKEN:-}" ]]; then
+          echo "::error::SEMGREP_APP_TOKEN was not supplied."
+          exit 1
+        fi
+
         echo "========================================"
         echo "Starting Semgrep AppSec Platform Scan"
         echo "Scan mode: ${{ steps.semgrep-mode.outputs.mode }}"

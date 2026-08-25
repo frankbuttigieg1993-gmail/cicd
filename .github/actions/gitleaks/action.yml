@@ -109,14 +109,6 @@ runs:
         set -euo pipefail
         jq '.' build/reports/gitleaks/gitleaks.sarif > build/reports/gitleaks/gitleaks-pretty.sarif
 
-    - name: Upload Gitleaks reports
-      if: ${{ always() && inputs.upload-report == 'true' }}
-      uses: actions/upload-artifact@v7
-      with:
-        name: gitleaks-reports
-        path: build/reports/gitleaks/
-        retention-days: 7
-
     - name: Build Gitleaks PR comment
       if: ${{ always() && inputs.pr-comment == 'true' && github.event_name == 'pull_request' }}
       shell: bash
