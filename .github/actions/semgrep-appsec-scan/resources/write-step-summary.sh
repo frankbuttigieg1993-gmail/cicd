@@ -18,7 +18,7 @@ fi
   echo
   echo "**Baseline:** ${BASELINE:-N/A}"
   echo
-  echo "**Scan ID:** ${SCAN_ID:-Unavailable}"
+  echo "**Scan ID:** ${SCAN_ID}](${SCAN_URL}"
   echo
   echo "| SARIF level | Findings |"
   echo "|---|---:|"
@@ -32,7 +32,8 @@ fi
   echo "[Open Semgrep AppSec Project](${PROJECT_URL})"
   if [[ -n "${SCAN_URL:-}" && -n "${SCAN_ID:-}" ]]; then
     echo
-    echo "**Exact scan:** [Semgrep scan ${SCAN_ID}](${SCAN_URL})"
+    echo "[Open Semgrep Scan](${SCAN_ID}${SCAN_URL})"
+#    echo "**Exact scan:** [Semgrep scan ${SCAN_ID}](${SCAN_URL})"
   else
     echo
     echo "**Exact Semgrep scan link unavailable:** scan ID could not be extracted."
