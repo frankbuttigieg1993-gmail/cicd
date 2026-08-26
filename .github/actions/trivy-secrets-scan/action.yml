@@ -132,18 +132,22 @@ runs:
         echo "jar=${JAR_COUNT}" >> "$GITHUB_OUTPUT"
         echo "image=${IMAGE_COUNT}" >> "$GITHUB_OUTPUT"
 
-    - name: Build Trivy secret PR comment
+    - name: Publish Trivy Secret PR comment
       if: ${{ always() && github.event_name == 'pull_request' }}
       shell: bash
       env:
-        FS_COUNT: ${{ steps.secret-summary.outputs.filesystem }}
-        JAR_COUNT: ${{ steps.secret-summary.outputs.jar }}
-        IMAGE_COUNT: ${{ steps.secret-summary.outputs.image }}
-        TOTAL_COUNT: ${{ steps.secret-summary.outputs.total }}
+        FS_COUNT: ${{ steps.secret-summary.outputs.filesystem || '0' }}
+        JAR_COUNT: ${{ steps.secret-summary.outputs.jar || '0' }}
+        IMAGE_COUNT: ${{ steps.secret-summary.outputs.image || '0' }}
+        TOTAL_COUNT: ${{ steps.secret-summary.outputs.total || '0' }}
         FS_ERROR: ${{ steps.fs-secrets.outputs.scan-error || '0' }}
         JAR_ERROR: ${{ steps.jar-secrets.outputs.scan-error || '0' }}
         IMAGE_ERROR: ${{ steps.image-secrets.outputs.scan-error || '0' }}
-      run: bash "${{ github.action_path }}/resources/build-pr-comment.sh"
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        bash "${{ github.action_path }}/resources/publish-pr-comment.sh"
 
     - name: Generate Trivy secret HTML report
       if: always()
@@ -164,45 +168,25 @@ runs:
           --image build/reports/trivy-secrets/trivy-image-secrets.json \
           --output build/reports/trivy-secrets/trivy-secrets-report.html
 
-    - name: Create or update Trivy secret PR comment
-      if: ${{ always() && github.event_name == 'pull_request' }}
-      shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.github-token }}
-        REPOSITORY: ${{ github.repository }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: bash "${{ github.action_path }}/resources/upsert-pr-comment.sh"
-
-    - name: Determine Trivy secret gate
-      id: secret-gate
-      if: always()
-      shell: bash
-      run: |
-        set -euo pipefail
-        TOTAL="${{ steps.secret-summary.outputs.total || '0' }}"
-        FS_ERROR="${{ steps.fs-secrets.outputs.scan-error || '0' }}"
-        JAR_ERROR="${{ steps.jar-secrets.outputs.scan-error || '0' }}"
-        IMAGE_ERROR="${{ steps.image-secrets.outputs.scan-error || '0' }}"
-
-        if (( TOTAL > 0 )); then
-          EXIT_CODE=1
-        elif [[ "$FS_ERROR" == "1" || "$JAR_ERROR" == "1" || "$IMAGE_ERROR" == "1" ]]; then
-          EXIT_CODE=2
-        else
-          EXIT_CODE=0
-        fi
-        echo "exit-code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
-
-    # Enforcement is deliberately last so SARIF, artifacts and the PR summary are still published on failure.
+# Enforcement is deliberately last so SARIF, artifacts and the PR summary have already been published before the security gate is enforced.
     - name: Enforce Trivy secret policy
       if: always()
       shell: bash
       env:
-        EXIT_CODE: ${{ steps.secret-gate.outputs.exit-code }}
+        TOTAL: ${{ steps.secret-summary.outputs.total || '0' }}
+        FS_ERROR: ${{ steps.fs-secrets.outputs.scan-error || '0' }}
+        JAR_ERROR: ${{ steps.jar-secrets.outputs.scan-error || '0' }}
+        IMAGE_ERROR: ${{ steps.image-secrets.outputs.scan-error || '0' }}
       run: |
         set -euo pipefail
-        if [[ "$EXIT_CODE" != "0" ]]; then
-          echo "Trivy secret policy failed with exit code ${EXIT_CODE}."
+        if (( TOTAL > 0 )); then
+          echo "::error::Trivy secret policy failed: ${TOTAL} secret finding(s) detected."
+          exit 1
+        fi
+        if [[ "$FS_ERROR" == "1" || \
+              "$JAR_ERROR" == "1" || \
+              "$IMAGE_ERROR" == "1" ]]; then
+          echo "::error::Trivy secret policy failed because one or more scans did not complete successfully."
           exit 1
         fi
         echo "Trivy secret policy passed."

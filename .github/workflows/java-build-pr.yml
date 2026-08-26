@@ -16,14 +16,13 @@ defaults:
     shell: bash
 
 permissions:
-  contents: write
-  id-token: write
-  security-events: write
+  contents: write  # Required for checkout and write is required for tagging the git repository
+  id-token: write # This is required for requesting the JWT for OIDC auth to AWS
+  security-events: write # Required for Semgrep and Uploading to GitHub Security Feature
   actions: write
   pull-requests: write
   issues: write
   statuses: write
-
 jobs:
     Bootstrap:
       name: Bootstrap

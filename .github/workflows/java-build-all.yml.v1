@@ -2,7 +2,7 @@
 # https://stackoverflow.com/questions/77373748/unable-to-run-sonarqube-scan-for-my-java-repository-using-github-actions
 # https://docs.sonarsource.com/sonarqube-server/10.8/devops-platform-integration/github-integration/adding-analysis-to-github-actions-workflow
 
-name: Java Application - Scanning All
+name: Java Build Pipeline
 run-name: ${{ github.ref_name }}-${{ github.run_number }}
 
 on:
@@ -19,16 +19,16 @@ defaults:
 
 permissions:
   contents: write  # Required for checkout and write is required for tagging the git repository
-  issues: write
   id-token: write # This is required for requesting the JWT for OIDC auth to AWS
   security-events: write # Required for Semgrep and Uploading to GitHub Security Feature
-  actions: read
+  actions: write
+  pull-requests: write
+  issues: write
   statuses: write
 
 env:
-  AWS_REGION: ap-southeast-2                   # set this to your preferred AWS region, e.g. us-west-1
-  build-artifact-key: app-${{ github.sha }}
-  ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
+  AWS_REGION: ap-southeast-2
+  ECR_REPOSITORY: java-application
   NODE_TLS_REJECT_UNAUTHORIZED: '0' # # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
   GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification
   
@@ -38,23 +38,23 @@ env:
 #   cancel-in-progress: false
 
 jobs:
-    Build:
-      name: Build
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
-      # outputs:
-      #   APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
-      steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      # - name: Set APP_VERSION Output 
-      #   id: app_version
-      #   run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
-      - name: Java Build
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/build@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}  
+  Build:
+    name: Build
+    runs-on: ${{ fromJson(inputs.target-runner) }} 
+    outputs:
+      APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Set APP_VERSION Output 
+      id: app_version
+      run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
+    - name: Java Build
+      uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/build@main
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
     # test-code:
     #   name: Run Tests
     #   runs-on: ${{ fromJson(inputs.target-runner) }} 
