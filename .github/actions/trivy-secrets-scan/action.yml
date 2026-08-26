@@ -20,49 +20,9 @@ name: 'Trivy Secret Scan'
 description: 'Trivy secret scanning for the current filesystem, packaged JAR, and container image with SARIF, artifacts, sticky PR summary, and enforcement.'
 
 inputs:
-  trivy-version:
-    description: 'Trivy CLI version to install.'
-    required: false
-    default: '0.74.0'
   github-token:
     description: 'GitHub token used for PR comments. Permissions are configured by the calling workflow.'
     required: true
-  pr-comment:
-    description: 'Create or update a sticky pull request comment for Trivy secret scans.'
-    required: false
-    default: 'true'
-  upload-sarif:
-    description: 'Upload Trivy secret SARIF reports to GitHub Code Scanning.'
-    required: false
-    default: 'true'
-  upload-report:
-    description: 'Upload Trivy secret reports as a workflow artifact.'
-    required: false
-    default: 'true'
-  enforce-policy:
-    description: 'Fail the action if a secret is detected or a secret scan fails.'
-    required: false
-    default: 'true'
-  scan-filesystem:
-    description: 'Scan the current source/build workspace for secrets.'
-    required: false
-    default: 'true'
-  scan-jar:
-    description: 'Scan the packaged JAR for secrets.'
-    required: false
-    default: 'true'
-  scan-image:
-    description: 'Scan the container image for secrets.'
-    required: false
-    default: 'true'
-  image-ref:
-    description: 'Container image reference to scan'
-    required: false
-    default: ''
-  build-artifact-name:
-    description: 'Name of the workflow artifact containing the application build output.'
-    required: false
-    default: 'build'
 
 outputs:
   exit-code:
@@ -84,62 +44,22 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    # Every shell step in a composite action MUST explicitly define the shell.
-    - name: Checkout repository
+####################################################################### Trivy Secret Scan Setup #######################################################################################
+
+    - name: Git Checkout
       uses: actions/checkout@v6
 
-    - name: Bootstrap
-      shell: bash
-      run: |
-        set -euo pipefail
-        echo "TRIVY_CACHE_DIR=${GITHUB_WORKSPACE}/.cache/trivy" >> "$GITHUB_ENV"
-        echo "TRIVY_SECRET_CONFIG=${{ github.action_path }}/resources/trivy-secret.yaml" >> "$GITHUB_ENV"
-        mkdir -p "${GITHUB_WORKSPACE}/.cache/trivy" build/reports/trivy-secrets
+    - name: Setup Trivy
+      uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/setup-trivy@main
 
-    - name: Install Trivy
-      shell: bash
-      env:
-        TRIVY_VERSION: ${{ inputs.trivy-version }}
-      run: |
-        bash "${{ github.action_path }}/resources/install-trivy.sh"
-
-    - name: Get current date
-      id: date
-      shell: bash
-      run: echo "date=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
-
-    # - name: Cache Trivy databases
-    #   uses: actions/cache@v5
-    #   with:
-    #     path: ${{ github.workspace }}/.cache/trivy
-    #     # Refresh the database cache once a day, while allowing older caches to restore.
-    #     key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
-    #     restore-keys: |
-    #       trivy-db-${{ runner.os }}-
-
-    # Secret scan of the current source/build workspace. Git metadata, Gradle caches and generated reports
-    # are skipped to reduce duplicate findings. The build directory is not globally excluded because the
-    # packaged JAR is scanned separately and may have been downloaded into build/libs.
     - name: Validate Trivy secret configuration
       shell: bash
       run: |
-        set -euo pipefail
+        bash "${{ github.action_path }}/resources/validate-trivy-secret-configuration.sh"
 
-        CONFIG="${{ github.action_path }}/resources/trivy-secret.yaml"
-
-        if [[ ! -s "$CONFIG" ]]; then
-          echo "::error::Trivy secret configuration is missing or empty: $CONFIG"
-          exit 1
-        fi
-
-        python3 "${{ github.action_path }}/resources/validate-trivy-secret-config.py" "$CONFIG"
-
-        echo "Using Trivy secret configuration: $CONFIG"
-        sed -n '1,12p' "$CONFIG"
-
+##################################################################### Trivy FileSystem Secret Scan #######################################################################################
     - name: Trivy filesystem secret scan
       id: fs-secrets
-      if: ${{ inputs.scan-filesystem == 'true' }}
       shell: bash
       run: |
         bash "${{ github.action_path }}/resources/run-secret-scan.sh" \
@@ -151,80 +71,51 @@ runs:
           --skip-dirs build/reports
 
     - name: Upload filesystem secrets SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-filesystem == 'true' && github.event_name != 'pull_request' && steps.fs-secrets.outputs.scan-error != '1' }}
+      if: ${{ always() && github.event_name != 'pull_request' && steps.fs-secrets.outputs.scan-error != '1' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/trivy-secrets/trivy-filesystem-secrets.sarif
         category: trivy-filesystem-secrets
 
-    # The packaged JAR scan detects credentials that survived the build/package process.
+##################################################################### Trivy JAR File Secret Scan #######################################################################################
+# The packaged JAR scan detects credentials that survived the build/package process.
+
     - name: Download Build Artefact
-      if: ${{ inputs.scan-jar == 'true' }}
       uses: actions/download-artifact@v8
       with:
-        name: ${{ inputs.build-artifact-name }}
+        name: build
         path: .
 
-    - name: Extract packaged JAR
-      id: jar-prepare
-      if: ${{ inputs.scan-jar == 'true' }}
-      shell: bash
-      run: bash "${{ github.action_path }}/resources/prepare-jar.sh"
-
-    - name: Trivy packaged JAR secret scan
+    - name: Trivy Packaged JAR Secret Scan
       id: jar-secrets
-      if: ${{ inputs.scan-jar == 'true' && steps.jar-prepare.outputs.available == 'true' }}
       shell: bash
       run: |
-        bash "${{ github.action_path }}/resources/run-secret-scan.sh" \
-          rootfs build/trivy-secret-jar-rootfs \
-          build/reports/trivy-secrets/trivy-jar-secrets.json \
-          build/reports/trivy-secrets/trivy-jar-secrets.sarif \
-          --skip-dirs META-INF/maven
+        bash "${{ github.action_path }}/resources/run-jar-secret-scan.sh"
 
-    - name: Upload packaged JAR secrets SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-jar == 'true' && steps.jar-prepare.outputs.available == 'true' && steps.jar-secrets.outputs.scan-error != '1' && github.event_name != 'pull_request'}}
+    - name: Upload packaged JAR secrets SARIF to GitHub Security Dashboard
+      if: ${{ always() && steps.jar-secrets.outputs.scan-error != '1' && github.event_name != 'pull_request'}}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/trivy-secrets/trivy-jar-secrets.sarif
         category: trivy-packaged-jar-secrets
 
-    # The image scan detects credentials that survived into the final deployable container image.
-    # If image-ref is supplied, the existing local image is scanned. Otherwise this action builds the image.
-    - name: Resolve or build Docker image
-      id: docker-image
-      if: ${{ inputs.scan-image == 'true' }}
-      shell: bash
-      env:
-        INPUT_IMAGE_REF: ${{ inputs.image-ref }}
-      run: |
-        set -euo pipefail
-        if [[ -n "$INPUT_IMAGE_REF" ]]; then
-          IMAGE_REF="$INPUT_IMAGE_REF"
-        else
-          IMAGE_REF="java-application:${GITHUB_SHA}"
-          docker build -t "$IMAGE_REF" .
-        fi
-        echo "image-ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+##################################################################### Trivy Docker Image File Secret Scan #######################################################################################
+# The image scan detects credentials that survived into the final deployable container image.
 
-    - name: Trivy Docker image secret scan
+    - name: Build and scan Docker image for secrets
       id: image-secrets
-      if: ${{ inputs.scan-image == 'true' }}
       shell: bash
-      env:
-        IMAGE_REF: ${{ steps.docker-image.outputs.image-ref }}
       run: |
-        bash "${{ github.action_path }}/resources/run-secret-scan.sh" \
-          image "$IMAGE_REF" \
-          build/reports/trivy-secrets/trivy-image-secrets.json \
-          build/reports/trivy-secrets/trivy-image-secrets.sarif
+        bash "${{ github.action_path }}/resources/run-docker-image-secret-scan.sh"
 
-    - name: Upload Docker image secrets SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-image == 'true' && steps.image-secrets.outputs.scan-error != '1' && github.event_name != 'pull_request' }}
+    - name: Upload Docker image Secrets SARIF to GitHub Security Dashboard
+      if: ${{ always() && steps.image-secrets.outputs.scan-error != '1' && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/trivy-secrets/trivy-image-secrets.sarif
         category: trivy-docker-image-secrets
+
+##################################################################### Summarise Trivy Secrets Results ##########################################################################################
 
     - name: Summarise Trivy secret scans
       id: secret-summary
@@ -242,7 +133,7 @@ runs:
         echo "image=${IMAGE_COUNT}" >> "$GITHUB_OUTPUT"
 
     - name: Build Trivy secret PR comment
-      if: ${{ always() && inputs.pr-comment == 'true' && github.event_name == 'pull_request' }}
+      if: ${{ always() && github.event_name == 'pull_request' }}
       shell: bash
       env:
         FS_COUNT: ${{ steps.secret-summary.outputs.filesystem }}
@@ -274,7 +165,7 @@ runs:
           --output build/reports/trivy-secrets/trivy-secrets-report.html
 
     - name: Create or update Trivy secret PR comment
-      if: ${{ always() && inputs.pr-comment == 'true' && github.event_name == 'pull_request' }}
+      if: ${{ always() && github.event_name == 'pull_request' }}
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
@@ -304,7 +195,7 @@ runs:
 
     # Enforcement is deliberately last so SARIF, artifacts and the PR summary are still published on failure.
     - name: Enforce Trivy secret policy
-      if: ${{ always() && inputs.enforce-policy == 'true' }}
+      if: always()
       shell: bash
       env:
         EXIT_CODE: ${{ steps.secret-gate.outputs.exit-code }}

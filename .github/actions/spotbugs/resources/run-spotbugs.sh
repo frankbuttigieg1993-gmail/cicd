@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set +e
-./gradlew --no-daemon spotbugsMain
+mkdir -p build/reports/spotbugs/main
+./gradlew --no-daemon classes spotbugsMain
 GRADLE_EXIT_CODE=$?
 set -e
 

@@ -206,7 +206,6 @@ jobs:
     #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/docker-push@main
     #     with:
     #       github-token: ${{ secrets.GITHUB_TOKEN }}
-    #       app-version: ${{ needs.Build.outputs.APP_VERSION }}  
     # Tag:
     #   name: Tag
     #   runs-on: ubuntu-24.04

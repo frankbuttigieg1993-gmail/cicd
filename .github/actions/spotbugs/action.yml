@@ -8,22 +8,6 @@ inputs:
   github-token:
     description: 'GitHub token used for SARIF upload and PR comments.'
     required: true
-  upload-sarif:
-    description: 'Upload SARIF to GitHub Code Scanning.'
-    required: false
-    default: 'true'
-  upload-report:
-    description: 'Upload HTML/SARIF/XML reports as an artifact.'
-    required: false
-    default: 'true'
-  pr-comment:
-    description: 'Create or update a sticky PR summary comment regardless of the SpotBugs result.'
-    required: false
-    default: 'true'
-  enforce-policy:
-    description: 'Fail when one or more critical findings are present.'
-    required: false
-    default: 'true'
 
 outputs:
   critical-count:
@@ -42,21 +26,12 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Check out repository
+    - name: Git Checkout
       uses: actions/checkout@v6
       with:
         fetch-depth: 0
-
-    - name: Prepare SpotBugs reports
-      shell: bash
-      run: |
-        set -euo pipefail
-        mkdir -p build/reports/spotbugs/main
-
-    - name: Build production classes
-      shell: bash
-      run: ./gradlew --no-daemon classes
-
+ 
+    # The Gradle task runs during this step, always returns an Exit Code of 0 and then we evaluate the failure later on so that we can still run the other steps
     - name: Run SpotBugs and FindSecBugs
       id: spotbugs
       shell: bash
@@ -81,15 +56,15 @@ runs:
       run: |
         bash "${{ github.action_path }}/resources/write-step-summary.sh"
 
-    - name: Upload SpotBugs SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && steps.spotbugs.outputs.sarif-generated == 'true' && github.event_name != 'pull_request' }}
+    - name: Upload SpotBugs SARIF Report to Github Security Dashboard
+      if: ${{ always() && steps.spotbugs.outputs.sarif-generated == 'true' && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/spotbugs/main/spotbugs.sarif
         category: spotbugs-findsecbugs
 
     - name: Upload SpotBugs reports
-      if: ${{ always() && inputs.upload-report == 'true' }}
+      if: ${{ always()}}
       uses: actions/upload-artifact@v7
       with:
         name: spotbugs-findsecbugs-reports
@@ -101,7 +76,7 @@ runs:
         retention-days: 7
 
     - name: Publish SpotBugs summary to Pull Request
-      if: ${{ always() && inputs.pr-comment == 'true' && github.event_name == 'pull_request' }}
+      if: ${{ always() && github.event_name == 'pull_request' }}
       continue-on-error: true
       shell: bash
       env:
@@ -113,7 +88,7 @@ runs:
         bash "${{ github.action_path }}/resources/update-pr-comment.sh"
 
     - name: Enforce critical SpotBugs policy
-      if: ${{ always() && inputs.enforce-policy == 'true' }}
+      if: always()
       shell: bash
       env:
         CRITICAL_COUNT: ${{ steps.spotbugs-policy.outputs.critical-count || '0' }}

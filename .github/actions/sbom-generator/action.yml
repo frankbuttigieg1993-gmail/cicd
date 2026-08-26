@@ -28,51 +28,19 @@ runs:
           name: build
           path: .
 
-      # Setup Cache Directories for Self Hosted Runners. You don't want runners to share the gradle cache directory. 
-      # Gradle is smart at managing task dependencies and perform gradle tasks simulatenously that it's aware of however it won't be aware of other gradle tasks being managed by other runners 
-      # Therefore a separate gradle cache per runner makes the most sense since only 1 job can execute at any given time per runner. 
-      - name: Configure cache directories
-        shell: bash
-        run: |
-          echo "GRADLE_USER_HOME=${HOME}/.gradle-runners/${{ runner.name }}.cache/gradle" >> "$GITHUB_ENV"
-          echo "TRIVY_CACHE_DIR=${HOME}/.gradle-runners/${{ runner.name }}.cache/trivy" >> "$GITHUB_ENV"
+      - name: Configure Build Cache
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/configure-build-cache@main
 
-      # Use a daily Trivy database cache key. If today's database cache does not
-      # exist, actions/cache can restore the most recent older database as a base.
-      - name: Get Trivy database cache date
-        id: trivy-cache-date
-        shell: bash
-        run: |
-          echo "date=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
-
-# We have 3 runners on a self hosted VM. We need relative gradle and trivy directories to avoid conflicts. We cater for this through 'cache directories' step above
-# This configuration is useful when you aren't using self hosted slaves (eg: github runners or ephemeral slaves)
-
-      # - name: Cache Trivy Databases
-      #   uses: actions/cache@v5
-      #   with:
-      #     path: ~/.cache/trivy
-      #     key: trivy-db-${{ runner.os }}-${{ steps.trivy-cache-date.outputs.date }}
-      #     restore-keys: |
-      #       trivy-db-${{ runner.os }}-
-
-      # - name: Cache Gradle and Maven
-      #   uses: actions/cache@v5
-      #   with:
-      #     path: |
-      #       ~/.gradle/caches
-      #       ~/.gradle/wrapper
-      #       ~/m2/repository
-      #     key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
+      - name: Setup Trivy
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/setup-trivy@main
       
-#      Generate a CycloneDX dependency graph. The custom source-code HTML report  uses this graph to classify vulnerable Java components as direct or transitive.
       - name: Generate Runtime and Application SBOM
         shell: bash
         run: |
           set -euo pipefail
           ./gradlew --no-daemon \
             cyclonedxRuntimeBom \
-            cyclonedxAllConfigsBom 
+            cyclonedxApplicationBom 
 
       - name: Generate Build Environment SBOM
         if: ${{ inputs.produce-build-environment-sbom == 'true' }}
@@ -108,7 +76,7 @@ runs:
           sarif_file: build/reports/cyclonedx/trivy-runtime-bom.sarif
           category: trivy-runtime-sbom
 
-      - name: Generate TRIVY Enhanced Runtime SBOM Report
+      - name: Generate TRIVY Enhanced Runtime SBOM HTML Report
         run: |
           python3 ${{ github.workspace }}/trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/runtime-bom.json --trivy build/reports/cyclonedx/trivy-runtime-bom.json --output build/reports/cyclonedx/runtime-bom.html
         shell: bash 
@@ -140,7 +108,7 @@ runs:
           sarif_file: build/reports/cyclonedx/trivy-all-configs-bom.sarif
           category: trivy-application-sbom
 
-      - name: Generate TRIVY Enhanced Complete SBOM Report
+      - name: Generate TRIVY Enhanced Complete SBOM HTML Report
         run: |
           python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/all-configs-bom.json --trivy build/reports/cyclonedx/trivy-all-configs-bom.json --output build/reports/cyclonedx/all-configs-bom.html
         shell: bash 
@@ -176,7 +144,7 @@ runs:
           sarif_file: build/reports/cyclonedx/trivy-build-environment-bom.sarif
           category: trivy-build-environment-sbom
         
-      - name: Generate TRIVY Enhanced Complete SBOM Report
+      - name: Generate TRIVY Enhanced Complete SBOM HTML Report
         if: ${{ inputs.produce-build-environment-sbom == 'true' }}
         run: |
           python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/build-environment-bom.json --trivy build/reports/cyclonedx/trivy-build-environment-bom.json --output build/reports/cyclonedx/build-environment-bom.html
@@ -194,73 +162,3 @@ runs:
             retention-days: 1
       - uses: tiacsys/clean-after-action@v4
         if: always()
-      # - name: Setup Node.js
-      #   uses: actions/setup-node@v4
-      #   with:
-      #     node-version: '24'
-      # - name: Verify Node and NPM 
-      #   run: | 
-      #     node -v
-      #     npm -v
-      # - name: Install CycloneDX CLI
-      #   run: |
-      #     CDX_VERSION="v0.29.1"
-      #     curl -L \
-      #       -o cyclonedx-linux-x64 \
-      #       "https://github.com/CycloneDX/cyclonedx-cli/releases/download/${CDX_VERSION}/cyclonedx-linux-x64"
-      #     chmod +x cyclonedx-linux-x64
-      #     sudo mv cyclonedx-linux-x64 /usr/local/bin/cyclonedx
-      #     cyclonedx --version
-      # - name: Convert JSON SBOM to HTML
-      #   run: |
-      #     # The official CLI uses the convert command to output alternative layouts
-      #     cyclonedx convert --input-file build/reports/cyclonedx/bom.json --output-file build/reports/cyclonedx/bom.html
-      # Step 2: Install Python 3 and pip
-      # - name: Set up Python 3
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: '3.12' # Specify your preferred Python version
-
-      # # Step 3: Install dependencies using pip
-      # - name: Install dependencies
-      #   run: |
-      #     python -m pip install --upgrade pip
-      #     python3 -m pip install requests
-      #   shell: bash 
-      # - name: Convert JSON SBOM to HTML
-      #   run: |
-      #     python trivy/sunshine.py -i build/reports/cyclonedx/bom.json -o build/reports/cyclonedx/bom.html
-      #   shell: bash 
-      # - name: Publish CycloneDX BOM Files
-      #   uses: actions/upload-artifact@master
-      #   with:
-      #       name: cyclone-bom-reports
-      #       path: | 
-      #        build/reports/cyclonedx/bom.json
-      #        build/reports/cyclonedx/bom.html
-      #       retention-days: 1
-      # - name: Trivy Convert CycloneDX SBOM to HTML
-      #   uses: docker://aquasec/trivy:0.72.0
-      #   with:
-      #     args: >-
-      #       sbom
-      #       --format template
-      #       --template "@trivy/html_template.tpl"
-      #       --output trivy-sbom-report.html
-      #       build/reports/cyclonedx/bom.json
-      # - name: Scan CycloneDX SBOM
-      #   run: |
-      #     # trivy sbom \
-      #     #   --format template \
-      #     #   --template "@trivy/html_template.tpl" \
-      #     #   --output trivy-sbom-report.html \
-      #     #   build/reports/cyclonedx/bom.json
-      # - name: Upload Trivy HTML Report
-      #   if: always()
-      #   uses: actions/upload-artifact@v7
-      #   with:
-      #     name: trivy-sbom-report
-      #     path: trivy-sbom-report.html
-      
-      
-      # sudo snap install trivy

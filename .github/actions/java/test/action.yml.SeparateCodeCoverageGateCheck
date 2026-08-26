@@ -1,0 +1,109 @@
+name: Java Test
+description: Run Gradle unit tests and coverage, publish test reports, warn on failed tests, then enforce the quality gate.
+
+inputs:
+  upload-report:
+    description: Upload JUnit and JaCoCo reports as a workflow artifact.
+    required: false
+    default: "true"
+  report-retention-days:
+    description: Number of days to retain the uploaded test reports.
+    required: false
+    default: "2"
+  github-token:
+    description: 'The github token'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    - name: Configure Build Cache
+      uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/configure-build-cache@main
+    - name: Run Unit Tests
+      id: tests
+      shell: bash
+      run: |
+        ./gradlew test jacocoTestReport \
+          -PignoreFailures=true \
+          --info \
+          --stacktrace \
+          --continue 2>&1
+# The 2>&1 hides the error annotation so that my quality gate at the end is the only error
+    - name: Evaluate Unit Test Results
+      id: test-results
+      if: always()
+      shell: bash
+      run: |
+        python3 "${{ github.action_path }}/resources/check-test-results.py"
+
+    - name: Warn if Unit Tests Failed
+      if: ${{ always() && steps.test-results.outputs.failed-tests != '0' }}
+      shell: bash
+      run: |
+        echo "::warning::${{ steps.test-results.outputs.failed-tests }} unit test(s) failed. Review the JUnit test report."
+
+    # - name: Verify Code Coverage
+    #   id: coverage
+    #   if: always()
+    #   shell: bash
+    #   continue-on-error: true
+    #   run: |
+    #     ./gradlew jacocoTestCoverageVerification \
+    #       -PignoreFailures=true \
+    #       --info \
+    #       --stacktrace
+
+    # - name: Warn if Coverage Verification Failed
+    #   if: ${{ always() && steps.coverage.outcome == 'failure' }}
+    #   shell: bash
+    #   run: |
+    #     echo "::warning::JaCoCo coverage verification failed. Review the coverage report."
+
+    - name: Publish Test Report
+      if: always()
+      uses: dorny/test-reporter@v1
+      with:
+        name: JUnit Test Results
+        path: build/test-results/test/TEST-*.xml
+        reporter: java-junit
+        fail-on-error: false
+        fail-on-empty: false
+        only-summary: 'true'
+  #          list-suites: all
+  #          list-tests: all
+  #          use-actions-summary: true
+
+    - name: Upload Test Reports
+      if: ${{ always() && inputs.upload-report == 'true' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: java-test-reports
+        path: |
+          build/test-results/
+          build/reports/tests/
+          build/reports/jacoco/
+        retention-days: ${{ inputs.report-retention-days }}
+        if-no-files-found: warn
+
+    - name: Enforce Unit Test Quality Gate
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        FAILED_TESTS="${{ steps.test-results.outputs.failed-tests || '0' }}"
+        COVERAGE_FAILED="${{ steps.coverage.outcome }}"
+        echo "Failed unit tests: ${FAILED_TESTS}"
+        # echo "Coverage verification outcome: ${COVERAGE_FAILED}"
+        if [[ "${FAILED_TESTS}" -gt 0 ]]; then
+          echo "::error::Unit test quality gate failed: ${FAILED_TESTS} unit test(s) failed."
+          exit 1
+        fi
+        # if [[ "${COVERAGE_FAILED}" == "failure" ]]; then
+        #   echo "::error::Unit test quality gate failed: JaCoCo coverage verification failed."
+        #   exit 1
+        # fi
+        # echo "Unit tests and coverage verification passed."

@@ -1,0 +1,39 @@
+name: 'Setup Trivy'
+description: 'Setup Trivy'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Bootstrap
+      shell: bash
+      env:
+        TRIVY_VERSION: '0.74.0'
+      run: |
+        echo "TRIVY_CACHE_DIR=${HOME}/.gradle-runners/${{ runner.name }}.cache/trivy" >> "$GITHUB_ENV"
+        mkdir -p build/reports/trivy
+        bash "${{ github.action_path }}/resources/install-trivy.sh"
+
+############################################################# Code for GitHub Self Hosted Runners or Ephemeral Runners #################################################################################################
+
+  # We have 3 runners on a self hosted persistent VM. These runners shared a cache directory (as per the configuration below) however this led to conflicts
+  # Why? Gradle is smart at managing task dependencies and executing tasks in parallel however it didn't have visibility of the other gradle tasks being managed by the other runners (it was out of its scope). This led to conflicts
+  # Therefore a separate gradle cache per self hosted persistent runner makes the most sense since Github actions will only execute 1 job per runner at any given time. 
+  # The configuration below however it still recommended if you aren't using persistent self hosted runners (eg: Github hosted runners or ephemeral)
+  
+      # Cache Trivy DB Sample Code. Useful for when you are not using persistent self hosted runners
+
+      # - name: Cache Trivy Databases
+      #   uses: actions/cache@v5
+      #   with:
+      #     path: ~/.cache/trivy
+      #     key: trivy-db-${{ runner.os }}-${{ steps.trivy-cache-date.outputs.date }}
+      #     restore-keys: |
+      #       trivy-db-${{ runner.os }}-
+
+      # Use a daily Trivy database cache key. If today's database cache does not
+      # exist, actions/cache can restore the most recent older database as a base.
+      # - name: Get Trivy database cache date
+      #   id: trivy-cache-date
+      #   shell: bash
+      #   run: |
+      #     echo "date=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"

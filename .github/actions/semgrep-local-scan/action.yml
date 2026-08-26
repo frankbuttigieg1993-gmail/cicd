@@ -29,7 +29,7 @@ runs:
   using: 'composite'
   steps:
         # Fetch project source with GitHub Actions Checkout.
-        - name: Checkout repository
+        - name: Git Checkout
           uses: actions/checkout@v6
         # Gradle generated this file so the transitive dependencies are included. Semgrep scans the transitive dependencies better when it has the gradle lock file
         - name: Download Build Artefact

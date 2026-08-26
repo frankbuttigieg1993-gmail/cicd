@@ -1,0 +1,26 @@
+name: 'Configure Build Cache'
+description: 'Configure Build Cache'
+
+runs:
+  using: 'composite'
+  steps:
+      - name: Configure Build Cache directories
+        shell: bash
+        run: |
+          echo "GRADLE_USER_HOME=${HOME}/.gradle-runners/${{ runner.name }}.cache/gradle" >> "$GITHUB_ENV"
+
+############################################################# Code for GitHub Self Hosted Runners or Ephemeral Runners #################################################################################################
+
+  # We have 3 runners on a self hosted persistent VM. These runners shared a cache directory (as per the configuration below) however this led to conflicts
+  # Why? Gradle is smart at managing task dependencies and executing tasks in parallel however it didn't have visibility of the other gradle tasks being managed by the other runners (it was out of its scope). This led to conflicts
+  # Therefore a separate gradle cache per self hosted persistent runner makes the most sense since Github actions will only execute 1 job per runner at any given time. 
+  # The configuration below however it still recommended if you aren't using persistent self hosted runners (eg: Github hosted runners or ephemeral)
+  
+      # - name: Cache Gradle and Maven
+      #   uses: actions/cache@v5
+      #   with:
+      #     path: |
+      #       ~/.gradle/caches
+      #       ~/.gradle/wrapper
+      #       ~/m2/repository
+      #     key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}

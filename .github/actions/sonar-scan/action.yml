@@ -16,7 +16,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Check out repository
+    - name: Git Checkout
       uses: actions/checkout@v6
       with:
         fetch-depth: 0
@@ -30,13 +30,8 @@ runs:
     - name: Download Test Reports
       uses: actions/download-artifact@v8
       with:
-        name: test-and-coverage-reports
+        name: test-reports
         path: .
-
-    - name: Configure workspace-local cache directories
-      shell: bash
-      run: |
-        echo "SONAR_USER_HOME=${GITHUB_WORKSPACE}/.sonar" >> "$GITHUB_ENV"
 
     - name: Cache SonarQube packages
       uses: actions/cache@v5
@@ -46,7 +41,47 @@ runs:
         restore-keys: |
           ${{ runner.os }}-sonar
 
-    # - name: Configure SonarQube New Code
+      # The Sonar Gradle Task will not fail if the Quality Gate fails because we don't have 'sonar.qualitygate.wait=true' in the sonar.properties file or the command below
+      # We evaluate the Result in a Subsequent Step 
+    - name: Execute SonarQube Scan
+      env:
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+      run: |
+        echo "SONAR_USER_HOME=${GITHUB_WORKSPACE}/.sonar" >> "$GITHUB_ENV"
+        ./gradlew sonar --stacktrace \
+          -Dsonar.userHome="${SONAR_USER_HOME}" \
+          -Dsonar.branch.name="${GITHUB_REF_NAME}"
+      shell: bash
+
+    # SonarQube itself is the source of truth. Poll the CE task, resolve the
+    # analysisId, query the quality gate for that exact analysis, publish the
+    # result, and expose the gate status for the enforcement step below.
+    - name: Evaluate SonarQube Quality Gate
+      id: sonar-result
+      if: always()
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        EVENT_NAME: ${{ github.event_name }}
+        GIT_REF: ${{ github.ref }}
+      run: |
+        bash "${{ github.action_path }}/resources/evaluate-sonarqube-result.sh"
+
+    # - name: Publish to Step Summary
+    #   run: |
+    #     echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}"
+    #     echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}" >> $GITHUB_STEP_SUMMARY
+    #     cat build/sonar/report-task.txt >> $GITHUB_STEP_SUMMARY
+    #   shell: bash
+
+    - uses: tiacsys/clean-after-action@v4
+      if: always()
+
+    # - name: Configure SonarQube New Code to 30 Days
     #   shell: bash
     #   env:
     #     SONAR_TOKEN: ${{ inputs.sonar-token }}
@@ -60,53 +95,3 @@ runs:
     #       --data-urlencode "branch=${GITHUB_REF_NAME}" \
     #       --data-urlencode "type=NUMBER_OF_DAYS" \
     #       --data-urlencode "value=30"
-
-    - name: Execute Sonar Scan
-      env:
-        SONAR_TOKEN: ${{ inputs.sonar-token }}
-        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
-      run: |
-        ./gradlew sonar --stacktrace \
-          -Dsonar.userHome="${SONAR_USER_HOME}" \
-          -Dsonar.branch.name="${GITHUB_REF_NAME}"
-      shell: bash
-
-    # SonarQube itself is the source of truth. Poll the CE task, resolve the
-    # analysisId, query the quality gate for that exact analysis, publish the
-    # result, and expose the gate status for the enforcement step below.
-    - name: Resolve and publish SonarQube result
-      id: sonar-result
-      if: always() && (github.event_name == 'pull_request' || github.event_name == 'push')
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-        SONAR_TOKEN: ${{ inputs.sonar-token }}
-        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        EVENT_NAME: ${{ github.event_name }}
-        GIT_REF: ${{ github.ref }}
-      run: bash "${{ github.action_path }}/resources/resolve-sonarqube-result.sh"
-
-    # Enforce exactly the status returned by SonarQube for the analysis above.
-    # ERROR/WARN/NONE all block the pipeline; only OK passes.
-    - name: Enforce SonarQube Quality Gate
-      if: always()
-      shell: bash
-      env:
-        GATE_STATUS: ${{ steps.sonar-result.outputs.gate-status }}
-      run: |
-        if [[ "$GATE_STATUS" != 'OK' ]]; then
-          echo "::error::SonarQube Quality Gate did not pass (status=${GATE_STATUS:-UNKNOWN})."
-          exit 1
-        fi
-        echo 'SonarQube Quality Gate passed.'
-
-    # - name: Publish to Step Summary
-    #   run: |
-    #     echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}"
-    #     echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}" >> $GITHUB_STEP_SUMMARY
-    #     cat build/sonar/report-task.txt >> $GITHUB_STEP_SUMMARY
-    #   shell: bash
-
-    - uses: tiacsys/clean-after-action@v4
-      if: always()
