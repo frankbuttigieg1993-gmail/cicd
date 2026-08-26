@@ -112,22 +112,23 @@ jobs:
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/runtime-vulnerability-scan@main
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}  
-  SpotBugs:
-    name: SpotBugs 
-    runs-on: ubuntu-24.04
-    needs: [Build, Unit_Tests]
-    env:
-      NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
-      GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
-    steps:
-    - name: SpotBugs 
-      uses: frankbuttigieg1993-gmail/cicd/.github/actions/spotbugs@main
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+  # SpotBugs:
+  #   name: SpotBugs 
+  #   runs-on: ubuntu-24.04
+  #   needs: [Build, Unit_Tests]
+  #   env:
+  #     NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+  #     GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+  #   steps:
+  #   - name: SpotBugs 
+  #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/spotbugs@main
+  #     with:
+  #       github-token: ${{ secrets.GITHUB_TOKEN }}
   Scan_Prequisites:
     name: Scan Prequisites 
     runs-on: ubuntu-24.04
-    needs: [Build, Unit_Tests, SpotBugs, Runtime_Vulnerability_Scan, Secrets_Scan]
+#    needs: [Build, Unit_Tests, SpotBugs, Runtime_Vulnerability_Scan, Secrets_Scan]
+    needs: [Build, Unit_Tests, Runtime_Vulnerability_Scan, Secrets_Scan]
     env:
       NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
       GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches

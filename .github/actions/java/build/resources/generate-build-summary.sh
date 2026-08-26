@@ -33,7 +33,7 @@ echo "BRANCH_NAME_ESCAPED=${BRANCH_NAME_ESCAPED}" >> "$GITHUB_ENV"
 
   echo "  <tr>"
   echo "    <td>Git Commit</td>"
-  echo "    <td>${GITHUB_SHA}</td>"
+  echo "    <td><a href=\"${COMMIT_URL}\"><code>${GITHUB_SHA:0:7}</code></a></td>"
   echo "  </tr>"
 
   echo "  <tr>"
