@@ -41,6 +41,12 @@ runs:
       with:
         fetch-depth: 0
 
+    - name: Download Build Artefact
+      uses: actions/download-artifact@v8
+      with:
+        name: build
+        path: .
+
     - name: Download SBOM Reports
       uses: actions/download-artifact@v8
       with:

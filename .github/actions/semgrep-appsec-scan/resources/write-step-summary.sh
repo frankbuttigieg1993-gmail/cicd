@@ -2,7 +2,7 @@
 set -euo pipefail
 
 RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-SEMGREP_SCAN_URL="${PROJECT_URL}/scans/${SCAN_ID}
+SEMGREP_SCAN_URL="${PROJECT_URL}/scans/${SCAN_ID}"
 if [[ "$SEMGREP_EXIT_CODE" != "0" ]]; then
   STATUS="BLOCKED"
 elif (( ERROR_COUNT > 0 || WARNING_COUNT > 0 || NOTE_COUNT > 0 )); then
