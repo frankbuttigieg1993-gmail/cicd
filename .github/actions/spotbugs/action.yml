@@ -38,15 +38,15 @@ runs:
       run: |
         bash "${{ github.action_path }}/resources/run-spotbugs.sh"
 
+    # XML is authoritative for native SpotBugs priority.
     - name: Evaluate SpotBugs security policy
       id: spotbugs-policy
-      if: ${{ always() && steps.spotbugs.outputs.sarif-generated == 'true' }}
+      if: ${{ always() && steps.spotbugs.outputs.xml-generated == 'true' }}
       shell: bash
       run: |
         set -euo pipefail
-
         python3 "${{ github.action_path }}/resources/check-spotbugs-critical.py" \
-          --sarif build/reports/spotbugs/main/spotbugs.sarif \
+          --xml build/reports/spotbugs/main/spotbugs.xml \
           --github-output "$GITHUB_OUTPUT" \
           --summary build/reports/spotbugs/main/spotbugs-summary.md
 

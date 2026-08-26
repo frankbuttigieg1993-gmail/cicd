@@ -47,11 +47,12 @@ runs:
         gradle.lockfile
         Dockerfile
       retention-days: 1
-  - name: Generate Build Overview
-    run: |
-      # Generate your HTML block
-      echo "<h3>🚀 Build Overview </h3>" >> $GITHUB_STEP_SUMMARY
-      echo "<table border='1'><tr><th>Item</th><th>Description</th></tr><tr><td>Git Commit </td><td>${{ github.sha }}</td></tr><tr><td>Dev Branch</td><td>${{ github.ref_name }}</td></tr><tr><td>CICD Commit</td><td>${{ job.workflow_sha }}</td></tr></table>" >> $GITHUB_STEP_SUMMARY
+  - name: Generate Build Summary
     shell: bash
+    env:
+      APP_VERSION: ${{ steps.app_version.outputs.APP_VERSION }}
+      WORKFLOW_SHA: ${{ job.workflow_sha }}
+    run: |
+      bash "${{ github.action_path }}/resources/generate-build-summary.sh"
   - uses: tiacsys/clean-after-action@v4
     if: always()
