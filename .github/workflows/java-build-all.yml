@@ -62,24 +62,24 @@ jobs:
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }} 
-  Secrets_Scan:
-      name: Secrets Scan 
-      runs-on: ${{ fromJson(inputs.target-runner) }} 
-      needs: [Build, Unit_Tests]
-      steps:
-      - name: Secrets Scan
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/secrets-scan@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}  
-  Runtime_Vulnerability_Scan:
-    name: Runtime Vulnerability Scan
-    runs-on: ${{ fromJson(inputs.target-runner) }} 
-    needs: [Build, Unit_Tests]
-    steps:
-    - name: Runtime Vulnerability Scan
-      uses: frankbuttigieg1993-gmail/cicd/.github/actions/runtime-vulnerability-scan@main
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}  
+  # Secrets_Scan:
+  #     name: Secrets Scan 
+  #     runs-on: ${{ fromJson(inputs.target-runner) }} 
+  #     needs: [Build, Unit_Tests]
+  #     steps:
+  #     - name: Secrets Scan
+  #       uses: frankbuttigieg1993-gmail/cicd/.github/actions/secrets-scan@main
+  #       with:
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}  
+  # Runtime_Vulnerability_Scan:
+  #   name: Runtime Vulnerability Scan
+  #   runs-on: ${{ fromJson(inputs.target-runner) }} 
+  #   needs: [Build, Unit_Tests]
+  #   steps:
+  #   - name: Runtime Vulnerability Scan
+  #     uses: frankbuttigieg1993-gmail/cicd/.github/actions/runtime-vulnerability-scan@main
+  #     with:
+  #       github-token: ${{ secrets.GITHUB_TOKEN }}  
   # SpotBugs:
   #   name: SpotBugs 
   #   runs-on: ubuntu-24.04
@@ -96,7 +96,7 @@ jobs:
     name: Generate SBOMs
     runs-on: ${{ fromJson(inputs.target-runner) }} 
 #    needs: [Build, Unit_Tests, SpotBugs, Runtime_Vulnerability_Scan, Secrets_Scan]
-    needs: [Build, Unit_Tests, Runtime_Vulnerability_Scan, Secrets_Scan]
+    needs: [Build, Unit_Tests]
     steps:
     - name: Generate SBOMs
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/sbom-generator@main

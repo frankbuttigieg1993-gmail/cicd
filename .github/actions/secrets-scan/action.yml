@@ -13,11 +13,6 @@ runs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Download Build Artefact
-        uses: actions/download-artifact@v8
-        with:
-          name: build
-          path: .
       - name: Gitleaks
         id: gitleaks
         continue-on-error: true
