@@ -5,7 +5,9 @@ set -euo pipefail
 : "${GITHUB_STEP_SUMMARY:?GITHUB_STEP_SUMMARY is required}"
 : "${GITHUB_SHA:?GITHUB_SHA is required}"
 : "${GITHUB_REF_NAME:?GITHUB_REF_NAME is required}"
+: "${GITHUB_SERVER_URL:?GITHUB_SERVER_URL is required}"
 : "${GITHUB_EVENT_NAME:?GITHUB_EVENT_NAME is required}"
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 : "${WORKFLOW_SHA:?WORKFLOW_SHA is required}"
 : "${GITHUB_RUN_NUMBER:?GITHUB_RUN_NUMBER is required}"
 : "${APP_VERSION:?APP_VERSION is required}"
@@ -17,6 +19,12 @@ set -euo pipefail
 BRANCH_NAME_ESCAPED="${GITHUB_REF_NAME//\//_}"
 
 echo "BRANCH_NAME_ESCAPED=${BRANCH_NAME_ESCAPED}" >> "$GITHUB_ENV"
+
+###############################################################################
+# Build URLs
+###############################################################################
+
+COMMIT_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
 
 ###############################################################################
 # Generate build summary
