@@ -52,7 +52,7 @@ runs:
         SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
       run: |
         echo "SONAR_USER_HOME=${GITHUB_WORKSPACE}/.sonar" >> "$GITHUB_ENV"
-        ./gradlew sonar --no-daemon --no-configuration-cachce--stacktrace  \
+        ./gradlew sonar --no-daemon --no-configuration-cachce --stacktrace  \
           -Dsonar.userHome="${SONAR_USER_HOME}" \
           -Dsonar.branch.name="${GITHUB_REF_NAME}"
       shell: bash

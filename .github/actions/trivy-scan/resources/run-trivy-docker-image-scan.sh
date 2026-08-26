@@ -12,7 +12,7 @@ TRIVY_JSON="${REPORT_DIR}/trivy-dockerimage-report.json"
 TRIVY_SARIF="${REPORT_DIR}/trivy-dockerimage-report.sarif"
 TRIVY_HTML="${REPORT_DIR}/trivy-dockerimage-report.html"
 
-APPLICATION_SBOM="build/reports/cyclonedx/all-configs-bom.json"
+APPLICATION_SBOM="build/reports/cyclonedx/application-sbom.json"
 
 ###############################################################################
 # Determine image reference

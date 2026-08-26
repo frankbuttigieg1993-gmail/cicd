@@ -48,7 +48,7 @@ mkdir -p "$REPORT_DIR"
 (
   cd "$ROOTFS_DIR"
 
-  jar xf "../../libs/$(basename "$JAR")"
+  jar xf "../libs/$(basename "$JAR")"
 )
 
 ###############################################################################
