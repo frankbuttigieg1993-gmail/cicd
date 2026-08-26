@@ -85,32 +85,32 @@ runs:
 
       - name: Generate CSV Version of Complete Application SBOM 
         run: |
-           cyclonedx convert --input-file build/reports/cyclonedx/all-configs-bom.json --output-file build/reports/cyclonedx/all-configs-bom.csv --output-format csv
+           cyclonedx convert --input-file build/reports/cyclonedx/application-sbom.json --output-file build/reports/cyclonedx/application-sbom.csv --output-format csv
         shell: bash 
 
       - name: Scan Complete Application SBOM with Trivy
         run: |
-          trivy sbom --cache-dir "$TRIVY_CACHE_DIR" --scanners vuln,license --format json --output build/reports/cyclonedx/trivy-all-configs-bom.json build/reports/cyclonedx/all-configs-bom.json
+          trivy sbom --cache-dir "$TRIVY_CACHE_DIR" --scanners vuln,license --format json --output build/reports/cyclonedx/trivy-application-sbom.json build/reports/cyclonedx/application-sbom.json
         shell: bash 
 
       - name: Convert Complete Application SBOM Vulnerabilities to SARIF
         run: |
           trivy convert \
             --format sarif \
-            --output build/reports/cyclonedx/trivy-all-configs-bom.sarif \
-            build/reports/cyclonedx/trivy-all-configs-bom.json
+            --output build/reports/cyclonedx/trivy-application-sbom.sarif \
+            build/reports/cyclonedx/trivy-application-sbom.json
         shell: bash
 
       - name: Upload Complete Application SBOM SARIF
         if: ${{ always() && github.event_name != 'pull_request' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: build/reports/cyclonedx/trivy-all-configs-bom.sarif
+          sarif_file: build/reports/cyclonedx/trivy-application-sbom.sarif
           category: trivy-application-sbom
 
       - name: Generate TRIVY Enhanced Complete SBOM HTML Report
         run: |
-          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/all-configs-bom.json --trivy build/reports/cyclonedx/trivy-all-configs-bom.json --output build/reports/cyclonedx/all-configs-bom.html
+          python3 trivy/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/application-sbom.json --trivy build/reports/cyclonedx/trivy-application-sbom.json --output build/reports/cyclonedx/application-sbom.html
         shell: bash 
 
 ##############################  Build Environment SBOM #########################################################
