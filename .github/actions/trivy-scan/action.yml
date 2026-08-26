@@ -1,23 +1,24 @@
 # Design Notes:
 
-# 1) Semgrep and Sonarqube will perform the SAST Scan for Code Quality
-# 2) Gradle uses CycloneDX to produce a complete SBOM of all components with direct and transitive dependencies that's enriched through Trivy
-# Gradle uses CycloneDX to produce a runtime SBOM with all components in the build artefact and their direct and transitive dependencies that's enriched through Trivy
-# Gradle uses CycloneDX to produce a Complete Build Chain SBOM with all components in the build artefact and their direct and transitive dependencies that's enriched through Trivy
-# 3) Trivy Scan Source Code
-# Gradle is the best tool to produce the complete SBOM and a dependency file (gradle.lockfile)
-# Trivy understands build.gradle, settings.gradle and the gradle.lockfile (produced by gradle with all dependencies)
-# This stage tells us what are all the components references by our source code and what licences and vulnerabilities do they have (mainly uses the gradle.lockfile to do this)
-# 4) Trivy Scan JAR (Build Artefact)
-# We unpack the Build Artefact File and we explicitly tell Trivy to scan all of the nested JAR files inside the Build Artefact
-# This provides a complete scan of the dependent JAR files that are actually packed in the Build Artefact and its vulnerabilities.
-# Documentation and ChatGPT suggests that v0.72.0 includes improvements for scanning licences in JAR files but there are some limitations. The scanner also works better if you unpack/extract the Build artefact
-# Note: Trivy's Documentation Notes that it struggles to analyse licences from JAR files. The Gradle runtime SBOM caters for this limitation
-# 5) Trivy Scan Docker Image
-# This scans for what is present in the deployable container image  eg: OS packages/libraries, container packages, JRE vulnerabilities, the JAR file, configuration files, openssl, libc, curl, certificates
-# 6) Trivy Scan Configuration 
-# We will use Trivy to scan for misconfigurations in the files. eg: HELM Charts, Docker FIles etc.
-# Note:  The Github action for trivy scans isn't maintained regularly. So we moved away from using the github action to installing trivy separately and running a CLI command so we can ensure we are using the latest version of trivy
+# Gradle uses CycloneDX to Produce the Runtime, Application and Build Chain SBOM with direct and transitive dependencies report using the gradle.lockfile as it is best tool to do this
+# Trivy scans include Source Code Scan, Build Artefact Scan (JAR), Docker Image Scan and Configuration Scan. 
+# Trivy Secrets Scan and using Trivy to Enrich the SBOMs produces by CycloneDX are handled through other composite actions
+# Trivy Source Code Scan: 
+##### This stage scans all of the code in the repository, identifies its components and then determines the licences and vulnerabilities associated with each component.
+##### It uses the gradle.lock file, build.gradle and other files natively to perform this analysis
+# Trivy Build Artefact Scan (JAR File)
+##### This stage performs a similar scan to the Source Code Scan however it only scans the nested dependencies in the JAR. In other words, the JAR files that are required to **RUN** the application.
+##### The solution has a CycloneDX Runtime SBOM with Trivy Enrichment. There is some overlap with this scan and it should produce the same result however they answer different questions.
+##### The gradle scan answers 'what open source libraries does gradle think are required to run the application' and this answers 'what libraries are in the final JAR file'
+##### Trivy's Documentation recommends unpacking the JAR Files and there can be some challenges with scanning nested JAR
+# Trivy Scan Docker Image
+##### This stage scans for what is present in the Deployable Container Image 
+##### This includes OS packages/libraries, container packages, Java Runtime vulnerabilities (eg: java -version), the JAR file, configuration files, openssl, libc, curl, certificates
+# Trivy Configuration Scan 
+##### This stage helps to identify misconfigurations in HELM Charts, Docker FIles, IAC, Configuration files etc. 
+# Why are we using the Github Action for Trivy?
+#### The Github action for trivy scans isn't maintained regularly. 
+#### Therefore this composite action install trivy and we run CLI commands to ensure we are using the latest version and capabilities of trivy.
 
 name: 'Trivy Security Scan'
 description: 'Trivy dependency, license, packaged JAR, container, and configuration scanning with SARIF and workflow artifacts.'
@@ -26,23 +27,7 @@ inputs:
   image-ref:
     description: 'Container image reference to scan'
     required: false
-    default: ''
-  scan-image:
-    description: 'Build/scan the container image.'
-    required: false
-    default: 'true'
-  scan-webgoat:
-    description: 'Run the historical WebGoat scanner test fixture. Disabled by default.'
-    required: false
-    default: 'false'
-  upload-sarif:
-    description: 'Upload SARIF reports to GitHub Code Scanning.'
-    required: false
-    default: 'true'
-  upload-report:
-    description: 'Upload Trivy reports as a workflow artifact.'
-    required: false
-    default: 'true'
+    default: 'java-application:${GITHUB_SHA}'
   trivy-version:
     description: 'Trivy CLI version to install and use'
     required: false
@@ -51,24 +36,10 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    # Every shell step in a composite action MUST explicitly define the shell
-    - name: Checkout repository
+    - name: Git Checkout
       uses: actions/checkout@v6
       with:
         fetch-depth: 0
-
-    - name: Configure workspace-local cache directories
-      shell: bash
-      run: |
-        echo "TRIVY_CACHE_DIR=${HOME}/.gradle-runners/${{ runner.name }}.cache/trivy" >> "$GITHUB_ENV"
-        mkdir -p build/reports/trivy
-
-    # Trivy needs the lock file for an accurate scan including transitive dependencies. Gradle generated this file so the transitive dependencies are included.
-    - name: Download Build Artefact
-      uses: actions/download-artifact@v8
-      with:
-        name: build
-        path: .
 
     - name: Download SBOM Reports
       uses: actions/download-artifact@v8
@@ -76,244 +47,72 @@ runs:
         name: sbom-reports
         path: build/reports/cyclonedx
 
-    - name: Install Trivy
-      shell: bash
-      env:
-        TRIVY_VERSION: ${{ inputs.trivy-version }}
-      run: |
-        bash "${{ github.action_path }}/resources/install-trivy.sh"
+    - name: Setup Trivy
+      uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/setup-trivy@main
 
-    - name: Get current date
-      id: date
-      shell: bash
-      run: echo "date=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
-
-    # - name: Cache Trivy databases
-    #   uses: actions/cache@v5
-    #   with:
-    #     path: |
-    #       ${{ env.TRIVY_CACHE_DIR }}
-    #     # Refresh the database cache once a day, while allowing older caches to restore.
-    #     key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
-    #     restore-keys: |
-    #       trivy-db-${{ runner.os }}-
-
-# This will scan all components in the CyloneDX SBOM which includes all configuration options (not just runtime) because it is a complete SBOM
-# Trivy scans the project's dependency manifests/lock data for vulnerabilities.
-# The CycloneDX all-configurations SBOM provides the resolved dependency graph used by the custom HTML report to classify dependencies as direct/transitive.
-
-    - name: Trivy dependency and license scan
+################################################### Trivy Source Code Scan ##############################################################
+ 
+    - name: Trivy Dependency and License Scan
       shell: bash
       run: |
-        set +e
+        bash "${{ github.action_path }}/resources/run-trivy-dependency-license-scan.sh"
 
-        # Scan once and save the full result as JSON
-        trivy fs \
-          --cache-dir "$TRIVY_CACHE_DIR" \
-          --scanners vuln,license \
-          --format json \
-          --output build/reports/trivy/trivy-srccode.json \
-          --timeout 40m \
-          .
-
-        EXIT_CODE=$?
-        set -e
-
-        # Convert JSON -> SARIF
-        trivy convert \
-          --format sarif \
-          --output build/reports/trivy/trivy-srccode.sarif \
-          build/reports/trivy/trivy-srccode.json
-
-        # Generate the dependency-aware HTML report.
-        # Trivy supplies vulnerability/license findings; CycloneDX supplies the
-        # dependency graph used to classify Java components as Direct/Transitive.
-        python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
-          --trivy build/reports/trivy/trivy-srccode.json \
-          --sbom "build/reports/cyclonedx/all-configs-bom.json" \
-          --output build/reports/trivy/trivy-srccode-report.html
-
-        echo "Trivy source dependency/license exit code: ${EXIT_CODE}"
-        exit 0
-
-    - name: Upload source dependency/license SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && github.event_name != 'pull_request' }}
+    - name: Upload Dependency and License Scan SARIF to GitHub 
+      if: ${{ always() && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
-        sarif_file: build/reports/trivy/trivy-srccode.sarif
-        category: trivy-sourcecode
+        sarif_file: build/reports/trivy/trivy-dependency-license.sarif
+        category: trivy-dependency-license
 
-    - name: Extract packaged JAR
+################################################### Trivy Build Artefact Scan ##############################################################
+
+    - name: Trivy Packaged JAR Scan
       shell: bash
       run: |
-        set -euo pipefail
-        JAR=$(find build/libs -maxdepth 1 -type f -name '*.jar' | head -n 1)
-        test -n "$JAR"
-        rm -rf build/jar-rootfs
-        mkdir -p build/jar-rootfs
-        cd build/jar-rootfs
-        jar xf "../libs/$(basename "$JAR")"
+        bash "${{ github.action_path }}/resources/run-trivy-jar-scan.sh"
 
-# This will scan everything inside the JAR however it won't scan the dependencies. 
-# Trivy's JAR scanner is good for vulnerabilities, but current Trivy documentation says JAR license detection is limited. 
-# One other positive development: Trivy 0.72 specifically added Java JAR license detection from packaged LICENSE files and embedded pom.xml, so your current Trivy version is actually better for direct JAR license scanning than older versions.
-
-# We cater for this limitation through the separate Gradle SBOM Task just for Runtime Libraries
-
-    - name: Trivy packaged JAR vulnerability and license scan
-      shell: bash
-      run: |
-        set +e
-
-        # Scan once and save the full result as JSON
-        trivy rootfs \
-          --cache-dir "$TRIVY_CACHE_DIR" \
-          --scanners vuln,license \
-          --format json \
-          --output build/reports/trivy/trivy-jar-report.json \
-          --timeout 40m \
-          build/jar-rootfs
-
-        EXIT_CODE=$?
-        set -e
-
-        # Convert JSON -> SARIF
-        trivy convert \
-          --format sarif \
-          --output build/reports/trivy/trivy-jar-report.sarif \
-          build/reports/trivy/trivy-jar-report.json
-
-        python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
-          --trivy build/reports/trivy/trivy-jar-report.json \
-          --sbom "build/reports/cyclonedx/all-configs-bom.json" \
-          --output build/reports/trivy/trivy-jar-report.html
-
-        echo "Trivy packaged JAR exit code: ${EXIT_CODE}"
-        exit 0
-
-    - name: Upload JAR vulnerability/license SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && github.event_name != 'pull_request' }}
+    - name: Upload JAR Vulnerability/License SARIF
+      if: ${{ always() && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/trivy/trivy-jar-report.sarif
         category: trivy-packaged-jar
 
-    - name: Build Docker image
-      id: docker-build
-      if: ${{ inputs.scan-image == 'true' }}
+################################################### Trivy Docker Image Scan ###############################################################
+
+    - name: Build and scan Docker image
+      id: docker-image-scan
       shell: bash
       env:
         INPUT_IMAGE_REF: ${{ inputs.image-ref }}
       run: |
-        set -euo pipefail
-
-        if [[ -n "$INPUT_IMAGE_REF" ]]; then
-          IMAGE_REF="$INPUT_IMAGE_REF"
-        else
-          IMAGE_REF="java-application:${GITHUB_SHA}"
-        fi
-
-        docker build -t "$IMAGE_REF" .
-        echo "image-ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
-
-    - name: Trivy Docker image vulnerability and license scan
-      if: ${{ inputs.scan-image == 'true' }}
-      shell: bash
-      env:
-        IMAGE_REF: ${{ steps.docker-build.outputs.image-ref }}
-      run: |
-        set +e
-
-        # Scan once and save the complete result as JSON
-        trivy image \
-          --cache-dir "$TRIVY_CACHE_DIR" \
-          --scanners vuln,license \
-          --format json \
-          --output build/reports/trivy/trivy-dockerimage-report.json \
-          --timeout 40m \
-          "$IMAGE_REF"
-
-        EXIT_CODE=$?
-        set -e
-
-        # Convert JSON -> SARIF
-        trivy convert \
-          --format sarif \
-          --output build/reports/trivy/trivy-dockerimage-report.sarif \
-          build/reports/trivy/trivy-dockerimage-report.json
-
-        python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
-          --trivy build/reports/trivy/trivy-dockerimage-report.json \
-          --sbom "build/reports/cyclonedx/all-configs-bom.json" \
-          --output build/reports/trivy/trivy-dockerimage-report.html
-
-        echo "Trivy image vulnerability/license exit code: ${EXIT_CODE}"
-        exit 0
+        bash "${{ github.action_path }}/resources/run-trivy-docker-image-scan.sh"
 
     - name: Upload Docker image vulnerability/license SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.scan-image == 'true' && github.event_name != 'pull_request'}}
+      if: ${{ always() && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/trivy/trivy-dockerimage-report.sarif
         category: trivy-docker-image
 
-    - name: Trivy configuration scan
+################################################### Trivy Configuration Scan ###############################################################
+
+    - name: Trivy Configuration Scan
       shell: bash
       run: |
-        set +e
+        bash "${{ github.action_path }}/resources/run-trivy-config-scan.sh"
 
-        # Scan once and save the complete result as JSON
-        trivy config \
-          --cache-dir "$TRIVY_CACHE_DIR" \
-          --format json \
-          --output build/reports/trivy/trivy-config-report.json \
-          --timeout 10m \
-          .
-
-        EXIT_CODE=$?
-        set -e
-
-        trivy convert \
-          --format template \
-          --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
-          --output build/reports/trivy/trivy-config-report.html \
-          build/reports/trivy/trivy-config-report.json
-
-        trivy convert \
-          --format sarif \
-          --output build/reports/trivy/trivy-config-report.sarif \
-          build/reports/trivy/trivy-config-report.json
-
-        echo "Trivy configuration exit code: ${EXIT_CODE}"
-        exit 0
-
-    - name: Upload Trivy configuration SARIF
-      if: ${{ always() && inputs.upload-sarif == 'true' && github.event_name != 'pull_request'}}
+    - name: Upload Trivy Configuration SARIF
+      if: ${{ always() && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/trivy/trivy-config-report.sarif
         category: trivy-configuration
-
-    - name: Optional WebGoat scanner test fixture
-      if: ${{ inputs.scan-webgoat == 'true' }}
-      shell: bash
-      run: |
-        set -euo pipefail
-        curl -fsSL -o webgoat-2025.3.jar \
-          https://github.com/WebGoat/WebGoat/releases/download/v2025.3/webgoat-2025.3.jar
-
-        trivy rootfs \
-          --cache-dir "$TRIVY_CACHE_DIR" \
-          --scanners vuln,license \
-          --ignore-unfixed \
-          --format template \
-          --template "@$GITHUB_ACTION_PATH/resources/trivy-v0.72.0-html-template.tpl" \
-          --output build/reports/trivy/trivy-webgoat-jar-report.html \
-          --timeout 40m \
-          webgoat-2025.3.jar
+ 
+################################################### Trivy Reports ###############################################################
 
     - name: Upload Trivy reports
-      if: ${{ always() && inputs.upload-report == 'true' }}
+      if: always()
       uses: actions/upload-artifact@v7
       with:
         name: trivy-reports

@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 set -euo pipefail
 
 command -v curl >/dev/null 2>&1 || { echo '::error::curl is required on the self-hosted runner'; exit 1; }
@@ -239,3 +241,18 @@ elif [[ "$EVENT_NAME" == 'push' ]]; then
     --data "$STATUS_JSON" >/dev/null
   echo 'SonarQube commit status published successfully.'
 fi
+
+###############################################################################
+# Enforce the authoritative SonarQube Quality Gate result.
+#
+# This must remain the final operation in this script so that the PR comment,
+# Step Summary, and commit status are published before a failed gate returns
+# a non-zero exit code to GitHub Actions.
+###############################################################################
+
+if [[ "${GATE_STATUS:-}" != "OK" ]]; then
+  echo "::error::SonarQube Quality Gate did not pass (status=${GATE_STATUS:-UNKNOWN})."
+  exit 1
+fi
+
+echo "SonarQube Quality Gate passed."

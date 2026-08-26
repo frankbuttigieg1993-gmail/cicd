@@ -1,5 +1,5 @@
-name: PR Pipeline Summary
-description: Create or update a single PR comment linking to the latest pipeline run.
+name: PR Pipeline Bootstrap
+description: PR Pipeline Bootstrap
 
 inputs:
   github-token:
@@ -21,7 +21,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Create or update PR pipeline comment
+    - name: Add Link to Latest Run in PR
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}

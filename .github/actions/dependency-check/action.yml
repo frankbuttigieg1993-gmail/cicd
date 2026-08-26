@@ -1,5 +1,18 @@
-name: 'Dependency Check Analysis'
+name: 'OWASP Dependency Check Analysis'
 description: 'Dependency Check Analysis'
+
+# OWASP Dependency Check has a tendency to generate more false positve results than the other tools in my tool chain however it uses a different matching approach which sometimes can pick up issues other scanners don't.
+# However you would need to triage the findings and amintain supression lists for known false positive and we have sufficient coverage from the other tools.
+# You can use it as an independnecy secondary scanner but only include it if you have a specific requirement for it
+
+# | Tool                       | False-positive / noise tendency                       | Strength                               |
+# | -------------------------- | ----------------------------------------------------- | -------------------------------------- |
+# | GitHub Dependency Review   | Relatively low                                        | Newly introduced dependencies          |
+# | Dependabot                 | Relatively low                                        | Ecosystem-aware advisories/remediation |
+# | CycloneDX + Trivy          | Low–moderate                                          | Strong package/SBOM matching           |
+# | Semgrep Supply Chain       | Lower actionable noise when reachability is available | Reachability/context                   |
+# | **OWASP Dependency-Check** | **Moderate, sometimes high**                          | Independent NVD/CPE-based detection    |
+
 
 inputs:
   github-token:
@@ -16,6 +29,8 @@ runs:
     with:
       name: build
       path: .
+  - name: Configure Build Cache
+    uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/configure-build-cache@main
   - name: Cache Dependency-Check data
     uses: actions/cache@v5
     with:
@@ -23,27 +38,11 @@ runs:
       key: odc-${{ runner.os }}-12.2.2-${{ hashFiles('**/gradle.lockfile', '**/build.gradle', '**/settings.gradle') }}
       restore-keys: |
         odc-${{ runner.os }}-12.2.2-
-  # - name: Cache Gradle and Maven
-  #   uses: actions/cache@v5
-  #   with:
-  #     path: |
-  #       ${{ github.workspace }}/.gradle/caches
-  #       ${{ github.workspace }}/.gradle/wrapper
-  #       ${{ github.workspace }}/.m2/repository
-  #     key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle.lockfile', '**/settings.gradle*') }}
-      # Setup Cache Directories for Self Hosted Runners. You don't want runners to share the gradle cache directory. 
-      # Gradle is smart at managing task dependencies and perform gradle tasks simulatenously that it's aware of however it won't be aware of other gradle tasks being managed by other runners 
-      # Therefore a separate gradle cache per runner makes the most sense since only 1 job can execute at any given time per runner. 
-  - name: Configure cache directories
-    shell: bash
-    run: |
-      echo "GRADLE_USER_HOME=${HOME}/.gradle-runners/${{ runner.name }}.cache/gradle" >> "$GITHUB_ENV"
-  - name: Run Gradle DependencyCheckAnalyse 
+  - name: Produce DependencyCheck Report
     env:
       GITHUB_TOKEN: ${{ inputs.github-token }}  
       NODE_TLS_REJECT_UNAUTHORIZED: "0" 
-#        run: gradle clean build test jacocoTestReport jacocoTestCoverageVerification sonar cyclonedxBom dependencies -info --scan -PignoreFailures=true --write-locks --continue
-    run: ./gradlew  dependencyCheckAnalyze 
+    run: ./gradlew dependencyCheckAnalyze 
     shell: bash 
   - name: Publish Report
     uses: actions/upload-artifact@master
