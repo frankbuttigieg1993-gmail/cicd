@@ -46,9 +46,6 @@ runs:
   steps:
 ####################################################################### Trivy Secret Scan Setup #######################################################################################
 
-    - name: Git Checkout
-      uses: actions/checkout@v6
-
     - name: Setup Trivy
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/setup-trivy@main
 
