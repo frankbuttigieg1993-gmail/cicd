@@ -23,6 +23,10 @@ inputs:
   github-token:
     description: 'GitHub token used for PR comments. Permissions are configured by the calling workflow.'
     required: true
+  enforce-policy:
+    description: 'Fail this action when Trivy detects secrets or encounters a scan error.'
+    required: false
+    default: 'true'
 
 outputs:
   exit-code:
@@ -166,7 +170,8 @@ runs:
           --output build/reports/trivy-secrets/trivy-secrets-report.html
 
 # Enforcement is deliberately last so SARIF, artifacts and the PR summary have already been published before the security gate is enforced.
-    - name: Enforce Trivy secret policy
+    - name: Determine Trivy secret gate
+      id: secret-gate
       if: always()
       shell: bash
       env:
@@ -176,14 +181,33 @@ runs:
         IMAGE_ERROR: ${{ steps.image-secrets.outputs.scan-error || '0' }}
       run: |
         set -euo pipefail
+        if [[ "$FS_ERROR" == "1" || "$JAR_ERROR" == "1" || "$IMAGE_ERROR" == "1" ]]; then
+          EXIT_CODE=2
+        elif (( TOTAL > 0 )); then
+          EXIT_CODE=1
+        else
+          EXIT_CODE=0
+        fi
+        echo "exit-code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
+
+    - name: Enforce Trivy secret policy
+      if: ${{ always() && inputs.enforce-policy == 'true' }}
+      shell: bash
+      env:
+        TOTAL: ${{ steps.secret-summary.outputs.total || '0' }}
+        FS_ERROR: ${{ steps.fs-secrets.outputs.scan-error || '0' }}
+        JAR_ERROR: ${{ steps.jar-secrets.outputs.scan-error || '0' }}
+        IMAGE_ERROR: ${{ steps.image-secrets.outputs.scan-error || '0' }}
+      run: |
+        set -euo pipefail
         if (( TOTAL > 0 )); then
-          echo "::error::Trivy secret policy failed: ${TOTAL} secret finding(s) detected."
+          echo "Trivy secret policy failed: ${TOTAL} secret finding(s) detected."
           exit 1
         fi
         if [[ "$FS_ERROR" == "1" || \
               "$JAR_ERROR" == "1" || \
               "$IMAGE_ERROR" == "1" ]]; then
-          echo "::error::Trivy secret policy failed because one or more scans did not complete successfully."
+          echo "Trivy secret policy failed because one or more scans did not complete successfully."
           exit 1
         fi
         echo "Trivy secret policy passed."
