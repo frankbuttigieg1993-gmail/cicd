@@ -50,4 +50,5 @@ runs:
         name: Depcheck report
         path: build/reports/dependency-check/dependency-check-report.html
         retention-days: 1
+        if-no-files-found: error
   - uses: tiacsys/clean-after-action@v4

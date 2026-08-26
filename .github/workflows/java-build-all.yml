@@ -146,7 +146,7 @@ jobs:
   semgrep_appsec_scan:
     name: Semgrep AppSec Scan 
     runs-on: ubuntu-24.04
-    needs: [Scan_Prequisites]
+    needs: [Scan_Prequisites, SBOM_Generator]
     env:
       HOME: ${{ github.workspace }}    # Points Semgrep to the workspace directory it already has access to
     # Skip any PR created by dependabot to avoid permission issues:
@@ -160,7 +160,7 @@ jobs:
   sonar-scan:
       name: SonarQube Scan & Gate Check
       runs-on: ${{ fromJson(inputs.target-runner) }} 
-      needs: Scan_Prequisites
+      needs: [Scan_Prequisites, SBOM_Generator]
       env:
         NODE_TLS_REJECT_UNAUTHORIZED: '0'   # temporarily disable Node TLS checks
         GIT_SSL_NO_VERIFY: 'true'           # temporarily disable git SSL verification

@@ -74,6 +74,7 @@ runs:
           build/reports/spotbugs/main/spotbugs.xml
           build/reports/spotbugs/main/spotbugs-summary.md
         retention-days: 7
+        if-no-files-found: error
 
     - name: Publish SpotBugs summary to Pull Request
       if: ${{ always() && github.event_name == 'pull_request' }}
