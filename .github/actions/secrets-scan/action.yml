@@ -20,14 +20,12 @@ runs:
           path: .
       - name: Gitleaks
         id: gitleaks
-        continue-on-error: true
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
         with:
           github-token: ${{ inputs.github-token }}
       - name: Trivy Secrets Scan
         id: trivy
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-secrets-scan@main
-        continue-on-error: true
         with:
           github-token: ${{ inputs.github-token }}
       - name: Publish Secrets Scan Reports
@@ -40,3 +38,26 @@ runs:
             build/reports/gitleaks/
           retention-days: 2
           if-no-files-found: warn
+      - name: Enforce Secrets Scan Policy
+        if: always()
+        shell: bash
+        env:
+          GITLEAKS_FINDINGS: ${{ steps.gitleaks.outputs.finding-count || '0' }}
+          GITLEAKS_SCAN_ERROR: ${{ steps.gitleaks.outputs.scan-error || '0' }}
+          TRIVY_FINDINGS: ${{ steps.trivy.outputs.total-secret-count || '0' }}
+          TRIVY_EXIT_CODE: ${{ steps.trivy.outputs.exit-code || '2' }}
+        run: |
+          set -euo pipefail
+          echo "Gitleaks findings:   ${GITLEAKS_FINDINGS}"
+          echo "Gitleaks scan error: ${GITLEAKS_SCAN_ERROR}"
+          echo "Trivy findings:      ${TRIVY_FINDINGS}"
+          echo "Trivy exit code:     ${TRIVY_EXIT_CODE}"
+          if [[ "$GITLEAKS_SCAN_ERROR" == "1" || "$TRIVY_EXIT_CODE" == "2" ]]; then
+            echo "Secrets scan failed because one or more scanners encountered an execution error."
+            exit 1
+          fi
+          if (( GITLEAKS_FINDINGS > 0 || TRIVY_FINDINGS > 0 )); then
+            echo "Secrets scan policy failed: secret findings were detected."
+            exit 1
+          fi
+          echo "Secrets scan policy passed."

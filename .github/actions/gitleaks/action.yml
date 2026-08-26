@@ -5,6 +5,10 @@ inputs:
   github-token:
     description: 'GitHub token used to upload SARIF, upload reports, and update the PR comment.'
     required: true
+  enforce-policy:
+    description: 'Fail this action when Gitleaks detects secrets or encounters a scan error.'
+    required: false
+    default: 'true'
 
 outputs:
   finding-count:
@@ -90,9 +94,9 @@ runs:
         else
           echo "scan-error=1" >> "$GITHUB_OUTPUT"
         fi
-        
+
     - name: Enforce Gitleaks policy
-      if: ${{ always()}}
+      if: ${{ always() && inputs.enforce-policy == 'true' }}
       shell: bash
       env:
         EXIT_CODE: ${{ steps.gitleaks.outputs.exit-code }}

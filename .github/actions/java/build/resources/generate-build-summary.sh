@@ -57,7 +57,7 @@ COMMIT_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
   # Docker is only part of the build for non-PR executions.
   if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
     echo "  <tr>"
-    echo "    <td>Docker</td>"
+    echo "    <td>Docker Tag</td>"
     echo "    <td>${APP_VERSION}.${GITHUB_RUN_NUMBER}</td>"
     echo "  </tr>"
   fi
