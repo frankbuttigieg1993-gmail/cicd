@@ -5,12 +5,31 @@ inputs:
   github-token:
     description: 'The github token'
     required: true
-
+outputs:
+  APP_VERSION:
+    description: '0 if clean, 1 if secrets are detected, 2 if a scan error occurs.'
+    value: ${{ steps.app_version.outputs.APP_VERSION }}
+  filesystem-secret-count:
+    description: 'Filesystem secret finding count.'
+    value: ${{ steps.secret-summary.outputs.filesystem }}
+  jar-secret-count:
+    description: 'Packaged JAR secret finding count.'
+    value: ${{ steps.secret-summary.outputs.jar }}
+  image-secret-count:
+    description: 'Container image secret finding count.'
+    value: ${{ steps.secret-summary.outputs.image }}
+  total-secret-count:
+    description: 'Total findings across enabled Trivy secret scan stages.'
+    value: ${{ steps.secret-summary.outputs.total }}
 runs:
   using: 'composite'
   steps:
   - name: Configure Build Cache
     uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/configure-build-cache@main
+  - name: Set APP_VERSION Output 
+    id: app_version
+    run: echo "APP_VERSION=$(cat ./build.gradle | grep 'version =' | cut -d "=" -f 2 | tr -d "'" | xargs)" >> "$GITHUB_OUTPUT"
+    shell: bash
   - name: Gradle Build
     env:
       GITHUB_TOKEN: ${{ inputs.github-token }}  

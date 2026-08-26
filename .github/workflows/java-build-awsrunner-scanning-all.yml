@@ -18,9 +18,8 @@ defaults:
     shell: bash
 
 env:
-  AWS_REGION: ap-southeast-2                   # set this to your preferred AWS region, e.g. us-west-1
-  build-artifact-key: app-${{ github.sha }}
-  ECR_REPOSITORY: java-application           # set this to your Amazon ECR repository name
+  AWS_REGION: ap-southeast-2
+  ECR_REPOSITORY: java-application 
 
 concurrency:
   group: ${{ github.workflow }}-runner-${{ github.ref }}

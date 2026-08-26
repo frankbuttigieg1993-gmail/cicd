@@ -9,9 +9,20 @@ runs:
       env:
         TRIVY_VERSION: '0.74.0'
       run: |
+        echo "TRIVY_INCLUDE_DEV_DEPS=true" >> "$GITHUB_ENV"
+        echo "NODE_TLS_REJECT_UNAUTHORIZED=0" >> "$GITHUB_ENV"
+        echo "GIT_SSL_NO_VERIFY=true" >> "$GITHUB_ENV"
         echo "TRIVY_CACHE_DIR=${HOME}/.gradle-runners/${{ runner.name }}.cache/trivy" >> "$GITHUB_ENV"
         mkdir -p build/reports/trivy
         bash "${{ github.action_path }}/resources/install-trivy.sh"
+      
+      # TRIVY_INCLUDE_DEV_DEPS: "true" ### any CLI OPtion not supported by the github action can be passed as an environemnt variable
+      # NODE_TLS_REJECT_UNAUTHORIZED: "0" # Disables SSL strictness for Node tools - addresses trivy certificate issue behind CGI corporate proxy
+      # GIT_SSL_NO_VERIFY: "true"         # Disables SSL strictness for Git fetches
+      # TRIVY_SKIP_DB_UPDATE: "true"
+      # TRIVY_SKIP_JAVA_DB_UPDATE: "true"
+      # TRIVY_SKIP_CHECK_UPDATE: "true"
+
 
 ############################################################# Code for GitHub Self Hosted Runners or Ephemeral Runners #################################################################################################
 
