@@ -5,10 +5,6 @@ inputs:
   github-token:
     description: 'GitHub token used to upload SARIF, upload reports, and update the PR comment.'
     required: true
-  pr-comment:
-    description: 'Create or update a sticky pull request comment when running on a pull_request event.'
-    required: false
-    default: 'true'
 
 outputs:
   finding-count:
@@ -81,6 +77,20 @@ runs:
     #   run: |
     #     echo "::warning::Gitleaks findings were processed, but the PR comment could not be published. Check workflow permissions for pull-requests/issues write access."
 
+    - name: Determine Gitleaks scan status
+      id: gitleaks-status
+      if: always()
+      shell: bash
+      env:
+        EXIT_CODE: ${{ steps.gitleaks.outputs.exit-code || '2' }}
+      run: |
+        set -euo pipefail
+        if [[ "$EXIT_CODE" == "0" || "$EXIT_CODE" == "1" ]]; then
+          echo "scan-error=0" >> "$GITHUB_OUTPUT"
+        else
+          echo "scan-error=1" >> "$GITHUB_OUTPUT"
+        fi
+        
     - name: Enforce Gitleaks policy
       if: ${{ always()}}
       shell: bash
