@@ -9,44 +9,21 @@ inputs:
     description: 'Create or update a sticky pull request comment when running on a pull_request event.'
     required: false
     default: 'true'
-  upload-sarif:
-    description: 'Upload the Gitleaks SARIF report to GitHub Code Scanning.'
-    required: false
-    default: 'true'
-  upload-report:
-    description: 'Upload Gitleaks reports as a workflow artifact.'
-    required: false
-    default: 'true'
-  enforce-policy:
-    description: 'Fail the action when Gitleaks detects secrets or encounters a scan error.'
-    required: false
-    default: 'true'
-  scan-ref:
-    description: 'Git ref to scan. Defaults to the checked-out repository history.'
-    required: false
-    default: ''
 
 outputs:
-  exit-code:
-    description: 'Gitleaks exit code: 0 clean, 1 findings, 2 scan error.'
-    value: ${{ steps.gitleaks.outputs.exit-code }}
   finding-count:
     description: 'Number of Gitleaks findings reported in SARIF.'
     value: ${{ steps.summary.outputs.findings }}
-  sarif-file:
-    description: 'Path to the Gitleaks SARIF report.'
-    value: ${{ steps.gitleaks.outputs.sarif-file }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Checkout repository history
+    - name: Git Checkout
       uses: actions/checkout@v6
       with:
         fetch-depth: 0
-        ref: ${{ inputs.scan-ref }}
 
-    - name: Bootstrap reports
+    - name: Bootstrap 
       shell: bash
       run: |
         set -euo pipefail
@@ -55,28 +32,8 @@ runs:
     - name: Run Gitleaks against Git history
       id: gitleaks
       shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
-        set +e
-
-        gitleaks git . \
-          --redact \
-          --report-format sarif \
-          --report-path build/reports/gitleaks/gitleaks.sarif \
-          --verbose
-
-        EXIT_CODE=$?
-        set -e
-
-        echo "exit-code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
-        echo "sarif-file=build/reports/gitleaks/gitleaks.sarif" >> "$GITHUB_OUTPUT"
-
-        if [[ ! -f build/reports/gitleaks/gitleaks.sarif ]]; then
-          printf '%s\n' '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[{"tool":{"driver":{"name":"Gitleaks"}},"results":[]}]}' > build/reports/gitleaks/gitleaks.sarif
-        fi
-
-        exit 0
+        bash "${{ github.action_path }}/resources/run-gitleaks.sh"
 
     - name: Summarise Gitleaks results
       id: summary
@@ -97,7 +54,7 @@ runs:
           --output build/reports/gitleaks/gitleaks-report.html
 
     - name: Upload Gitleaks SARIF
-      if: ${{ always() && github.event_name != 'pull_request' && inputs.upload-sarif == 'true' }}
+      if: ${{ always() && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: build/reports/gitleaks/gitleaks.sarif
@@ -108,87 +65,29 @@ runs:
       run: |
         set -euo pipefail
         jq '.' build/reports/gitleaks/gitleaks.sarif > build/reports/gitleaks/gitleaks-pretty.sarif
-
-    - name: Build Gitleaks PR comment
-      if: ${{ always() && inputs.pr-comment == 'true' && github.event_name == 'pull_request' }}
+        
+    - name: Create or update Gitleaks PR comment
+      id: gitleaks-pr-comment
+      if: ${{ always() && github.event_name == 'pull_request' }}
+      continue-on-error: true
       shell: bash
       env:
         EXIT_CODE: ${{ steps.gitleaks.outputs.exit-code }}
         FINDINGS: ${{ steps.summary.outputs.findings }}
-      run: |
-        set -euo pipefail
-
-        if [[ "$EXIT_CODE" == "1" || "$FINDINGS" -gt 0 ]]; then
-          STATUS="BLOCKED"
-          MESSAGE="One or more potential secrets were detected in the Git repository history. Investigate and rotate any real credentials before merging."
-        elif [[ "$EXIT_CODE" != "0" ]]; then
-          STATUS="SCAN ERROR"
-          MESSAGE="Gitleaks encountered an execution error. The scan must be investigated before treating the repository as clean."
-        else
-          STATUS="PASSED"
-          MESSAGE="No secrets were detected by Gitleaks in the scanned Git history."
-        fi
-
-        cat > build/reports/gitleaks/gitleaks-comment.md <<EOF2
-        <!-- gitleaks-security-report -->
-
-        ## Gitleaks Secret Security Report
-
-        **Scope:** Git repository history
-
-        | Control | Findings | Policy |
-        |---|---:|---|
-        | Gitleaks | ${FINDINGS} | **BLOCK** if findings are detected |
-
-        ### Security Gate: ${STATUS}
-
-        ${MESSAGE}
-
-        No secret values are included in this comment. Detailed results are available in GitHub Code Scanning and the Gitleaks report artifact.
-
-        _This comment is automatically updated on subsequent scans._
-        EOF2
-
-    - name: Create or update Gitleaks PR comment
-      id: gitleaks-pr-comment
-      if: ${{ always() && inputs.pr-comment == 'true' && github.event_name == 'pull_request' }}
-      continue-on-error: true
-      shell: bash
-      env:
         GH_TOKEN: ${{ inputs.github-token }}
         REPOSITORY: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
       run: |
-        set -euo pipefail
+        bash "${{ github.action_path }}/resources/publish-gitleaks-pr-comment.sh"
 
-        COMMENT_ID="$({
-          gh api \
-            --paginate \
-            "/repos/${REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
-            --jq '.[] | select(.body | contains("<!-- gitleaks-security-report -->")) | .id' \
-            | head -n 1
-        } || true)"
-
-        if [[ -n "$COMMENT_ID" ]]; then
-          gh api \
-            --method PATCH \
-            "/repos/${REPOSITORY}/issues/comments/${COMMENT_ID}" \
-            --raw-field body="$(cat build/reports/gitleaks/gitleaks-comment.md)"
-        else
-          gh api \
-            --method POST \
-            "/repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" \
-            --raw-field body="$(cat build/reports/gitleaks/gitleaks-comment.md)"
-        fi
-
-    - name: Warn when Gitleaks PR comment cannot be published
-      if: ${{ always() && steps.gitleaks-pr-comment.outcome == 'failure' }}
-      shell: bash
-      run: |
-        echo "::warning::Gitleaks findings were processed, but the PR comment could not be published. Check workflow permissions for pull-requests/issues write access."
+    # - name: Warn when Gitleaks PR comment cannot be published
+    #   if: ${{ always() && steps.gitleaks-pr-comment.outcome == 'failure' }}
+    #   shell: bash
+    #   run: |
+    #     echo "::warning::Gitleaks findings were processed, but the PR comment could not be published. Check workflow permissions for pull-requests/issues write access."
 
     - name: Enforce Gitleaks policy
-      if: ${{ always() && inputs.enforce-policy == 'true' }}
+      if: ${{ always()}}
       shell: bash
       env:
         EXIT_CODE: ${{ steps.gitleaks.outputs.exit-code }}

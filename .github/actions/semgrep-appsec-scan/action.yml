@@ -12,10 +12,6 @@ inputs:
     description: 'Semgrep AppSec Platform project URL.'
     required: false
     default: 'https://semgrep.dev/orgs/frank_buttigieg_1993_personal_org/projects/6365517'
-  enforce-policy:
-    description: 'Fail the composite action after reporting when semgrep ci returns a non-zero result.'
-    required: false
-    default: 'true'
 
 outputs:
   exit-code:
@@ -158,9 +154,10 @@ runs:
         name: semgrep-appsec-reports
         path: build/reports/semgrep/
         retention-days: 1
+        if-no-files-found: error
 
     - name: Enforce Semgrep AppSec Platform policy
-      if: ${{ always() && inputs.enforce-policy == 'true' && steps.semgrep-scan.outputs.exit-code != '0' }}
+      if: ${{ always() && steps.semgrep-scan.outputs.exit-code != '0' }}
       shell: bash
       run: |
         echo "Semgrep AppSec Platform returned exit code ${{ steps.semgrep-scan.outputs.exit-code }}."

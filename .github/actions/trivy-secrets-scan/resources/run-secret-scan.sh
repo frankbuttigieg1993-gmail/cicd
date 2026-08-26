@@ -5,7 +5,7 @@ SCAN_TYPE="${1:?scan type is required}"
 TARGET="${2:?target is required}"
 JSON_OUTPUT="${3:?JSON output path is required}"
 SARIF_OUTPUT="${4:?SARIF output path is required}"
-CONFIG="${GITHUB_ACTION_PATH}/resources/trivy-secret.yaml"
+TRIVY_SECRET_CONFIG="${GITHUB_ACTION_PATH}/resources/trivy-secret.yaml"
 shift 4
 
 mkdir -p "$(dirname "$JSON_OUTPUT")" "$(dirname "$SARIF_OUTPUT")"

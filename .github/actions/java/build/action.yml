@@ -47,6 +47,7 @@ runs:
         gradle.lockfile
         Dockerfile
       retention-days: 1
+      if-no-files-found: error
   - name: Generate Build Summary
     shell: bash
     env:
