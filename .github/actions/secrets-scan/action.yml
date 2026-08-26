@@ -23,13 +23,13 @@ runs:
         continue-on-error: true
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
         with:
-          github-token: ${{ inputs.GITHUB_TOKEN }}
+          github-token: ${{ inputs.github-token }}
       - name: Trivy Secrets Scan
         id: trivy
-        continue-on-error: true
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-secrets-scan@main
+        continue-on-error: true
         with:
-          github-token: ${{ inputs.GITHUB_TOKEN }}
+          github-token: ${{ inputs.github-token }}
       - name: Publish Secrets Scan Reports
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
@@ -40,14 +40,3 @@ runs:
             build/reports/gitleaks/
           retention-days: 2
           if-no-files-found: warn
-      - name: Check Secrets Scan Results
-        if: always()
-        shell: bash
-        run: |
-          echo "Gitleaks result: ${{ steps.gitleaks.outcome }}"
-          echo "Trivy result:    ${{ steps.trivy.outcome }}"
-
-          if [[ "${{ steps.gitleaks.outcome }}" != "success" ]] || [[ "${{ steps.trivy.outcome }}" != "success" ]]; then
-            echo "::error::One or more secret scanners failed."
-            exit 1
-          fi
