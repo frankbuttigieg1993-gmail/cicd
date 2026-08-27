@@ -2,9 +2,6 @@ name: Java Application - PR Pipeline
 run-name: PR-${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
 
 on:
-  pull_request:
-    branches: [ main, release/*, develop ]
-    types: [ opened, synchronize, reopened ] 
   workflow_call:
     inputs:
       target-runner:
