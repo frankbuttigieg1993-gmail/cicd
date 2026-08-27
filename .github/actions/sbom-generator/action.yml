@@ -72,7 +72,7 @@ runs:
 
       - name: Upload Runtime SBOM SARIF
         if: ${{ always() && github.event_name != 'pull_request' }}
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: build/reports/cyclonedx/trivy-runtime-bom.sarif
           category: trivy-runtime-sbom
@@ -104,7 +104,7 @@ runs:
 
       - name: Upload Complete Application SBOM SARIF
         if: ${{ always() && github.event_name != 'pull_request' }}
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: build/reports/cyclonedx/trivy-application-sbom.sarif
           category: trivy-application-sbom
@@ -140,7 +140,7 @@ runs:
 
       - name: Upload Complete Application SBOM SARIF
         if: ${{ inputs.produce-build-environment-sbom == 'true' && github.event_name != 'pull_request' }}
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: build/reports/cyclonedx/trivy-build-environment-bom.sarif
           category: trivy-build-environment-sbom
@@ -154,7 +154,7 @@ runs:
 ##############################  Upload Reports #########################################################
 
       - name: Upload Reports 
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v7
         if: always()
         with:
             name: sbom-reports
