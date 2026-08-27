@@ -1,59 +1,56 @@
-name: 'Secrets Scan'
-description: 'Secrets Scan'
+name: Secrets Scan
+description: Run Gitleaks and Trivy secret scans and enforce a single combined security policy.
 
 inputs:
   github-token:
-    description: 'The github token'
+    description: GitHub token
     required: true
 
 runs:
-  using: 'composite'
+  using: composite
+
   steps:
-      - name: Git Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - name: Gitleaks
-        id: gitleaks
-        continue-on-error: true
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
-        with:
-          github-token: ${{ inputs.github-token }}
-      - name: Trivy Secrets Scan
-        id: trivy
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-secrets-scan@main
-        with:
-          github-token: ${{ inputs.github-token }}
-      - name: Publish Secrets Scan Reports
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: secrets-scan-reports 
-          path: |
-            build/reports/trivy-secrets/
-            build/reports/gitleaks/
-          retention-days: 2
-          if-no-files-found: warn
-      - name: Enforce Secrets Scan Policy
-        if: always()
-        shell: bash
-        env:
-          GITLEAKS_FINDINGS: ${{ steps.gitleaks.outputs.finding-count || '0' }}
-          GITLEAKS_SCAN_ERROR: ${{ steps.gitleaks.outputs.scan-error || '0' }}
-          TRIVY_FINDINGS: ${{ steps.trivy.outputs.total-secret-count || '0' }}
-          TRIVY_EXIT_CODE: ${{ steps.trivy.outputs.exit-code || '2' }}
-        run: |
-          set -euo pipefail
-          echo "Gitleaks findings:   ${GITLEAKS_FINDINGS}"
-          echo "Gitleaks scan error: ${GITLEAKS_SCAN_ERROR}"
-          echo "Trivy findings:      ${TRIVY_FINDINGS}"
-          echo "Trivy exit code:     ${TRIVY_EXIT_CODE}"
-          if [[ "$GITLEAKS_SCAN_ERROR" == "1" || "$TRIVY_EXIT_CODE" == "2" ]]; then
-            echo "Secrets scan failed because one or more scanners encountered an execution error."
-            exit 1
-          fi
-          if (( GITLEAKS_FINDINGS > 0 || TRIVY_FINDINGS > 0 )); then
-            echo "Secrets scan policy failed: secret findings were detected."
-            exit 1
-          fi
-          echo "Secrets scan policy passed."
+    - name: Gitleaks
+      id: gitleaks
+      uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
+      with:
+        github-token: ${{ inputs.github-token }}
+        enforce-policy: 'false'
+
+    - name: Trivy Secrets Scan
+      id: trivy
+      uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-secrets-scan@main
+      with:
+        github-token: ${{ inputs.github-token }}
+        enforce-policy: 'false'
+
+    # Reports are deliberately published before the combined security gate
+    # is enforced so they remain available when findings are detected.
+    - name: Publish Secrets Scan Reports
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: secrets-scan-reports
+        path: |
+          build/reports/gitleaks/
+          build/reports/trivy-secrets/
+        retention-days: 2
+        if-no-files-found: warn
+
+    # This is the only step in this composite action that should fail because
+    # of the combined secret-scanning policy.
+    - name: Enforce Secrets Scan Policy
+      if: always()
+      shell: bash
+      env:
+        GITLEAKS_FINDINGS: ${{ steps.gitleaks.outputs.finding-count || '0' }}
+        GITLEAKS_SCAN_ERROR: ${{ steps.gitleaks.outputs.scan-error || '0' }}
+
+        TRIVY_FINDINGS: ${{ steps.trivy.outputs.total-secret-count || '0' }}
+        TRIVY_SCAN_ERROR: ${{ steps.trivy.outputs.scan-error || '0' }}
+      run: |
+        bash "${{ github.action_path }}/resources/enforce-secrets-policy.sh"
+
+    - name: Clean workspace
+      if: always()
+      uses: tiacsys/clean-after-action@v4
