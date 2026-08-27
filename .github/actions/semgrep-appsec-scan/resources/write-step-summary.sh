@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-
 if [[ "$SEMGREP_EXIT_CODE" != "0" ]]; then
   STATUS="BLOCKED"
 elif (( PLATFORM_TOTAL_FINDINGS > 0 )); then
@@ -25,7 +23,11 @@ fi
   echo "| Product | Findings |"
   echo "|---|---:|"
 
-  echo "| Code | ${CODE_FINDINGS} |"
+  if [[ -n "${CODE_FINDINGS_URL:-}" ]]; then
+    echo "| Code | [${CODE_FINDINGS}](${CODE_FINDINGS_URL}) |"
+  else
+    echo "| Code | ${CODE_FINDINGS} |"
+  fi
 
   if [[ -n "${SUPPLY_CHAIN_FINDINGS_URL:-}" ]]; then
     echo "| Supply Chain | [${SUPPLY_CHAIN_FINDINGS}](${SUPPLY_CHAIN_FINDINGS_URL}) |"
@@ -44,6 +46,4 @@ fi
     echo "[Open this Semgrep Scan](${SCAN_URL})"
   fi
 
-  echo
-  echo "[View GitHub Actions Run](${RUN_URL})"
 } >> "$GITHUB_STEP_SUMMARY"

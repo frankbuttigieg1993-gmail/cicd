@@ -1,0 +1,125 @@
+name: 'Sonar Scan'
+description: 'Sonar Scan with SonarQube Quality Gate reporting for PRs and any pushed branch'
+
+inputs:
+  github-token:
+    description: 'GitHub token used to create/update the PR comment'
+    required: true
+  sonar-token:
+    description: 'SonarQube token'
+    required: true
+  sonar-host-url:
+    description: 'SonarQube server URL reachable from the self-hosted runner'
+    required: false
+    default: 'http://127.0.0.1:9300'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Git Checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Download Build Artefact
+      uses: actions/download-artifact@v8
+      with:
+        name: build
+        path: .
+
+    - name: Download Test Reports
+      uses: actions/download-artifact@v8
+      with:
+        name: test-reports
+        path: .
+
+    - name: Configure Build Cache
+      uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/configure-build-cache@main
+
+    # - name: Cache SonarQube packages
+    #   uses: actions/cache@v5
+    #   with:
+    #     path: ${{ github.workspace }}/.sonar/cache
+    #     key: ${{ runner.os }}-sonar
+    #     restore-keys: |
+    #       ${{ runner.os }}-sonar
+
+      # The Sonar Gradle Task will not fail if the Quality Gate fails because we don't have 'sonar.qualitygate.wait=true' in the sonar.properties file or the command below
+      # We evaluate the Result in a Subsequent Step 
+      # Gradle 9.5.1 is needed for Sonarqube. The latest version of the Plugin doesn't support Gradle 9.6.1
+
+    - name: Setup Gradle 9.5.1 for SonarQube
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '9.5.1'
+
+    - name: Execute SonarQube Scan
+      shell: bash
+      env:
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+        SONAR_USER_HOME: ${{ github.workspace }}/.sonar
+        SONAR_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      run: |
+        set -euo pipefail
+
+        mkdir -p "$SONAR_USER_HOME"
+
+        gradle \
+          --no-daemon \
+          --no-configuration-cache --stacktrace \
+          sonar
+
+
+    # - name: Execute SonarQube Scan
+    #   env:
+    #     SONAR_TOKEN: ${{ inputs.sonar-token }}
+    #     SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+    #   run: |
+    #     echo "SONAR_USER_HOME=${GITHUB_WORKSPACE}/.sonar" >> "$GITHUB_ENV"
+    #     ./gradlew sonar --no-daemon --no-configuration-cache --stacktrace  \
+    #       -Dsonar.userHome="${SONAR_USER_HOME}" \
+    #       -Dsonar.branch.name="${GITHUB_REF_NAME}"
+    #   shell: bash
+
+    # SonarQube itself is the source of truth. Poll the CE task, resolve the
+    # analysisId, query the quality gate for that exact analysis, publish the
+    # result, and expose the gate status for the enforcement step below.
+    - name: Evaluate SonarQube Quality Gate
+      id: sonar-result
+      if: always()
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        EVENT_NAME: ${{ github.event_name }}
+        GIT_REF: ${{ github.ref }}
+      run: |
+        bash "${{ github.action_path }}/resources/evaluate-sonarqube-result.sh"
+
+    # - name: Publish to Step Summary
+    #   run: |
+    #     echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}"
+    #     echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}" >> $GITHUB_STEP_SUMMARY
+    #     cat build/sonar/report-task.txt >> $GITHUB_STEP_SUMMARY
+    #   shell: bash
+
+    - uses: tiacsys/clean-after-action@v4
+      if: always()
+
+    # - name: Configure SonarQube New Code to 30 Days
+    #   shell: bash
+    #   env:
+    #     SONAR_TOKEN: ${{ inputs.sonar-token }}
+    #     SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+    #   run: |
+    #     curl --fail --silent --show-error \
+    #       -u "${SONAR_TOKEN}:" \
+    #       -X POST \
+    #       "${SONAR_HOST_URL}/api/new_code_periods/set" \
+    #       --data-urlencode "project=java-application" \
+    #       --data-urlencode "branch=${GITHUB_REF_NAME}" \
+    #       --data-urlencode "type=NUMBER_OF_DAYS" \
+    #       --data-urlencode "value=30"
