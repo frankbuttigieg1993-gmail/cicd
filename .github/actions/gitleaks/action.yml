@@ -9,6 +9,13 @@ inputs:
     description: 'Fail this action when Gitleaks detects secrets or encounters a scan error.'
     required: false
     default: 'true'
+  # This remains enabled by default for standalone Gitleaks use. The parent
+  # Secrets Scan composite explicitly disables it so it can publish one
+  # combined Gitleaks + Trivy PR comment instead.
+  pr-comment:
+    description: 'Create or update the Gitleaks-specific pull request comment.'
+    required: false
+    default: 'true'
 
 outputs:
   finding-count:
@@ -21,7 +28,7 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Bootstrap 
+    - name: Bootstrap
       shell: bash
       run: |
         set -euo pipefail
@@ -66,7 +73,7 @@ runs:
 
     - name: Create or update Gitleaks PR comment
       id: gitleaks-pr-comment
-      if: ${{ always() && github.event_name == 'pull_request' }}
+      if: ${{ always() && github.event_name == 'pull_request' && inputs.pr-comment == 'true' }}
       continue-on-error: true
       shell: bash
       env:
@@ -106,12 +113,12 @@ runs:
         FINDINGS: ${{ steps.summary.outputs.findings }}
       run: |
         set -euo pipefail
-
         if [[ "$EXIT_CODE" != "0" || "$FINDINGS" -gt 0 ]]; then
           echo "Gitleaks policy failed: exit=${EXIT_CODE}, findings=${FINDINGS}"
           exit 1
         fi
         echo "Gitleaks policy passed."
+
     # The 'Secrets Scan' job runs the Gitleaks and then Trivy Secrets composite actions so we don't want to clean the directory after gitleaks runs
     # - name: Clean up Gitleaks workspace
     #   if: always()

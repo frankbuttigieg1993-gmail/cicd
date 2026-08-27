@@ -7,8 +7,8 @@ set -euo pipefail
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 : "${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"
 
-SEMGREP_DEPLOYMENT_ID="103350"
-SEMGREP_ORG="frank_buttigieg_1993_personal_org"
+SEMGREP_DEPLOYMENT_ID="108775"
+SEMGREP_ORG="frank_buttigieg_1993_personal_org2"
 SEMGREP_ORG_URL="https://semgrep.dev/orgs/${SEMGREP_ORG}"
 
 SCAN_DETAILS="$(

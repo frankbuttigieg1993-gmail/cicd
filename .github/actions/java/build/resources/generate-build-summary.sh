@@ -11,7 +11,14 @@ set -euo pipefail
 : "${WORKFLOW_SHA:?WORKFLOW_SHA is required}"
 : "${APP_VERSION:?APP_VERSION is required}"
 
-DEV_BRANCH="${DEV_BRANCH:-$GITHUB_REF_NAME}"
+# On pull_request events GITHUB_REF_NAME is typically "<pr-number>/merge".
+# Use the actual PR source branch instead.
+if [[ "$GITHUB_EVENT_NAME" == "pull_request" && -n "${GITHUB_HEAD_REF:-}" ]]; then
+  DEV_BRANCH="${DEV_BRANCH:-$GITHUB_HEAD_REF}"
+else
+  DEV_BRANCH="${DEV_BRANCH:-$GITHUB_REF_NAME}"
+fi
+
 BRANCH_NAME_ESCAPED="${DEV_BRANCH//\//_}"
 echo "BRANCH_NAME_ESCAPED=${BRANCH_NAME_ESCAPED}" >> "$GITHUB_ENV"
 
@@ -21,9 +28,9 @@ CICD_REPOSITORY="frankbuttigieg1993-gmail/cicd"
 CICD_COMMIT_URL="${GITHUB_SERVER_URL}/${CICD_REPOSITORY}/commit/${WORKFLOW_SHA}"
 
 if [[ "$GITHUB_EVENT_NAME" == "pull_request" && -n "${PR_NUMBER:-}" ]]; then
-  DEV_REF_LABEL="Pull Request"
-  DEV_REF_VALUE="#${PR_NUMBER} — ${DEV_BRANCH}"
-  DEV_REF_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull/${PR_NUMBER}"
+  DEV_REF_LABEL="Dev Branch"
+  DEV_REF_VALUE="${DEV_BRANCH}"
+  DEV_REF_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull/${PR_NUMBER}/changes"
 else
   DEV_REF_LABEL="Dev Branch"
   DEV_REF_VALUE="${DEV_BRANCH}"
