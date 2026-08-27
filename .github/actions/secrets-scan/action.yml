@@ -14,6 +14,11 @@ runs:
   using: composite
 
   steps:
+    - name: Git Checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        
     - name: Gitleaks
       id: gitleaks
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
@@ -36,8 +41,8 @@ runs:
       with:
         name: secrets-scan-reports
         path: |
-          build/reports/gitleaks/
-          build/reports/trivy-secrets/
+          build/reports/gitleaks/**
+          build/reports/trivy-secrets/**
         retention-days: 2
         if-no-files-found: warn
     - name: Publish Secrets Scan Summary
