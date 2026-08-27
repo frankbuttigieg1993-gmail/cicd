@@ -65,7 +65,7 @@ jobs:
   Secrets_Scan:
       name: Secrets Scan 
       runs-on: ${{ fromJson(inputs.target-runner) }} 
-      needs: [Build, Unit_Tests]
+      needs: [Scans]
       steps:
       - name: Secrets Scan
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/secrets-scan@main
