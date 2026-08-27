@@ -14,6 +14,9 @@ outputs:
   finding-count:
     description: 'Number of Gitleaks findings reported in SARIF.'
     value: ${{ steps.summary.outputs.findings }}
+  scan-error:
+    description: Whether the Gitleaks scan encountered an execution error
+    value: ${{ steps.gitleaks.outputs.scan-error }}
 
 runs:
   using: 'composite'
