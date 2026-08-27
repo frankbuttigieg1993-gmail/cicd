@@ -18,15 +18,13 @@ runs:
       uses: actions/checkout@v6
       with:
         fetch-depth: 0
-
+        
     - name: Gitleaks
       id: gitleaks
-      continue-on-error: true
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/gitleaks@main
       with:
         github-token: ${{ inputs.github-token }}
         enforce-policy: 'false'
-        pr-comment: 'false'
 
     - name: Trivy Secrets Scan
       id: trivy
@@ -43,8 +41,8 @@ runs:
       with:
         name: secrets-scan-reports
         path: |
-          build/reports/gitleaks/
-          build/reports/trivy-secrets/
+          build/reports/gitleaks/**
+          build/reports/trivy-secrets/**
         retention-days: 2
         if-no-files-found: warn
     - name: Publish Secrets Scan Summary
@@ -58,21 +56,6 @@ runs:
         TRIVY_SCAN_ERROR: ${{ steps.trivy.outputs.scan-error || '0' }}
       run: |
         bash "${{ github.action_path }}/resources/write-secrets-summary.sh"
-
-    # For pull requests, publish the same combined Secrets Scan summary as a
-    # single sticky PR comment. The Gitleaks-specific PR comment is disabled
-    # above so the PR receives only the combined Secrets Scan comment.
-    - name: Publish Secrets Scan PR Comment
-      if: ${{ always() && github.event_name == 'pull_request' }}
-      continue-on-error: true
-      shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.github-token }}
-        GH_REPO: ${{ github.repository }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        SUMMARY_FILE: build/reports/secrets-scan/secrets-scan-summary.md
-      run: |
-        bash "${{ github.action_path }}/resources/publish-secrets-pr-comment.sh"
 
     # This is the only step in this composite action that should fail because
     # of the combined secret-scanning policy.
