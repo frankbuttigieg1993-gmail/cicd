@@ -57,15 +57,18 @@ runs:
       env:
         SONAR_TOKEN: ${{ inputs.sonar-token }}
         SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+        SONAR_USER_HOME: ${{ github.workspace }}/.sonar
       run: |
         set -euo pipefail
-        echo "SONAR_USER_HOME=${GITHUB_WORKSPACE}/.sonar" >> "$GITHUB_ENV"
+
         echo "Gradle used for SonarQube:"
         gradle --version
 
+        mkdir -p "$SONAR_USER_HOME"
+
         gradle \
           --no-daemon \
-          --no-configuration-cache -Dsonar.userHome="${SONAR_USER_HOME}"\
+          --no-configuration-cache \
           sonar
 
 
