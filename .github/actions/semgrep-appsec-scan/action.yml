@@ -116,6 +116,7 @@ runs:
         PROJECT_URL: ${{ inputs.semgrep-project-url }}
         SCAN_ID: ${{ steps.semgrep-scan.outputs.scan-id }}
         SCAN_URL: ${{ steps.semgrep-scan.outputs.scan-url }}
+        CODE_FINDINGS_URL: ${{ steps.semgrep-details.outputs.code-findings-url }}
         SUPPLY_CHAIN_FINDINGS_URL: ${{ steps.semgrep-details.outputs.supply-chain-findings-url }}
         CODE_FINDINGS: ${{ steps.semgrep-details.outputs.code-findings || '0' }}
         SUPPLY_CHAIN_FINDINGS: ${{ steps.semgrep-details.outputs.supply-chain-findings || '0' }}
@@ -159,6 +160,7 @@ runs:
         PROJECT_URL: ${{ inputs.semgrep-project-url }}
         SCAN_ID: ${{ steps.semgrep-scan.outputs.scan-id }}
         SCAN_URL: ${{ steps.semgrep-scan.outputs.scan-url }}
+        CODE_FINDINGS_URL: ${{ steps.semgrep-details.outputs.code-findings-url }}
         SUPPLY_CHAIN_FINDINGS_URL: ${{ steps.semgrep-details.outputs.supply-chain-findings-url }}
         CODE_FINDINGS: ${{ steps.semgrep-details.outputs.code-findings || '0' }}
         SUPPLY_CHAIN_FINDINGS: ${{ steps.semgrep-details.outputs.supply-chain-findings || '0' }}

@@ -37,6 +37,7 @@ BRANCH="${SEMGREP_BRANCH#refs/heads/}"
 REPO_ENCODED="$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$REPO_NAME")"
 BRANCH_ENCODED="$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$BRANCH")"
 
+CODE_FINDINGS_URL="${SEMGREP_ORG_URL}/findings?repo=${REPO_ENCODED}&branch=${BRANCH_ENCODED}&id=${API_SCAN_ID}"
 SUPPLY_CHAIN_FINDINGS_URL="${SEMGREP_ORG_URL}/supply-chain/vulnerabilities?repo=${REPO_ENCODED}&ref=branch/${BRANCH_ENCODED}"
 
 {
@@ -45,6 +46,7 @@ SUPPLY_CHAIN_FINDINGS_URL="${SEMGREP_ORG_URL}/supply-chain/vulnerabilities?repo=
   echo "supply-chain-findings=${SUPPLY_CHAIN_FINDINGS}"
   echo "secrets-findings=${SECRETS_FINDINGS}"
   echo "total-findings=${TOTAL_FINDINGS}"
+  echo "code-findings-url=${CODE_FINDINGS_URL}"
   echo "supply-chain-findings-url=${SUPPLY_CHAIN_FINDINGS_URL}"
 } >> "$GITHUB_OUTPUT"
 

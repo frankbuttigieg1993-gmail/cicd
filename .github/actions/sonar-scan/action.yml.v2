@@ -71,6 +71,17 @@ runs:
           sonar
 
 
+    # - name: Execute SonarQube Scan
+    #   env:
+    #     SONAR_TOKEN: ${{ inputs.sonar-token }}
+    #     SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+    #   run: |
+    #     echo "SONAR_USER_HOME=${GITHUB_WORKSPACE}/.sonar" >> "$GITHUB_ENV"
+    #     ./gradlew sonar --no-daemon --no-configuration-cache --stacktrace  \
+    #       -Dsonar.userHome="${SONAR_USER_HOME}" \
+    #       -Dsonar.branch.name="${GITHUB_REF_NAME}"
+    #   shell: bash
+
     # SonarQube itself is the source of truth. Poll the CE task, resolve the
     # analysisId, query the quality gate for that exact analysis, publish the
     # result, and expose the gate status for the enforcement step below.
