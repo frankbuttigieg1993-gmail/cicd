@@ -1,0 +1,76 @@
+name: CodeQL Security Scan
+description: Run CodeQL analysis, publish a GitHub Step Summary, and optionally enforce the security policy.
+
+inputs:
+  java-version:
+    description: Java version used to build the application.
+    required: false
+    default: '21'
+  java-distribution:
+    description: JDK distribution used by actions/setup-java.
+    required: false
+    default: 'temurin'
+  languages:
+    description: Languages analyzed by CodeQL.
+    required: false
+    default: 'java'
+  query-suite:
+    description: CodeQL query suite.
+    required: false
+    default: 'security-extended'
+  enforce-policy:
+    description: Fail the action when CodeQL findings are present.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: ${{ inputs.java-distribution }}
+        java-version: ${{ inputs.java-version }}
+        cache: gradle
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ inputs.languages }}
+        queries: ${{ inputs.query-suite }}
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v4
+
+    - name: Perform CodeQL Analysis
+      id: codeql-analysis
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: "/language:${{ inputs.languages }}"
+        output: ${{ runner.temp }}/codeql-results
+        upload: always
+
+    # Reporting is deliberately before enforcement so results are available
+    # even when the security gate blocks the workflow.
+    - name: Publish CodeQL Step Summary
+      if: always()
+      shell: bash
+      env:
+        SARIF_DIR: ${{ runner.temp }}/codeql-results
+      run: |
+        bash "${{ github.action_path }}/resources/write-codeql-summary.sh"
+
+    # Enforcement is deliberately last.
+    - name: Enforce CodeQL Security Policy
+      if: ${{ always() && inputs.enforce-policy == 'true' }}
+      shell: bash
+      env:
+        SARIF_DIR: ${{ runner.temp }}/codeql-results
+      run: |
+        bash "${{ github.action_path }}/resources/enforce-codeql-policy.sh"
