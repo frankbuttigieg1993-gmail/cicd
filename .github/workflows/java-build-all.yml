@@ -69,7 +69,7 @@ jobs:
     steps:
     - name: Scans
       run: | 
-        echo "Executing Security Scans
+        echo "Executing Security Scans"
       shell: bash
   Secrets_Scan:
       name: Secrets Scan 
@@ -125,7 +125,7 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }} 
         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
   sonar-scan:
-      name: SonarQube Scan & Gate Check
+      name: SonarQube Scan
       runs-on: ${{ fromJson(inputs.target-runner) }} 
       needs: [Security_Scans]
       env:
