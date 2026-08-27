@@ -40,7 +40,8 @@ trivy convert \
 python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
   --trivy "$TRIVY_JSON" \
   --sbom "$APPLICATION_SBOM" \
-  --output "$TRIVY_HTML"
+  --output "$TRIVY_HTML" \
+  --title "Trivy Docker Image Vulnerability Report"
 
 echo "image-ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
 

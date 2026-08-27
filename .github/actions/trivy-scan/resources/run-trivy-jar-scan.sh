@@ -49,7 +49,8 @@ trivy convert \
 python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
   --trivy "$TRIVY_JSON" \
   --sbom "$APPLICATION_SBOM" \
-  --output "$TRIVY_HTML"
+  --output "$TRIVY_HTML" \
+  --title "Trivy JAR Vulnerability Report"
 
 echo "Trivy packaged JAR scan completed successfully."
 echo "JAR:   $JAR"

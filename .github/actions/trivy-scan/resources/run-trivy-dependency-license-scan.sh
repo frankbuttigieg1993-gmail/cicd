@@ -34,7 +34,8 @@ trivy convert \
 python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
   --trivy "$TRIVY_JSON" \
   --sbom "$APPLICATION_SBOM" \
-  --output "$TRIVY_HTML"
+  --output "$TRIVY_HTML" \
+  --title "Trivy Dependency Licence and Vulnerability Report"
 
 echo "Trivy source dependency and license scan completed successfully."
 echo "JSON:  $TRIVY_JSON"
