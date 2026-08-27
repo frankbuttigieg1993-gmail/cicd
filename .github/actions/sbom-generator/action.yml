@@ -79,7 +79,7 @@ runs:
 
       - name: Generate TRIVY Enhanced Runtime SBOM HTML Report
         run: |
-          python3 ${{ github.action_path }}/resources/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/runtime-bom.json --trivy build/reports/cyclonedx/trivy-runtime-bom.json --output build/reports/cyclonedx/runtime-bom.html --title "Runtime Dependency SBOM Report"
+          python3 ${{ github.action_path }}/resources/generate_sbom_report.py --sbom build/reports/cyclonedx/runtime-bom.json --trivy build/reports/cyclonedx/trivy-runtime-bom.json --output build/reports/cyclonedx/runtime-bom.html --title "Runtime Dependency SBOM Report"
         shell: bash 
 
 ##############################  Application SBOM #########################################################
@@ -111,7 +111,7 @@ runs:
 
       - name: Generate TRIVY Enhanced Complete SBOM HTML Report
         run: |
-          python3 ${{ github.action_path }}/resources/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/application-sbom.json --trivy build/reports/cyclonedx/trivy-application-sbom.json --output build/reports/cyclonedx/application-sbom.html
+          python3 ${{ github.action_path }}/resources/generate_sbom_report.py --sbom build/reports/cyclonedx/application-sbom.json --trivy build/reports/cyclonedx/trivy-application-sbom.json --output build/reports/cyclonedx/application-sbom.html
         shell: bash 
 
 ##############################  Build Environment SBOM #########################################################
@@ -148,7 +148,7 @@ runs:
       - name: Generate TRIVY Enhanced Complete SBOM HTML Report
         if: ${{ inputs.produce-build-environment-sbom == 'true' }}
         run: |
-          python3 ${{ github.action_path }}/resources/generate_sbom_report-v8.py --sbom build/reports/cyclonedx/build-environment-bom.json --trivy build/reports/cyclonedx/trivy-build-environment-bom.json --output build/reports/cyclonedx/build-environment-bom.html
+          python3 ${{ github.action_path }}/resources/generate_sbom_report.py --sbom build/reports/cyclonedx/build-environment-bom.json --trivy build/reports/cyclonedx/trivy-build-environment-bom.json --output build/reports/cyclonedx/build-environment-bom.html
         shell: bash 
 
 ##############################  Upload Reports #########################################################
