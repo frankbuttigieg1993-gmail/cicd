@@ -152,7 +152,7 @@ def esc(value):
     return html.escape("" if value is None else str(value), quote=True)
 
 
-def render(trivy, sbom, sbom_path: Path):
+def render(trivy, sbom, sbom_path: Path, title: str):
     relation_by_ga, _ = dependency_relationships(sbom)
     rows = []
     licenses = []
@@ -194,8 +194,8 @@ body{margin:0}.wrap{max-width:1500px;margin:0 auto;padding:28px}.hero{background
 .group{background:#fff;border:1px solid #dfe5ef;border-radius:14px;margin:16px 0;overflow:hidden}.group-title{padding:16px 20px;background:#eef3fa;font-size:20px;font-weight:800}.package{border-top:1px solid #e5e9f0}.package-title{padding:12px 20px;font-weight:700;display:flex;align-items:center;gap:10px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:10px 12px;border-top:1px solid #e7ebf1;text-align:left;vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#58667a;background:#fafbfc}td{font-size:13px}.sev{font-weight:800}.refs a{display:block;max-width:440px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.empty{padding:28px;text-align:center;background:#fff;border:1px solid #dfe5ef;border-radius:14px}.meta{font-size:12px;margin-top:6px}.section-title{margin-top:28px}
 """
 
-    out = ["<!doctype html><html><head><meta charset='utf-8'>", f"<style>{css}</style>", "<title>Trivy dependency report</title></head><body><div class='wrap'>"]
-    out.append("<section class='hero'><h1>Trivy Dependency &amp; Vulnerability Report</h1>")
+    out = ["<!doctype html><html><head><meta charset='utf-8'>", f"<style>{css}</style>", f"<title>{esc(title)}</title></head><body><div class='wrap'>"]
+    out.append(f"<section class='hero'><h1>{esc(title)}</h1>")
     out.append(f"<div class='muted'>Dependency relationship source: CycloneDX SBOM <code>{esc(sbom_path)}</code></div>")
     out.append("<div class='summary'>")
     out.append(f"<span class='pill'>Vulnerabilities: {len(rows)}</span>")
@@ -240,6 +240,11 @@ def main():
     group.add_argument("--sbom", type=Path)
     group.add_argument("--sbom-search-root", type=Path)
     ap.add_argument("--output", required=True, type=Path)
+    ap.add_argument(
+        "--title",
+        default="Trivy Dependency & Vulnerability Report",
+        help="Title displayed in the generated HTML report",
+    )
     args = ap.parse_args()
 
     sbom_path = args.sbom if args.sbom else find_sbom(args.sbom_search_root)
@@ -249,7 +254,7 @@ def main():
         raise ValueError(f"{sbom_path} is not a CycloneDX JSON SBOM")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(render(trivy, sbom, sbom_path), encoding="utf-8")
+    args.output.write_text(render(trivy, sbom, sbom_path, args.title), encoding="utf-8")
     print(f"Generated {args.output} using CycloneDX SBOM {sbom_path}")
 
 
