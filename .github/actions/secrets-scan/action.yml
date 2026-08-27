@@ -6,6 +6,10 @@ inputs:
     description: GitHub token
     required: true
 
+# The composite actions for gitleaks and trivy secrets scan is configured to accept the 'enforce policy' flag. 
+# This flag tells the composite action to run the commands, not return an error code if the scans fail and then the final gate calculated the result of the 'secrets scan' at the end
+# This provides 1 level of enforcement and that we only have 1 error from this composite action
+
 runs:
   using: composite
 
@@ -36,6 +40,17 @@ runs:
           build/reports/trivy-secrets/
         retention-days: 2
         if-no-files-found: warn
+    - name: Publish Secrets Scan Summary
+      if: always()
+      shell: bash
+      env:
+        GITLEAKS_FINDINGS: ${{ steps.gitleaks.outputs.finding-count || '0' }}
+        GITLEAKS_SCAN_ERROR: ${{ steps.gitleaks.outputs.scan-error || '0' }}
+
+        TRIVY_FINDINGS: ${{ steps.trivy.outputs.total-secret-count || '0' }}
+        TRIVY_SCAN_ERROR: ${{ steps.trivy.outputs.scan-error || '0' }}
+      run: |
+        bash "${{ github.action_path }}/resources/write-secrets-summary.sh"
 
     # This is the only step in this composite action that should fail because
     # of the combined secret-scanning policy.
