@@ -26,21 +26,6 @@ outputs:
   semgrep-scan-url:
     description: 'Exact Semgrep AppSec Platform scan URL created by this execution.'
     value: ${{ steps.semgrep-scan.outputs.scan-url }}
-  code-findings-url:
-    description: 'Semgrep Code Findings URL filtered to this repository, branch, and scan.'
-    value: ${{ steps.semgrep-details.outputs.code-findings-url }}
-  code-findings:
-    description: 'Semgrep AppSec Platform Code finding count.'
-    value: ${{ steps.semgrep-details.outputs.code-findings }}
-  supply-chain-findings:
-    description: 'Semgrep AppSec Platform Supply Chain finding count.'
-    value: ${{ steps.semgrep-details.outputs.supply-chain-findings }}
-  secrets-findings:
-    description: 'Semgrep AppSec Platform Secrets finding count.'
-    value: ${{ steps.semgrep-details.outputs.secrets-findings }}
-  platform-total-findings:
-    description: 'Total Semgrep AppSec Platform findings for the exact scan.'
-    value: ${{ steps.semgrep-details.outputs.total-findings }}
   error-count:
     description: 'Number of SARIF error-level findings.'
     value: ${{ steps.semgrep-summary.outputs.error-count }}
@@ -75,11 +60,16 @@ runs:
 
     - name: Bootstrap
       shell: bash
-      run: |
+      run: | 
         mkdir -p build/reports/semgrep
         python -m pip install --upgrade pip
         python -m pip install semgrep==1.163.0
         python -m pip install Jinja2
+
+    # This script will save the exit code from the Semgrep scan but always return an Exit Code of 0
+    # If 'Semgrep CI' returns an Exit Code of 0, then the Policy Passed
+    # However, if it returns an Exit Code that isn't 0, it will Save the Real Exit Code and allow the other steps to run (Geenerate Reports, Step Summary, PR Comments, Upload Artifacts etc)
+    # We have a step at the end of the composite action to check the exit code and fail the job if a policy violation occured. 
 
     - name: Semgrep AppSec Platform Analysis
       id: semgrep-scan
@@ -91,17 +81,6 @@ runs:
         PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
       run: |
         bash "${{ github.action_path }}/resources/run-semgrep.sh"
-
-    - name: Resolve Semgrep AppSec Platform scan details
-      id: semgrep-details
-      if: ${{ always() && steps.semgrep-scan.outputs.scan-id != '' }}
-      shell: bash
-      env:
-        SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
-        SCAN_ID: ${{ steps.semgrep-scan.outputs.scan-id }}
-        SEMGREP_BRANCH: ${{ github.head_ref || github.ref_name }}
-      run: |
-        bash "${{ github.action_path }}/resources/resolve-semgrep-scan-details.sh"
 
     - name: Summarize Semgrep SARIF results
       id: semgrep-summary
@@ -116,12 +95,6 @@ runs:
         PROJECT_URL: ${{ inputs.semgrep-project-url }}
         SCAN_ID: ${{ steps.semgrep-scan.outputs.scan-id }}
         SCAN_URL: ${{ steps.semgrep-scan.outputs.scan-url }}
-        CODE_FINDINGS_URL: ${{ steps.semgrep-details.outputs.code-findings-url }}
-        CODE_FINDINGS: ${{ steps.semgrep-details.outputs.code-findings || '0' }}
-        SUPPLY_CHAIN_FINDINGS: ${{ steps.semgrep-details.outputs.supply-chain-findings || '0' }}
-        SECRETS_FINDINGS: ${{ steps.semgrep-details.outputs.secrets-findings || '0' }}
-        PLATFORM_TOTAL_FINDINGS: ${{ steps.semgrep-details.outputs.total-findings || '0' }}
-        SEMGREP_BRANCH: ${{ github.head_ref || github.ref_name }}
         ERROR_COUNT: ${{ steps.semgrep-summary.outputs.error-count || '0' }}
         WARNING_COUNT: ${{ steps.semgrep-summary.outputs.warning-count || '0' }}
         NOTE_COUNT: ${{ steps.semgrep-summary.outputs.note-count || '0' }}
@@ -131,6 +104,8 @@ runs:
         BASELINE: ${{ steps.semgrep-scan.outputs.baseline }}
       run: |
         bash "${{ github.action_path }}/resources/write-step-summary.sh"
+
+# The code below says to Publish the Results if the SARIF File exists and this run isn't for a pull request
 
     - name: Upload Semgrep Scan Results to GitHub Security Dashboard
       if: ${{ always() && github.event_name != 'pull_request' && hashFiles('build/reports/semgrep/semgrep.sarif') != '' }}
@@ -159,19 +134,13 @@ runs:
         PROJECT_URL: ${{ inputs.semgrep-project-url }}
         SCAN_ID: ${{ steps.semgrep-scan.outputs.scan-id }}
         SCAN_URL: ${{ steps.semgrep-scan.outputs.scan-url }}
-        CODE_FINDINGS_URL: ${{ steps.semgrep-details.outputs.code-findings-url }}
-        CODE_FINDINGS: ${{ steps.semgrep-details.outputs.code-findings || '0' }}
-        SUPPLY_CHAIN_FINDINGS: ${{ steps.semgrep-details.outputs.supply-chain-findings || '0' }}
-        SECRETS_FINDINGS: ${{ steps.semgrep-details.outputs.secrets-findings || '0' }}
-        PLATFORM_TOTAL_FINDINGS: ${{ steps.semgrep-details.outputs.total-findings || '0' }}
-        SEMGREP_BRANCH: ${{ github.head_ref || github.ref_name }}
         ERROR_COUNT: ${{ steps.semgrep-summary.outputs.error-count || '0' }}
         WARNING_COUNT: ${{ steps.semgrep-summary.outputs.warning-count || '0' }}
         NOTE_COUNT: ${{ steps.semgrep-summary.outputs.note-count || '0' }}
         TOTAL_FINDINGS: ${{ steps.semgrep-summary.outputs.total-findings || '0' }}
         SEMGREP_EXIT_CODE: ${{ steps.semgrep-scan.outputs.exit-code || '1' }}
-        SCAN_MODE: ${{ steps.semgrep-scan.outputs.mode }}
-        BASELINE: ${{ steps.semgrep-scan.outputs.baseline }}
+        SCAN_MODE: ${{ steps.semgrep-mode.outputs.mode }}
+        BASELINE: ${{ steps.semgrep-mode.outputs.baseline }}
         GH_TOKEN: ${{ inputs.github-token }}
         GH_REPO: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
