@@ -65,7 +65,7 @@ jobs:
   Security_Scans:
     name: Security Scans
     runs-on: ${{ fromJson(inputs.target-runner) }} 
-    needs: [Build]
+    needs: [Unit_Tests]
     steps:
     - name: Scans
       run: | 
@@ -104,7 +104,7 @@ jobs:
   SBOM_Generator:
     name: Generate SBOMs
     runs-on: ${{ fromJson(inputs.target-runner) }} 
-    needs: [Build]
+    needs: [Unit_Tests]
     steps:
     - name: Generate SBOMs
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/sbom-generator@main
