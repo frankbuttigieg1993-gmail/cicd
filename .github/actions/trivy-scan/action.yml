@@ -27,7 +27,7 @@ inputs:
   image-ref:
     description: 'Container image reference to scan'
     required: false
-    default: 'java-application:${GITHUB_SHA}'
+    default: 'java-application:${{ github.sha }}'
   trivy-version:
     description: 'Trivy CLI version to install and use'
     required: false
@@ -56,37 +56,37 @@ runs:
     - name: Setup Trivy
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/setup-trivy@main
 
-################################################### Trivy Source Code Scan ##############################################################
- 
-    - name: Trivy Dependency and License Scan
+    ################################################### Trivy Source Dependency Scan ####################################################
+
+    - name: Trivy Source Dependency and License Scan
       shell: bash
       run: |
         bash "${{ github.action_path }}/resources/run-trivy-dependency-license-scan.sh"
 
-    - name: Upload Dependency and License Scan SARIF to GitHub 
+    - name: Upload Source Dependency and License SARIF
       if: ${{ always() && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
-        sarif_file: build/reports/trivy/trivy-dependency-license.sarif
-        category: trivy-dependency-license
+        sarif_file: build/reports/trivy/trivy-source-dependencies-license.sarif
+        category: trivy-source-dependencies-license
 
-################################################### Trivy Build Artefact Scan ##############################################################
+    ################################################### Trivy Packaged JAR Scan ########################################################
 
     - name: Trivy Packaged JAR Scan
       shell: bash
       run: |
         bash "${{ github.action_path }}/resources/run-trivy-jar-scan.sh"
 
-    - name: Upload JAR Vulnerability/License SARIF
+    - name: Upload Packaged JAR Vulnerability and License SARIF
       if: ${{ always() && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
-        sarif_file: build/reports/trivy/trivy-jar-report.sarif
+        sarif_file: build/reports/trivy/trivy-packaged-jar.sarif
         category: trivy-packaged-jar
 
-################################################### Trivy Docker Image Scan ###############################################################
+    ################################################### Trivy Docker Image Scan ########################################################
 
-    - name: Build and scan Docker image
+    - name: Build and Scan Docker Image
       id: docker-image-scan
       shell: bash
       env:
@@ -94,14 +94,14 @@ runs:
       run: |
         bash "${{ github.action_path }}/resources/run-trivy-docker-image-scan.sh"
 
-    - name: Upload Docker image vulnerability/license SARIF
+    - name: Upload Docker Image Vulnerability and License SARIF
       if: ${{ always() && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
-        sarif_file: build/reports/trivy/trivy-dockerimage-report.sarif
+        sarif_file: build/reports/trivy/trivy-docker-image.sarif
         category: trivy-docker-image
 
-################################################### Trivy Configuration Scan ###############################################################
+    ################################################### Trivy Configuration Scan #######################################################
 
     - name: Trivy Configuration Scan
       shell: bash
@@ -112,12 +112,12 @@ runs:
       if: ${{ always() && github.event_name != 'pull_request' }}
       uses: github/codeql-action/upload-sarif@v4
       with:
-        sarif_file: build/reports/trivy/trivy-config-report.sarif
+        sarif_file: build/reports/trivy/trivy-configuration.sarif
         category: trivy-configuration
- 
-################################################### Trivy Reports ###############################################################
 
-    - name: Upload Trivy reports
+    ################################################### Trivy Reports ##################################################################
+
+    - name: Upload Trivy Reports
       if: always()
       uses: actions/upload-artifact@v7
       with:

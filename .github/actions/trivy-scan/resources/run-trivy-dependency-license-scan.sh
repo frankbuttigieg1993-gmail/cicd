@@ -5,9 +5,10 @@ set -euo pipefail
 : "${GITHUB_ACTION_PATH:?GITHUB_ACTION_PATH is required}"
 
 REPORT_DIR="build/reports/trivy"
-TRIVY_JSON="$REPORT_DIR/trivy-dependency-license.json"
-TRIVY_SARIF="$REPORT_DIR/trivy-dependency-license.sarif"
-TRIVY_HTML="$REPORT_DIR/trivy-dependency-license-report.html"
+REPORT_NAME="trivy-source-dependencies-license"
+TRIVY_JSON="${REPORT_DIR}/${REPORT_NAME}.json"
+TRIVY_SARIF="${REPORT_DIR}/${REPORT_NAME}.sarif"
+TRIVY_HTML="${REPORT_DIR}/${REPORT_NAME}.html"
 APPLICATION_SBOM="build/reports/cyclonedx/application-sbom.json"
 
 mkdir -p "$REPORT_DIR"
@@ -35,4 +36,7 @@ python3 "$GITHUB_ACTION_PATH/resources/generate-trivy-html.py" \
   --sbom "$APPLICATION_SBOM" \
   --output "$TRIVY_HTML"
 
-echo "Trivy dependency and license scan completed successfully."
+echo "Trivy source dependency and license scan completed successfully."
+echo "JSON:  $TRIVY_JSON"
+echo "SARIF: $TRIVY_SARIF"
+echo "HTML:  $TRIVY_HTML"
