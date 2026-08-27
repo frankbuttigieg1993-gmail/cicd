@@ -21,7 +21,6 @@ SCAN_DETAILS="$(
 )"
 
 API_SCAN_ID="$(jq -r '.id // empty' <<< "$SCAN_DETAILS")"
-
 if [[ -z "$API_SCAN_ID" ]]; then
   echo "::error::Semgrep scan-details API did not return a scan id."
   exit 1
@@ -35,11 +34,10 @@ TOTAL_FINDINGS="$(jq -r '.stats.findings // 0' <<< "$SCAN_DETAILS")"
 REPO_NAME="${GITHUB_REPOSITORY##*/}"
 BRANCH="${SEMGREP_BRANCH#refs/heads/}"
 
-# URL-encode query-string values without requiring an additional Python package.
 REPO_ENCODED="$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$REPO_NAME")"
 BRANCH_ENCODED="$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$BRANCH")"
 
-CODE_FINDINGS_URL="${SEMGREP_ORG_URL}/findings?repo=${REPO_ENCODED}&branch=${BRANCH_ENCODED}&id=${API_SCAN_ID}"
+SUPPLY_CHAIN_FINDINGS_URL="${SEMGREP_ORG_URL}/supply-chain/vulnerabilities?repo=${REPO_ENCODED}&ref=branch/${BRANCH_ENCODED}"
 
 {
   echo "scan-id=${API_SCAN_ID}"
@@ -47,7 +45,7 @@ CODE_FINDINGS_URL="${SEMGREP_ORG_URL}/findings?repo=${REPO_ENCODED}&branch=${BRA
   echo "supply-chain-findings=${SUPPLY_CHAIN_FINDINGS}"
   echo "secrets-findings=${SECRETS_FINDINGS}"
   echo "total-findings=${TOTAL_FINDINGS}"
-  echo "code-findings-url=${CODE_FINDINGS_URL}"
+  echo "supply-chain-findings-url=${SUPPLY_CHAIN_FINDINGS_URL}"
 } >> "$GITHUB_OUTPUT"
 
 echo "Resolved Semgrep scan ${API_SCAN_ID}: Code=${CODE_FINDINGS}, Supply Chain=${SUPPLY_CHAIN_FINDINGS}, Secrets=${SECRETS_FINDINGS}, Total=${TOTAL_FINDINGS}"
