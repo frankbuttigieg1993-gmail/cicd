@@ -1,9 +1,9 @@
 name: 'Semgrep Scan'
-description: 'Run Semgrep AppSec Platform Code and Supply Chain scans, publish SARIF/HTML reports, summarize findings, maintain a sticky PR comment, and link to the exact Semgrep scan.'
+description: 'Run Semgrep AppSec Platform scans and publish results.'
 
 inputs:
   github-token:
-    description: 'GitHub token used to upload SARIF and create/update the PR comment. The calling workflow controls its permissions.'
+    description: 'GitHub token.'
     required: true
   SEMGREP_APP_TOKEN:
     description: 'Semgrep AppSec Platform CI token.'
@@ -12,47 +12,6 @@ inputs:
     description: 'Semgrep AppSec Platform project URL.'
     required: false
     default: 'https://semgrep.dev/orgs/frank_buttigieg_1993_personal_org/projects/6365517'
-
-outputs:
-  exit-code:
-    description: 'Exit code returned by semgrep ci.'
-    value: ${{ steps.semgrep-scan.outputs.exit-code }}
-  sarif-file:
-    description: 'Path to the Semgrep SARIF report.'
-    value: ${{ steps.semgrep-scan.outputs.sarif-file }}
-  semgrep-scan-id:
-    description: 'Semgrep AppSec Platform scan ID created by this execution.'
-    value: ${{ steps.semgrep-scan.outputs.scan-id }}
-  semgrep-scan-url:
-    description: 'Exact Semgrep AppSec Platform scan URL created by this execution.'
-    value: ${{ steps.semgrep-scan.outputs.scan-url }}
-  code-findings-url:
-    description: 'Semgrep Code Findings URL filtered to this repository, branch, and scan.'
-    value: ${{ steps.semgrep-details.outputs.code-findings-url }}
-  code-findings:
-    description: 'Semgrep AppSec Platform Code finding count.'
-    value: ${{ steps.semgrep-details.outputs.code-findings }}
-  supply-chain-findings:
-    description: 'Semgrep AppSec Platform Supply Chain finding count.'
-    value: ${{ steps.semgrep-details.outputs.supply-chain-findings }}
-  secrets-findings:
-    description: 'Semgrep AppSec Platform Secrets finding count.'
-    value: ${{ steps.semgrep-details.outputs.secrets-findings }}
-  platform-total-findings:
-    description: 'Total Semgrep AppSec Platform findings for the exact scan.'
-    value: ${{ steps.semgrep-details.outputs.total-findings }}
-  error-count:
-    description: 'Number of SARIF error-level findings.'
-    value: ${{ steps.semgrep-summary.outputs.error-count }}
-  warning-count:
-    description: 'Number of SARIF warning-level findings.'
-    value: ${{ steps.semgrep-summary.outputs.warning-count }}
-  note-count:
-    description: 'Number of SARIF note-level findings.'
-    value: ${{ steps.semgrep-summary.outputs.note-count }}
-  total-findings:
-    description: 'Total number of SARIF findings.'
-    value: ${{ steps.semgrep-summary.outputs.total-findings }}
 
 runs:
   using: 'composite'
@@ -78,8 +37,7 @@ runs:
       run: |
         mkdir -p build/reports/semgrep
         python -m pip install --upgrade pip
-        python -m pip install semgrep==1.163.0
-        python -m pip install Jinja2
+        python -m pip install semgrep==1.163.0 Jinja2
 
     - name: Semgrep AppSec Platform Analysis
       id: semgrep-scan
@@ -89,8 +47,7 @@ runs:
         SEMGREP_PROJECT_URL: ${{ inputs.semgrep-project-url }}
         EVENT_NAME: ${{ github.event_name }}
         PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      run: |
-        bash "${{ github.action_path }}/resources/run-semgrep.sh"
+      run: bash "${{ github.action_path }}/resources/run-semgrep.sh"
 
     - name: Resolve Semgrep AppSec Platform scan details
       id: semgrep-details
@@ -100,14 +57,12 @@ runs:
         SEMGREP_APP_TOKEN: ${{ inputs.SEMGREP_APP_TOKEN }}
         SCAN_ID: ${{ steps.semgrep-scan.outputs.scan-id }}
         SEMGREP_BRANCH: ${{ github.head_ref || github.ref_name }}
-      run: |
-        bash "${{ github.action_path }}/resources/resolve-semgrep-scan-details.sh"
+      run: bash "${{ github.action_path }}/resources/resolve-semgrep-scan-details.sh"
 
     - name: Summarize Semgrep SARIF results
       id: semgrep-summary
       shell: bash
-      run: |
-        python3 "${{ github.action_path }}/resources/summarize-semgrep-sarif.py"
+      run: python3 "${{ github.action_path }}/resources/summarize-semgrep-sarif.py"
 
     - name: Publish GitHub Step Summary
       if: always()
@@ -123,34 +78,10 @@ runs:
         SECRETS_FINDINGS: ${{ steps.semgrep-details.outputs.secrets-findings || '0' }}
         PLATFORM_TOTAL_FINDINGS: ${{ steps.semgrep-details.outputs.total-findings || '0' }}
         SEMGREP_BRANCH: ${{ github.head_ref || github.ref_name }}
-        ERROR_COUNT: ${{ steps.semgrep-summary.outputs.error-count || '0' }}
-        WARNING_COUNT: ${{ steps.semgrep-summary.outputs.warning-count || '0' }}
-        NOTE_COUNT: ${{ steps.semgrep-summary.outputs.note-count || '0' }}
-        TOTAL_FINDINGS: ${{ steps.semgrep-summary.outputs.total-findings || '0' }}
         SEMGREP_EXIT_CODE: ${{ steps.semgrep-scan.outputs.exit-code || '1' }}
         SCAN_MODE: ${{ steps.semgrep-scan.outputs.mode }}
         BASELINE: ${{ steps.semgrep-scan.outputs.baseline }}
-      run: |
-        bash "${{ github.action_path }}/resources/write-step-summary.sh"
-
-    - name: Upload Semgrep Scan Results to GitHub Security Dashboard
-      if: ${{ always() && github.event_name != 'pull_request' && hashFiles('build/reports/semgrep/semgrep.sarif') != '' }}
-      uses: github/codeql-action/upload-sarif@v4
-      with:
-        sarif_file: build/reports/semgrep/semgrep.sarif
-        category: semgrep-appsec
-        wait-for-processing: true
-        token: ${{ inputs.github-token }}
-
-    - name: Generate HTML Reports
-      if: ${{ always() && hashFiles('build/reports/semgrep/semgrep.sarif') != '' }}
-      shell: bash
-      run: |
-        python3 trivy/parse-semgrep-sarif.py \
-          --input build/reports/semgrep/semgrep.sarif \
-          --output build/reports/semgrep/semgrep-appsec-report.html \
-          --project-name 'SemGrep AppSec Platform Scan' \
-          --only INFO,WARNING,ERROR
+      run: bash "${{ github.action_path }}/resources/write-step-summary.sh"
 
     - name: Publish Semgrep PR comment
       if: ${{ always() && github.event_name == 'pull_request' }}
@@ -167,36 +98,10 @@ runs:
         SECRETS_FINDINGS: ${{ steps.semgrep-details.outputs.secrets-findings || '0' }}
         PLATFORM_TOTAL_FINDINGS: ${{ steps.semgrep-details.outputs.total-findings || '0' }}
         SEMGREP_BRANCH: ${{ github.head_ref || github.ref_name }}
-        ERROR_COUNT: ${{ steps.semgrep-summary.outputs.error-count || '0' }}
-        WARNING_COUNT: ${{ steps.semgrep-summary.outputs.warning-count || '0' }}
-        NOTE_COUNT: ${{ steps.semgrep-summary.outputs.note-count || '0' }}
-        TOTAL_FINDINGS: ${{ steps.semgrep-summary.outputs.total-findings || '0' }}
         SEMGREP_EXIT_CODE: ${{ steps.semgrep-scan.outputs.exit-code || '1' }}
         SCAN_MODE: ${{ steps.semgrep-scan.outputs.mode }}
         BASELINE: ${{ steps.semgrep-scan.outputs.baseline }}
         GH_TOKEN: ${{ inputs.github-token }}
         GH_REPO: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: |
-        bash "${{ github.action_path }}/resources/publish-pr-comment.sh"
-
-    - name: Publish Semgrep Reports
-      if: ${{ always() && hashFiles('build/reports/semgrep/**') != '' }}
-      uses: actions/upload-artifact@v7
-      with:
-        name: semgrep-appsec-reports
-        path: build/reports/semgrep/
-        retention-days: 1
-        if-no-files-found: error
-
-    - name: Enforce Semgrep AppSec Platform policy
-      if: ${{ always() && steps.semgrep-scan.outputs.exit-code != '0' }}
-      shell: bash
-      run: |
-        echo "Semgrep AppSec Platform returned exit code ${{ steps.semgrep-scan.outputs.exit-code }}."
-        echo 'Blocking/CI policy enforcement is controlled in Semgrep AppSec Platform.'
-        exit 1
-
-    - name: Clean workspace
-      if: always()
-      uses: tiacsys/clean-after-action@v4
+      run: bash "${{ github.action_path }}/resources/publish-pr-comment.sh"

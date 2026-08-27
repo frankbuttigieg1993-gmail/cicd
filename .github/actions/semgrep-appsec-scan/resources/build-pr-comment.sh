@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+CODE_FINDINGS="${CODE_FINDINGS:-0}"
+SUPPLY_CHAIN_FINDINGS="${SUPPLY_CHAIN_FINDINGS:-0}"
+SECRETS_FINDINGS="${SECRETS_FINDINGS:-0}"
+PLATFORM_TOTAL_FINDINGS="${PLATFORM_TOTAL_FINDINGS:-0}"
 
-if [[ "$SEMGREP_EXIT_CODE" != "0" ]]; then
-  STATUS="BLOCKED"
-  MESSAGE="Semgrep AppSec Platform returned a non-zero result. Review the Semgrep findings and policy configuration."
+if [[ "${SEMGREP_EXIT_CODE:-1}" != "0" ]]; then
+  STATUS="BLOCKED"; MESSAGE="Semgrep AppSec Platform returned a non-zero result. Review the Semgrep findings and policy configuration."
 elif (( PLATFORM_TOTAL_FINDINGS > 0 )); then
-  STATUS="REVIEW"
-  MESSAGE="No blocking Semgrep policy result was returned, but findings are present and should be reviewed."
+  STATUS="REVIEW"; MESSAGE="No blocking Semgrep policy result was returned, but findings are present and should be reviewed."
 else
-  STATUS="PASSED"
-  MESSAGE="No Semgrep findings were returned for this scan."
+  STATUS="PASSED"; MESSAGE="No Semgrep findings were returned for this scan."
 fi
 
 {
@@ -31,10 +31,12 @@ fi
   echo
   echo "| Product | Findings |"
   echo "|---|---:|"
-
-  echo "| Code | ${CODE_FINDINGS} |"
-
-  if [[ -n "${SUPPLY_CHAIN_FINDINGS_URL:-}" ]]; then
+  if (( CODE_FINDINGS > 0 )) && [[ -n "${CODE_FINDINGS_URL:-}" ]]; then
+    echo "| Code | [${CODE_FINDINGS}](${CODE_FINDINGS_URL}) |"
+  else
+    echo "| Code | ${CODE_FINDINGS} |"
+  fi
+  if (( SUPPLY_CHAIN_FINDINGS > 0 )) && [[ -n "${SUPPLY_CHAIN_FINDINGS_URL:-}" ]]; then
     echo "| Supply Chain | [${SUPPLY_CHAIN_FINDINGS}](${SUPPLY_CHAIN_FINDINGS_URL}) |"
   else
     echo "| Supply Chain | ${SUPPLY_CHAIN_FINDINGS} |"
@@ -47,14 +49,7 @@ fi
   echo "${MESSAGE}"
   echo
   echo "[Open Semgrep AppSec Project](${PROJECT_URL})"
-
-  if [[ -n "${SCAN_URL:-}" ]]; then
-    echo
-    echo "[Open this Semgrep Scan](${SCAN_URL})"
-  fi
-
-  echo
-  echo "[View GitHub Actions Run](${RUN_URL})"
+  if [[ -n "${SCAN_URL:-}" ]]; then echo; echo "[Open this Semgrep Scan](${SCAN_URL})"; fi
   echo
   echo "_This comment is automatically updated on subsequent scans._"
 } > build/reports/semgrep/semgrep-comment.md
