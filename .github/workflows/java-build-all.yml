@@ -143,9 +143,7 @@ jobs:
     needs: [Security_Scans]
     steps:
     - name: Trivy Scan 
-      uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-scan@main
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}   
+      uses: frankbuttigieg1993-gmail/cicd/.github/actions/trivy-scan@main  
   Docker_Push:
     name: Docker Push
     runs-on: ${{ fromJson(inputs.target-runner) }} 
