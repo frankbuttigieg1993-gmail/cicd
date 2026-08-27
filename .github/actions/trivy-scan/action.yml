@@ -47,14 +47,15 @@ runs:
         name: build
         path: .
 
-    - name: Download SBOM Reports
-      uses: actions/download-artifact@v8
-      with:
-        name: sbom-reports
-        path: build/reports/cyclonedx
-
     - name: Setup Trivy
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/setup-trivy@main
+
+    - name: Generate Runtime and Application SBOM
+      shell: bash
+      run: |
+        set -euo pipefail
+        ./gradlew --no-daemon \
+          cyclonedxApplicationBom 
 
     ################################################### Trivy Source Dependency Scan ####################################################
 
