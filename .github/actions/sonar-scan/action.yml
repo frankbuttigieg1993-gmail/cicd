@@ -46,16 +46,39 @@ runs:
 
       # The Sonar Gradle Task will not fail if the Quality Gate fails because we don't have 'sonar.qualitygate.wait=true' in the sonar.properties file or the command below
       # We evaluate the Result in a Subsequent Step 
+
+    - name: Setup Gradle 9.5.1 for SonarQube
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '9.5.1'
+
     - name: Execute SonarQube Scan
+      shell: bash
       env:
         SONAR_TOKEN: ${{ inputs.sonar-token }}
         SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
       run: |
+        set -euo pipefail
         echo "SONAR_USER_HOME=${GITHUB_WORKSPACE}/.sonar" >> "$GITHUB_ENV"
-        ./gradlew sonar --no-daemon --no-configuration-cache --stacktrace  \
-          -Dsonar.userHome="${SONAR_USER_HOME}" \
-          -Dsonar.branch.name="${GITHUB_REF_NAME}"
-      shell: bash
+        echo "Gradle used for SonarQube:"
+        gradle --version
+
+        gradle \
+          --no-daemon \
+          --no-configuration-cache -Dsonar.userHome="${SONAR_USER_HOME}"\
+          sonar
+
+
+    # - name: Execute SonarQube Scan
+    #   env:
+    #     SONAR_TOKEN: ${{ inputs.sonar-token }}
+    #     SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+    #   run: |
+    #     echo "SONAR_USER_HOME=${GITHUB_WORKSPACE}/.sonar" >> "$GITHUB_ENV"
+    #     ./gradlew sonar --no-daemon --no-configuration-cache --stacktrace  \
+    #       -Dsonar.userHome="${SONAR_USER_HOME}" \
+    #       -Dsonar.branch.name="${GITHUB_REF_NAME}"
+    #   shell: bash
 
     # SonarQube itself is the source of truth. Poll the CE task, resolve the
     # analysisId, query the quality gate for that exact analysis, publish the

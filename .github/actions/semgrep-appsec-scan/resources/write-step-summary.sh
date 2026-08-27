@@ -25,13 +25,13 @@ fi
   echo "| Product | Findings |"
   echo "|---|---:|"
 
-  if [[ -n "${CODE_FINDINGS_URL:-}" ]]; then
-    echo "| Code | [${CODE_FINDINGS}](${CODE_FINDINGS_URL}) |"
-  else
-    echo "| Code | ${CODE_FINDINGS} |"
-  fi
+  echo "| Code | ${CODE_FINDINGS} |"
 
-  echo "| Supply Chain | ${SUPPLY_CHAIN_FINDINGS} |"
+  if [[ -n "${SUPPLY_CHAIN_FINDINGS_URL:-}" ]]; then
+    echo "| Supply Chain | [${SUPPLY_CHAIN_FINDINGS}](${SUPPLY_CHAIN_FINDINGS_URL}) |"
+  else
+    echo "| Supply Chain | ${SUPPLY_CHAIN_FINDINGS} |"
+  fi
   echo "| Secrets | ${SECRETS_FINDINGS} |"
   echo "| **Total** | **${PLATFORM_TOTAL_FINDINGS}** |"
   echo
@@ -42,11 +42,6 @@ fi
   if [[ -n "${SCAN_URL:-}" ]]; then
     echo
     echo "[Open this Semgrep Scan](${SCAN_URL})"
-  fi
-
-  if [[ -n "${CODE_FINDINGS_URL:-}" ]]; then
-    echo
-    echo "[Open Code Findings](${CODE_FINDINGS_URL})"
   fi
 
   echo
