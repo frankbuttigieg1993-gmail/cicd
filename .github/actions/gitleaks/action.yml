@@ -71,6 +71,14 @@ runs:
         set -euo pipefail
         jq '.' build/reports/gitleaks/gitleaks.sarif > build/reports/gitleaks/gitleaks-pretty.sarif
 
+    - name: Generate Gitleaks JSON report
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 "${{ github.action_path }}/resources/generate-gitleaks-json.py" \
+          --sarif build/reports/gitleaks/gitleaks.sarif \
+          --output build/reports/gitleaks/gitleaks.json
+
     - name: Create or update Gitleaks PR comment
       id: gitleaks-pr-comment
       if: ${{ always() && github.event_name == 'pull_request' && inputs.pr-comment == 'true' }}
