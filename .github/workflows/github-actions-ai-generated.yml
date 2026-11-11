@@ -1,0 +1,42 @@
+name: github-actions-ai-generated
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  Build:
+    name: Build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Java Build
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/build@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  Unit_Tests:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    needs: [Build]
+    steps:
+      - name: Java Test
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  github-actions-ai-generated:
+    name: List Workspace Files
+    runs-on: ubuntu-24.04
+    needs: [Unit_Tests]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: List Workspace Files
+        uses: ./.github/actions/java/github-actions-ai-generated
