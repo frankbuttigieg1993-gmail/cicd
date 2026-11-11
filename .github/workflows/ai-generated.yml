@@ -1,0 +1,59 @@
+name: Reusable Gradle Build and Test
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: Java version used by the Gradle build
+        required: false
+        type: string
+        default: "21"
+      gradle-tasks:
+        description: Whitespace-separated Gradle Wrapper tasks to execute
+        required: false
+        type: string
+        default: clean build
+      working-directory:
+        description: Directory containing the Gradle Wrapper
+        required: false
+        type: string
+        default: .
+      upload-test-results:
+        description: Whether to upload JUnit XML test-result files
+        required: false
+        type: boolean
+        default: true
+      artifact-name:
+        description: Name of the uploaded test-result artifact
+        required: false
+        type: string
+        default: gradle-test-results
+      artifact-retention-days:
+        description: Number of days to retain uploaded test results (1-90)
+        required: false
+        type: number
+        default: 7
+
+permissions:
+  contents: read
+
+jobs:
+  gradle-build-and-test:
+    name: Gradle Build and Test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Check out calling repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build and test with Gradle
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/ai-generated@feature/ai-generated-gradle
+        with:
+          java-version: ${{ inputs.java-version }}
+          gradle-tasks: ${{ inputs.gradle-tasks }}
+          working-directory: ${{ inputs.working-directory }}
+          upload-test-results: ${{ inputs.upload-test-results }}
+          artifact-name: ${{ inputs.artifact-name }}
+          artifact-retention-days: ${{ inputs.artifact-retention-days }}

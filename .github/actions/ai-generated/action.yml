@@ -1,0 +1,122 @@
+name: Gradle build and test
+description: Build a Gradle project, run unit tests, and publish JUnit results
+
+inputs:
+  java-version:
+    description: Java version used by the Gradle build
+    required: false
+    default: "21"
+  gradle-tasks:
+    description: Whitespace-separated Gradle Wrapper tasks to execute
+    required: false
+    default: clean build
+  working-directory:
+    description: Directory containing the Gradle Wrapper
+    required: false
+    default: .
+  upload-test-results:
+    description: Whether to upload JUnit XML test-result files
+    required: false
+    default: "true"
+  artifact-name:
+    description: Name of the uploaded test-result artifact
+    required: false
+    default: gradle-test-results
+  artifact-retention-days:
+    description: Number of days to retain uploaded test results (1-90)
+    required: false
+    default: "7"
+
+outputs:
+  build-status:
+    description: Outcome of the Gradle Wrapper invocation
+    value: ${{ steps.gradle.outputs.outcome }}
+  unit-test-status:
+    description: Unit-test status derived from available JUnit XML results
+    value: ${{ steps.summary.outputs.unit-test-status }}
+  test-count:
+    description: Number of tests reported by JUnit XML files
+    value: ${{ steps.summary.outputs.test-count }}
+  artifact-url:
+    description: URL of the uploaded JUnit XML artifact, when available
+    value: ${{ steps.upload-results.outputs.artifact-url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java
+      id: setup-java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+        cache: gradle
+
+    - name: Run Gradle tasks
+      id: gradle
+      if: always() && steps.setup-java.outcome == 'success'
+      continue-on-error: true
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        GRADLE_TASKS: ${{ inputs.gradle-tasks }}
+      run: bash "${{ github.action_path }}/resources/run-gradle.sh"
+
+    - name: Upload JUnit test results
+      id: upload-results
+      if: always() && inputs.upload-test-results == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/build/test-results/**/*.xml
+        if-no-files-found: warn
+        retention-days: ${{ inputs.artifact-retention-days }}
+
+    - name: Write build and test summary
+      id: summary
+      if: always()
+      shell: bash
+      env:
+        JAVA_VERSION: ${{ inputs.java-version }}
+        GRADLE_TASKS: ${{ inputs.gradle-tasks }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        GRADLE_STATUS: ${{ steps.gradle.outcome }}
+        SETUP_STATUS: ${{ steps.setup-java.outcome }}
+        UPLOAD_TEST_RESULTS: ${{ inputs.upload-test-results }}
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        ARTIFACT_RETENTION_DAYS: ${{ inputs.artifact-retention-days }}
+        ARTIFACT_STATUS: ${{ steps.upload-results.outcome }}
+        ARTIFACT_URL: ${{ steps.upload-results.outputs.artifact-url }}
+        WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: python3 "${{ github.action_path }}/resources/write-step-summary.py"
+
+    - name: Enforce build and test results
+      if: always()
+      shell: bash
+      env:
+        SETUP_STATUS: ${{ steps.setup-java.outcome }}
+        GRADLE_STATUS: ${{ steps.gradle.outcome }}
+        UNIT_TEST_STATUS: ${{ steps.summary.outputs.unit-test-status }}
+        UPLOAD_TEST_RESULTS: ${{ inputs.upload-test-results }}
+        ARTIFACT_STATUS: ${{ steps.upload-results.outcome }}
+        SUMMARY_STATUS: ${{ steps.summary.outcome }}
+      run: |
+        set -euo pipefail
+        failed=0
+        for result in \
+          "Java setup:${SETUP_STATUS}" \
+          "Gradle tasks:${GRADLE_STATUS}" \
+          "Unit tests:${UNIT_TEST_STATUS}" \
+          "Step summary:${SUMMARY_STATUS}"; do
+          name=${result%%:*}
+          status=${result#*:}
+          if [[ "$status" != "success" && "$status" != "passed" && "$status" != "not-reported" ]]; then
+            echo "::error::$name did not succeed (status: ${status:-unknown}); see the corresponding step logs."
+            failed=1
+          fi
+        done
+        if [[ "$UPLOAD_TEST_RESULTS" == "true" && "$ARTIFACT_STATUS" != "success" ]]; then
+          echo "::error::JUnit test-result artifact upload did not succeed (status: ${ARTIFACT_STATUS:-unknown})."
+          failed=1
+        fi
+        exit "$failed"
