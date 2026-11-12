@@ -79,7 +79,7 @@ def main() -> int:
         f"| Java setup | {markdown_cell(java_status)} |",
         "| Gradle build command | `./gradlew clean build -x test --info --stacktrace` |",
         f"| Gradle build status | {markdown_cell(build_status)} |",
-        "| Unit test command | `./gradlew test --info --stacktrace` |",
+        "| Unit test command | `./gradlew test -PignoreFailures=true --info --stacktrace --continue` |",
         f"| Unit test status | {markdown_cell(test_status)} |",
         f"| JUnit results | {tests} total; {max(tests - failures - errors - skipped, 0)} passed; {failures} failed; {errors} errors; {skipped} skipped; {len(reports)} XML file(s) |",
         f"| Workspace file listing | {markdown_cell(file_list_status)} |",

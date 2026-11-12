@@ -57,6 +57,7 @@ class CompositeSummaryTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("3 total; 1 passed; 1 failed; 0 errors; 1 skipped", summary)
+        self.assertIn("| Unit test status | failure |", summary)
         self.assertIn("Download test results", summary)
         self.assertIn("Gradle failure details", summary)
         self.assertIn("JUNIT_REPORT_STATUS=success", env_file)

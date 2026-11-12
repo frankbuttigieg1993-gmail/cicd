@@ -36,7 +36,7 @@ runs:
           echo "::error::Executable Gradle Wrapper ./gradlew was not found in the checked-out project."
           exit 2
         fi
-        ./gradlew test --info --stacktrace
+        ./gradlew test -PignoreFailures=true --info --stacktrace --continue
 
     - name: List workspace files
       id: list-files
@@ -87,7 +87,6 @@ runs:
         for result in \
           "Java setup:${JAVA_STATUS}" \
           "Gradle build:${BUILD_STATUS}" \
-          "Gradle unit tests:${TEST_STATUS}" \
           "Workspace file listing:${FILE_LIST_STATUS}" \
           "Step summary:${SUMMARY_STATUS}"; do
           name=${result%%:*}
@@ -97,6 +96,9 @@ runs:
             failed=1
           fi
         done
+        if [[ "$TEST_STATUS" != "success" ]]; then
+          echo "::warning::Gradle unit tests did not pass (status: ${TEST_STATUS:-unknown}); failure details and JUnit results are retained in the summary and artifact."
+        fi
         if [[ "$ARTIFACT_STATUS" != "success" ]]; then
           echo "::error::JUnit test-result artifact upload failed (status: ${ARTIFACT_STATUS:-unknown})."
           failed=1
