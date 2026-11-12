@@ -24,7 +24,7 @@ jobs:
     Bootstrap:
       name: Bootstrap
       runs-on: ubuntu-24.04
-      if: ${{ always() }}
+      if: ${{ github.event_name == 'pull_request' }}
       steps:
         - name: Bootstrap
           uses: frankbuttigieg1993-gmail/cicd/.github/actions/pr-pipeline-bootstrap@main
@@ -38,6 +38,7 @@ jobs:
       name: Build
       runs-on: ${{ fromJson(inputs.target-runner) }} 
       needs: [Bootstrap]
+      if: ${{ always() && (needs.Bootstrap.result == 'success' || needs.Bootstrap.result == 'skipped') }}
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,6 +57,20 @@ jobs:
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }} 
+    AI_Generate_Composite:
+      name: Gradle Build, Test, and File Listing
+      runs-on: ubuntu-24.04
+      needs: [Unit_Tests]
+      if: ${{ !cancelled() }}
+      permissions:
+        contents: read
+      steps:
+      - name: Checkout application
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build, test, and list files
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/ai-generate-composite@feature/ai-generate-composite
     Secrets_Scan:
         name: Secrets Scan 
         runs-on: ${{ fromJson(inputs.target-runner) }} 
