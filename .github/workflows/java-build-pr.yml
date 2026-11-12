@@ -24,9 +24,10 @@ jobs:
     Bootstrap:
       name: Bootstrap
       runs-on: ubuntu-24.04
-      if: ${{ github.event_name == 'pull_request' }}
+      if: ${{ always() }}
       steps:
         - name: Bootstrap
+          if: ${{ github.event_name == 'pull_request' }}
           uses: frankbuttigieg1993-gmail/cicd/.github/actions/pr-pipeline-bootstrap@main
           with:
             github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -38,7 +39,6 @@ jobs:
       name: Build
       runs-on: ${{ fromJson(inputs.target-runner) }} 
       needs: [Bootstrap]
-      if: ${{ always() && (needs.Bootstrap.result == 'success' || needs.Bootstrap.result == 'skipped') }}
       steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,7 +52,6 @@ jobs:
       name: Unit_Tests
       runs-on: ubuntu-24.04
       needs: [Build]
-      if: ${{ always() && needs.Build.result == 'success' }}
       steps:
       - name: Java Test
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
