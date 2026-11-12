@@ -52,6 +52,7 @@ jobs:
       name: Unit_Tests
       runs-on: ubuntu-24.04
       needs: [Build]
+      if: ${{ always() && needs.Build.result == 'success' }}
       steps:
       - name: Java Test
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
