@@ -1,0 +1,9 @@
+name: ai-generate-composite
+description: List files in the current directory
+
+runs:
+  using: composite
+  steps:
+    - name: List current-directory files
+      shell: bash
+      run: find . -maxdepth 1 -type f -print | LC_ALL=C sort

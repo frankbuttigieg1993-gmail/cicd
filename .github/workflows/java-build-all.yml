@@ -62,10 +62,24 @@ jobs:
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/test@main
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}  
+  AI_Generate_Composite:
+    name: List application files
+    runs-on: ubuntu-24.04
+    needs: [Unit_Tests]
+    if: ${{ !cancelled() }}
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout application
+      uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - name: List current-directory files
+      uses: frankbuttigieg1993-gmail/cicd/.github/actions/ai-generate-composite@feature/ai-generate-composite
   Security_Scans:
     name: Security Scans
     runs-on: ${{ fromJson(inputs.target-runner) }} 
-    needs: [Unit_Tests]
+    needs: [Unit_Tests, AI_Generate_Composite]
     steps:
     - name: Scans
       run: | 
@@ -147,7 +161,7 @@ jobs:
   Docker_Push:
     name: Docker Push
     runs-on: ${{ fromJson(inputs.target-runner) }} 
-    needs: [Build, Unit_Tests]
+    needs: [Build, Unit_Tests, AI_Generate_Composite]
     steps:
     - name: Docker Push 
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/docker-push@main
