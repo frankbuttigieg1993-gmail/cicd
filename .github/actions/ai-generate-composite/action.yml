@@ -1,0 +1,108 @@
+name: ai-generate-composite
+description: Build and test a Gradle project, list its files, and publish JUnit results
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java 21
+      id: setup-java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "21"
+        cache: gradle
+
+    - name: Gradle build
+      id: gradle-build
+      if: always() && steps.setup-java.outcome == 'success'
+      continue-on-error: true
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ ! -x ./gradlew ]]; then
+          echo "::error::Executable Gradle Wrapper ./gradlew was not found in the checked-out project."
+          exit 2
+        fi
+        ./gradlew clean build -x test --info --stacktrace
+
+    - name: Gradle unit tests
+      id: gradle-test
+      if: always() && steps.setup-java.outcome == 'success'
+      continue-on-error: true
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ ! -x ./gradlew ]]; then
+          echo "::error::Executable Gradle Wrapper ./gradlew was not found in the checked-out project."
+          exit 2
+        fi
+        ./gradlew test --info --stacktrace
+
+    - name: List workspace files
+      id: list-files
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        find . -type d -name .git -prune -o -type f -print | LC_ALL=C sort
+
+    - name: Upload JUnit test results
+      id: upload-test-results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gradle-test-results
+        path: build/test-results/**/*.xml
+        if-no-files-found: warn
+        retention-days: 1
+
+    - name: Write build and test summary
+      id: write-summary
+      if: always()
+      shell: bash
+      env:
+        JAVA_STATUS: ${{ steps.setup-java.outcome }}
+        BUILD_STATUS: ${{ steps.gradle-build.outcome }}
+        TEST_STATUS: ${{ steps.gradle-test.outcome }}
+        FILE_LIST_STATUS: ${{ steps.list-files.outcome }}
+        ARTIFACT_STATUS: ${{ steps.upload-test-results.outcome }}
+        ARTIFACT_URL: ${{ steps.upload-test-results.outputs.artifact-url }}
+        WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: python3 "${{ github.action_path }}/resources/write-step-summary.py"
+
+    - name: Enforce build, tests, and reporting
+      if: always()
+      shell: bash
+      env:
+        JAVA_STATUS: ${{ steps.setup-java.outcome }}
+        BUILD_STATUS: ${{ steps.gradle-build.outcome }}
+        TEST_STATUS: ${{ steps.gradle-test.outcome }}
+        FILE_LIST_STATUS: ${{ steps.list-files.outcome }}
+        ARTIFACT_STATUS: ${{ steps.upload-test-results.outcome }}
+        SUMMARY_STATUS: ${{ steps.write-summary.outcome }}
+        JUNIT_REPORT_STATUS: ${{ env.JUNIT_REPORT_STATUS }}
+      run: |
+        set -euo pipefail
+        failed=0
+        for result in \
+          "Java setup:${JAVA_STATUS}" \
+          "Gradle build:${BUILD_STATUS}" \
+          "Gradle unit tests:${TEST_STATUS}" \
+          "Workspace file listing:${FILE_LIST_STATUS}" \
+          "Step summary:${SUMMARY_STATUS}"; do
+          name=${result%%:*}
+          status=${result#*:}
+          if [[ "$status" != "success" ]]; then
+            echo "::error::$name did not succeed (status: ${status:-unknown}); see the corresponding step logs."
+            failed=1
+          fi
+        done
+        if [[ "$ARTIFACT_STATUS" != "success" ]]; then
+          echo "::error::JUnit test-result artifact upload failed (status: ${ARTIFACT_STATUS:-unknown})."
+          failed=1
+        fi
+        if [[ "$JUNIT_REPORT_STATUS" == "failed" ]]; then
+          echo "::error::One or more JUnit XML reports could not be parsed."
+          failed=1
+        fi
+        exit "$failed"
