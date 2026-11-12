@@ -63,7 +63,7 @@ jobs:
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}  
   AI_Generate_Composite:
-    name: Gradle Build, Test, and File Listing
+    name: List application files
     runs-on: ubuntu-24.04
     needs: [Unit_Tests]
     if: ${{ !cancelled() }}
@@ -74,7 +74,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         persist-credentials: false
-    - name: Build, test, and list files
+    - name: List current-directory files
       uses: frankbuttigieg1993-gmail/cicd/.github/actions/ai-generate-composite@feature/ai-generate-composite
   Security_Scans:
     name: Security Scans
