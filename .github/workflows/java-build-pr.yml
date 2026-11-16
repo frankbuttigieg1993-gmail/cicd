@@ -47,6 +47,17 @@ jobs:
         uses: frankbuttigieg1993-gmail/cicd/.github/actions/java/build@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+    List_Files:
+      name: List Files
+      runs-on: ubuntu-24.04
+      needs: [Build]
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: List Application Files
+        uses: frankbuttigieg1993-gmail/cicd/.github/actions/ai-generated-list-files@feature/ai-generated-list-files
+        with:
+          directory: .
     Unit_Tests:
       name: Unit_Tests
       runs-on: ubuntu-24.04
