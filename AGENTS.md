@@ -6,7 +6,7 @@
 
 | Step | What happens | Evidence / outcome |
 |---|---|---|
-| 1. Select pipeline | User specifies **PR Pipeline** or **Build Pipeline** when integrating with an existing pipeline. Selection authorises scoped changes to that workflow. | Named target; otherwise **BLOCKED - AWAITING USER INPUT** before any tools |
+| 1. Select pipeline | User specifies **PR Pipeline** or **Build Pipeline** when integrating with an existing pipeline. PR selection authorises scoped changes to the `cicd` PR workflow and the Java PR caller reference when needed; Build selection authorises the `cicd` build workflow. | Named target; otherwise **BLOCKED - AWAITING USER INPUT** before any tools |
 | 2. Discover and plan | Agent interprets requirements, inspects existing actions and workflows, identifies conventions and affected files. | Acceptance criteria, convention findings, change plan |
 | 3. Branch | Create task-specific branches from current `main` in both repositories where meaningful changes are required. | Branch names; clean baseline |
 | 4. Implement | Make the smallest authorised changes; favour existing inline command patterns. | Scoped diff; no unrelated modifications |
@@ -31,13 +31,15 @@ For tasks integrating into an existing pipeline, require explicit selection in t
 
 | Selection | Authorised existing workflow in `cicd` |
 |---|---|
-| **PR Pipeline** | `.github/workflows/java-build-pr.yml` |
+| **PR Pipeline** | `.github/workflows/java-build-pr.yml` and narrowly scoped `java_application/.github/workflows/pr.yml` integration |
 | **Build Pipeline** | `.github/workflows/java-build-all.yml` |
 
 - Selection **is authorisation** for minimal changes directly necessary for the requested functionality in the selected workflow. **Do not ask for redundant approval.**
 - If missing or ambiguous, report **BLOCKED - AWAITING USER INPUT**, ask which pipeline to use and stop **all** execution (including reads, branching, edits, tests, commits, pushes and PRs). Never infer a default from prior tasks.
 - If the user explicitly requests both pipelines, clarify that both are intended before modifying both.
-- The unselected workflow must remain unchanged. Any **other existing workflow**, including a caller workflow in `java_application`, requires separate file-specific authorisation. If needed, stop **all** execution, explain the proposed change and report **BLOCKED - AWAITING USER APPROVAL** until granted.
+- **PR Pipeline** selection also authorises narrowly scoped changes to `java_application/.github/workflows/pr.yml` **only when necessary** for cross-repository integration or validation of the requested feature. This includes temporarily changing the reusable-workflow reference from `@main` to the matching `cicd` feature branch. No second approval is required for that specific change.
+- Preserve all unrelated caller workflow jobs, triggers, permissions, checks and behaviour. Record the temporary feature-branch reference, dependency, intended stable reference and required merge order in both PRs. Do not restore `@main` before the `cicd` change is available there if that would invalidate verification; do not merge automatically.
+- The unselected `cicd` workflow must remain unchanged. Any **other existing workflow** (including any Java workflow other than the narrowly authorised `pr.yml`) requires separate file-specific authorisation. If needed, stop **all** execution, explain the proposed change and report **BLOCKED - AWAITING USER APPROVAL** until granted.
 - Creating a new caller workflow is permissible if task-related and consistent with other boundaries; do not manufacture changes merely to generate a second PR.
 
 ## 3. Engineering standards and repository conventions
@@ -54,7 +56,7 @@ For tasks integrating into an existing pipeline, require explicit selection in t
 
 - Never push to `main`, overwrite unrelated work, edit unrelated pipelines, change secrets/settings/rulesets, deploy infrastructure, disable tests or weaken security scans/checks.
 - Preserve existing stages, triggers, dependencies, permissions and checks unless specifically authorised. Pipeline selection authorises **integration**, not unrelated behavioural changes.
-- Existing composite actions, governance files (`AGENTS.md`, Skills) and other existing workflows are read-only unless the task explicitly authorises their modification.
+- Existing composite actions and governance files (`AGENTS.md`, Skills) are read-only unless the task explicitly authorises their modification. Existing workflows are read-only except the selected `cicd` workflow and, for PR Pipeline tasks, the narrowly authorised `java_application/.github/workflows/pr.yml` integration.
 - Create feature branches in both repositories when each has meaningful task-related changes. If only one repository needs a meaningful change, **do not invent one**: report the conflict with the two-PR convention and request direction.
 - Tool access and GitHub permissions are enforceable controls; these written rules alone are behavioural guidance.
 
@@ -80,5 +82,5 @@ A green workflow/job/step **does not by itself prove functionality**. For each n
 
 - Classify failures (code, test, workflow, action, permissions, external dependency); inspect logs, make the smallest authorised correction, push to the same branch and rerun the necessary checks.
 - Do not bypass triggers or required checks. If an authorised run cannot be triggered, report the blocker rather than modifying `main`.
-- Report **IN DEVELOPMENT** while Draft PRs are progressing; **BLOCKED - AWAITING USER INPUT** for missing pipeline selection; **BLOCKED - AWAITING USER APPROVAL** for out-of-scope workflow edits; **BLOCKED** for external constraints; **READY FOR HUMAN REVIEW** only when promotion requirements are satisfied; **FAILED** when the task cannot be completed.
+- Report **IN DEVELOPMENT** while Draft PRs are progressing; **BLOCKED - AWAITING USER INPUT** for missing pipeline selection; **BLOCKED - AWAITING USER APPROVAL** for out-of-scope workflow edits (excluding the authorised Java PR caller reference); **BLOCKED** for external constraints; **READY FOR HUMAN REVIEW** only when promotion requirements are satisfied; **FAILED** when the task cannot be completed.
 - Final report: both applicable PR URLs, branches, SHAs, changed files, tests, run links, step logs, functional results, reviewer-request outcome, risks and any unresolved limitations. Never claim human approval or merge.
