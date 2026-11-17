@@ -55,7 +55,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: List Application Files
-        uses: frankbuttigieg1993-gmail/cicd/.github/actions/ai-generated-list-files@feature/ai-generated-list-files
+        uses: $/.github/actions/ai-generated-list-files
         with:
           directory: .
     Unit_Tests:
