@@ -47,19 +47,6 @@ jobs:
         uses: $/.github/actions/java/build
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-    List_Files:
-      name: List Files
-      runs-on: ubuntu-24.04
-      needs: [Build]
-      permissions:
-        contents: read
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v4
-        - name: List Java Application files
-          uses: $/.github/actions/ai-generated-list-files
-          with:
-            directory: .
     Unit_Tests:
       name: Unit_Tests
       runs-on: ubuntu-24.04
