@@ -59,8 +59,79 @@ This is the **procedure**, not an independent policy. Follow the applicable repo
 
 ## Phase 5 — Promotion, review request and final report
 
+Before executing any PR promotion or reviewer-request operation, the agent MUST complete the Final GitHub Actions Reference 
+Verification procedure defined below.
+
+This verification is a mandatory prerequisite for promotion, not a post-promotion activity.
+
 1. Confirm both applicable PRs contain final changes, meet acceptance criteria, have passing required checks and verified functional results on the latest relevant commits. Confirm cross-repository refs remain valid for review and eventual merge.
 2. Only then mark both Draft PRs **Ready for Review**. If either is incomplete, leave both Draft and report the limitation.
 3. Request review from `frankbuttigieg-93` on both. If GitHub refuses the request (including self-review restrictions), report the refusal without claiming approval.
 4. Report PR URLs, branches, SHAs, changed files, test commands, workflow run URLs/IDs, job and step conclusions, relevant log excerpts, expected-vs-observed verification, reviewer-request status and outstanding risks.
 5. **Never approve or merge PRs, change repository rulesets, bypass required checks or claim success without evidence.**
+
+
+### Final GitHub Actions Reference Verification
+
+Before promoting any Draft PR to Ready for Review, perform the following procedure.
+
+#### Step 1 — Identify References
+
+Inspect all new and modified GitHub Actions workflows.
+
+Identify references to:
+
+- Reusable workflows.
+- Composite actions.
+- Local actions.
+- External GitHub Actions.
+
+Record the repository, workflow file, referenced resource and Git reference.
+
+#### Step 2 — Classify References
+
+Classify each reference as:
+
+- **Temporary validation reference:** A feature-branch reference used to test changes before merging.
+- **Stable reference:** An approved branch, tag or immutable commit SHA intended for ongoing use.
+- **Local reference:** A path to an action available in the runner's checked-out workspace.
+
+#### Step 3 — Establish the Final Reference Strategy
+
+Determine how each temporary reference will transition to its intended final reference.
+
+Prefer existing repository conventions and approved immutable references where appropriate.
+
+For composite actions located in the same repository as the reusable workflow, consider whether a local action reference with an explicit checkout is more maintainable than a remote feature-branch reference.
+
+Verify that the proposed reference resolves correctly in the intended execution context.
+
+#### Step 4 — Validate the Final State
+
+Before recommending PR promotion:
+
+1. Confirm that the intended merged workflow does not depend on temporary feature branches.
+2. Confirm that all required reusable workflows and composite actions will be available at their intended references.
+3. Verify that cross-repository merge dependencies are documented.
+4. Validate any changes made to establish the final reference strategy.
+5. Inspect the relevant CI/CD execution evidence.
+6. Confirm that the requested functionality remains operational.
+
+#### Step 5 — Document the Reference Strategy
+
+Include the following information in the associated PRs:
+
+- Temporary validation references.
+- Intended final references.
+- Required reference changes.
+- Cross-repository merge order.
+- Any post-merge actions required.
+- Validation evidence and outstanding risks.
+
+#### Step 6 — Apply the Promotion Gate
+
+Do not promote a Draft PR to Ready for Review unless the final reference strategy is established, validated to the extent possible before merge, and documented.
+
+If the final reference strategy cannot be established safely, keep the PR in Draft and report the blocker.
+
+Never merge PRs or modify protected branches.

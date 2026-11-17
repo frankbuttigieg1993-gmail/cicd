@@ -1,0 +1,170 @@
+name: CICD Semantic Version Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: cicd-semantic-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Create Semantic Version Release
+
+    if: github.event.pull_request.merged == true
+
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout merged main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Determine next semantic version
+        id: version
+        env:
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Reading release classification..."
+
+          PATCH=$(jq -r 'index("release:patch") != null' <<< "$PR_LABELS")
+          MINOR=$(jq -r 'index("release:minor") != null' <<< "$PR_LABELS")
+          MAJOR=$(jq -r 'index("release:major") != null' <<< "$PR_LABELS")
+
+          COUNT=0
+
+          [[ "$PATCH" == "true" ]] && COUNT=$((COUNT + 1))
+          [[ "$MINOR" == "true" ]] && COUNT=$((COUNT + 1))
+          [[ "$MAJOR" == "true" ]] && COUNT=$((COUNT + 1))
+
+          if [[ "$COUNT" -ne 1 ]]; then
+            echo "::error::Exactly one release label is required."
+            exit 1
+          fi
+
+          git fetch --force --tags origin
+
+          LATEST=$(
+            git tag --list 'v*' |
+            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' |
+            sort -V |
+            tail -n 1 || true
+          )
+
+          if [[ -z "$LATEST" ]]; then
+            LATEST="v0.0.0"
+          fi
+
+          echo "Latest release: $LATEST"
+
+          VERSION="${LATEST#v}"
+
+          IFS='.' read -r MAJOR_VERSION MINOR_VERSION PATCH_VERSION \
+            <<< "$VERSION"
+
+          if [[ "$MAJOR" == "true" ]]; then
+            MAJOR_VERSION=$((MAJOR_VERSION + 1))
+            MINOR_VERSION=0
+            PATCH_VERSION=0
+
+          elif [[ "$MINOR" == "true" ]]; then
+            MINOR_VERSION=$((MINOR_VERSION + 1))
+            PATCH_VERSION=0
+
+          else
+            PATCH_VERSION=$((PATCH_VERSION + 1))
+          fi
+
+          NEXT_VERSION="v${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}"
+
+          echo "Next release: $NEXT_VERSION"
+
+          echo "version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create immutable release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$MERGE_SHA" || "$MERGE_SHA" == "null" ]]; then
+            echo "::error::Merged commit SHA is unavailable."
+            exit 1
+          fi
+
+          git fetch origin main
+
+          # Confirm the merge result is reachable from main.
+          if ! git merge-base --is-ancestor "$MERGE_SHA" origin/main; then
+            echo "::error::Merged commit is not reachable from main."
+            exit 1
+          fi
+
+          # Never overwrite an existing release tag.
+          if git ls-remote --exit-code --tags origin \
+            "refs/tags/$VERSION" >/dev/null 2>&1; then
+
+            echo "::error::Release tag $VERSION already exists."
+            exit 1
+          fi
+
+          echo "Creating release $VERSION at $MERGE_SHA"
+
+          gh api \
+            --method POST \
+            "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/tags/$VERSION" \
+            -f sha="$MERGE_SHA"
+
+          echo "Created $VERSION"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh release create "$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$MERGE_SHA" \
+            --title "CICD Release $VERSION" \
+            --generate-notes
+
+          echo "Published CICD release $VERSION"
+
+      - name: Release summary
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          {
+            echo "## CICD Semantic Version Release"
+            echo ""
+            echo "| Property | Value |"
+            echo "|---|---|"
+            echo "| Version | $VERSION |"
+            echo "| Merged PR | #$PR_NUMBER |"
+            echo "| Commit | $MERGE_SHA |"
+            echo "| Repository | $GITHUB_REPOSITORY |"
+          } >> "$GITHUB_STEP_SUMMARY"

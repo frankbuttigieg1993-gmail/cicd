@@ -1,0 +1,16 @@
+name: 'AI Generated List Files'
+description: 'Lists the entries in a directory, including hidden entries.'
+
+inputs:
+  directory:
+    description: 'Directory to list.'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: List directory contents
+      env:
+        DIRECTORY: ${{ inputs.directory }}
+      run: ls -alrt -- "$DIRECTORY"
+      shell: bash
