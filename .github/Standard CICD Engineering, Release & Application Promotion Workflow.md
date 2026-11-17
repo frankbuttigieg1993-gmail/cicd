@@ -12,7 +12,7 @@ This 16-step process describes the standard engineering lifecycle for a central 
 
 5. **Perform Local Validation:** Validate YAML syntax, composite-action metadata, workflow dependencies, repository references and relevant functionality. Confirm that changes follow existing conventions and do not affect unrelated workflows.
 
-6. **Create Both Draft PRs:** Create cross-referenced Draft PRs targeting `main` in both repositories. Document implementation details, acceptance criteria, temporary references, cross-repository dependencies and the validation plan.
+6. **Create Both Draft PRs:** Before creating each PR, verify the current branch contains the intended changes and reconcile its local and remote refs and commit SHAs with existing PRs. Check whether an appropriate active PR already exists. Do not treat a matching branch name or a merged/closed PR as an automatic blocker. Follow the central `github-actions-development` Skill for detailed reconciliation. Create cross-referenced Draft PRs targeting `main` in both repositories. Document implementation details, acceptance criteria, temporary references, cross-repository dependencies and the validation plan.
 
 7. **Classify the CICD Release and Apply the PR Label:** Copilot evaluates the change and applies **exactly one** semantic-version label to the CICD Draft PR:
    - `release:patch` — Backward-compatible bug fix.

@@ -17,7 +17,7 @@ The detailed canonical process is `cicd/.github/Standard CICD Engineering, Relea
 | 9 | Promote CICD PR to Ready for Review |
 | 10 | Review and Merge CICD PR |
 | 11 | Automatically Create the Semantic-Version Release |
-| 12 | Update the Application Draft PR |
+| 12 | Update the Application Draft PR using configured automation or an authorised agent operation |
 | 13 | Execute Final Application Validation |
 | 14 | Promote Application PR to Ready for Review |
 | 15 | Final Human Review and Merge |
@@ -70,6 +70,12 @@ For tasks integrating into an existing pipeline, require explicit selection in t
 - Keep each applicable PR Draft while its stage-specific implementation, required checks, or functional verification is incomplete. The application PR remains Draft while the CICD PR is reviewed, merged, released, and the application revalidates the immutable release.
 - Promote the CICD PR to **Ready for Review** after successful feature-branch integration evidence and applicable required checks. After human CICD merge and immutable release, promote the application PR separately only after final validation against that release and applicable required checks. Do not promote solely because a workflow is green.
 - Then request review from `frankbuttigieg93-png`. If GitHub refuses (e.g. author cannot review own PR), report the limitation; do not impersonate, self-approve, substitute a reviewer without direction or merge.
+
+### Historical PR and feature-branch identity
+
+A matching branch name does not establish that a branch or PR belongs to the current execution. Verify local and remote refs and current commit SHAs, and distinguish branch identity from PR identity using the repository, head and base refs, current SHAs, PR state and relevant metadata together. No single name or SHA is conclusive.
+
+Treat merged or closed PRs as historical evidence, not automatic blockers. Preserve current branches, commits and implementation; do not request additional approval solely because a historical PR used the same branch name. Follow the central `github-actions-development` Skill for the detailed reconciliation procedure. Existing authorisation, HITL checkpoints and repository protections remain in force; a failed PR-creation attempt does not authorize destructive fallback actions.
 
 ### GitHub Actions Reference Management and Production Readiness
 

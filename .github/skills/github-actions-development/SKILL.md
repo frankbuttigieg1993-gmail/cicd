@@ -30,6 +30,7 @@ Read `cicd/.github/Standard CICD Engineering, Release & Application Promotion Wo
 ## Phase B - Steps 3-5: branches, implementation and local validation
 
 1. Create task branches from verified `main` baselines in each meaningfully affected repository; use isolated worktrees to preserve unrelated local changes where needed. Never push directly to `main`.
+Before creating a feature branch, check whether the proposed branch name currently exists locally or remotely. Historical use of the same branch name does not, by itself, establish a conflict. Resolve genuine collisions without overwriting existing work.
 2. Implement the smallest change. Prefer inline Bash commands and `./gradlew` conventions. For <=10 executable shell lines, a separate helper script requires explicit approval unless the governing policy explicitly permits an exception.
 3. For internal composite actions referenced from a CICD reusable workflow, prefer verified self-repository syntax `uses: $/.github/actions/<action-path>` so actions track the workflow's CICD revision. Do not add permanent checkout or `cicd-ref` inputs solely for testing. Verify correct resolution in the actual execution environment.
 4. For PR Pipeline integration, temporarily point the authorised application caller to the matching CICD feature branch; preserve unrelated workflow configuration. Do not alter the unselected Build Pipeline.
@@ -41,6 +42,24 @@ Read `cicd/.github/Standard CICD Engineering, Release & Application Promotion Wo
 2. Classify CICD change: `release:patch` (backward-compatible fix), `release:minor` (backward-compatible feature), or `release:major` (breaking change). Apply **exactly one** label to the CICD PR and verify via GitHub that it is present. Explain rationale; if ambiguous, request clarification. Do not assume the release workflow will infer the label.
 3. Execute the application PR pipeline against the CICD feature branch. Identify run URL/ID, latest application SHA, workflow, jobs and executing steps. Inspect **actual logs**, not just success status. Compare output to acceptance criteria and known expected contents/artifacts, including hidden entries for listing tasks.
 4. Classify failures and remediate only authorised, task-related causes. Never weaken scans, bypass checks, or call skipped/absent checks successful. Document accepted pre-existing findings separately from new regressions. Update evidence in both Draft PRs.
+
+### Historical PR and Feature-Branch Reconciliation
+
+Before creating or reusing a feature branch, and before creating a PR, reconcile branch identity and PR identity separately in each affected repository.
+
+1. **Verify branch state.** Record the repository, local worktree status, current local branch/ref and head SHA when present, and the current remote branch ref and SHA. Check the intended changes relative to the verified base. If local and remote state differ or the worktree is dirty, inspect and preserve the differences; do not overwrite or replace them merely to resolve a name collision.
+
+2. **Distinguish branch identity from PR identity.** A branch is identified by its repository and ref; its current contents are established by its current commit SHA and worktree state. A PR is a separate record. Assess whether it belongs to the current execution using repository identity, PR state, head repository/ref/current SHA, base repository/ref, commits and relevant PR metadata (including title, body and task context) together. A matching branch name or SHA alone is not conclusive.
+
+3. **Reconcile existing PRs.** Inspect open, closed and merged PRs for the relevant head and base. Compare historical PR head SHAs with current local and remote branch SHAs. Treat merged and closed PRs as historical evidence, not automatic blockers. An open PR is appropriate for the current work only when its state, repository, head and base refs, current head, commits and metadata align with the intended change. If the records disagree, refresh and investigate read-only before deciding; do not create a duplicate based on stale or incomplete state.
+
+4. **Verify before creating.** Confirm the current authorized branch contains the intended changes and that no appropriate active PR already exists for that branch and target base. If no such PR exists, attempt to create a Draft PR from the existing authorized branch. Do not assume that historical use of its name prevents GitHub from accepting a new PR. Preserve current branches, commits and implementation; a perceived historical-name conflict is not grounds for a replacement branch.
+
+5. **Handle creation failures safely.** Preserve and report the exact GitHub error. Use read-only checks to distinguish a genuine repository or GitHub restriction from transient API, network, rate-limit or authentication failures. For a plausibly transient failure, recheck branch/PR state and authentication without exposing credentials, honor any server retry guidance, and retry at most twice. Do not retry a confirmed restriction as though it were transient.
+
+6. **Stop before fallback changes.** If creation remains blocked, report the exact error, classification, read-only investigation and proposed smallest safe remediation. Do not force-push, delete or recreate branches, overwrite commits, reopen or alter historical PRs, or take another destructive fallback action. Proceed with any remediation only when it is already within task authorization; otherwise stop for the applicable approval.
+
+Record the current local and remote branch SHAs, relevant historical PR references, the new PR URL (if created), and any unresolved limitation in the engineering evidence. Do not request additional human approval solely because a historical PR used the same branch name. Existing pipeline selection, task authorization, HITL checkpoints and repository governance remain in force.
 
 ## Phase D - Steps 9-11: CICD review, merge and release
 
