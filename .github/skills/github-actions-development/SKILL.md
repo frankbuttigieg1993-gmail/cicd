@@ -45,7 +45,7 @@ Read `cicd/.github/Standard CICD Engineering, Release & Application Promotion Wo
 ## Phase D - Steps 9-11: CICD review, merge and release
 
 1. Verify feature-branch evidence, CICD required checks, exactly one release label, and that internal action references will remain valid after branch deletion. Confirm CICD PR has no temporary internal action references; promote **CICD PR only** to Ready for Review when applicable conditions are met.
-2. Request review from `frankbuttigieg-93` if GitHub permits. The agent MUST NOT directly approve or merge. Wait for a human-authorised merge or separately authorised GitHub auto-merge; do not claim that the agent can wait indefinitely in the background.
+2. Request review from `frankbuttigieg93-png` if GitHub permits. The agent MUST NOT directly approve or merge. Wait for a human-authorised merge or separately authorised GitHub auto-merge; do not claim that the agent can wait indefinitely in the background.
 3. Once the merge is observed, confirm the actual CICD merged SHA and the release workflow result. Verify the published immutable semantic-version tag points to that SHA, represents the whole CICD repository, and is protected against moving or deletion. Do not create/move tags or install automation unless authorised for the task. If release automation fails, report the blocker rather than inventing a tag.
 
 ## Phase E - Steps 12-13: application adoption and final verification
@@ -56,7 +56,7 @@ Read `cicd/.github/Standard CICD Engineering, Release & Application Promotion Wo
 
 ## Phase F - Steps 14-16: review, merge handoff and report
 
-1. Only after applicable application checks and release-based functional verification pass, promote the application PR to Ready for Review and request `frankbuttigieg-93` where permitted. A reviewer request is not an approval.
+1. Only after applicable application checks and release-based functional verification pass, promote the application PR to Ready for Review and request `frankbuttigieg93-png` where permitted. A reviewer request is not an approval.
 2. Human reviewers approve and merge through GitHub governance; the agent never directly merges or bypasses rulesets. Do not claim merge completion without observing it.
 3. Report both PR URLs, branch names, changed files, release label and rationale, immutable release tag and merged SHA, latest application SHA, workflow runs, job/step statuses, inspected logs, expected-vs-observed outcomes, reviewer status, known findings and remaining blockers. Delete temporary branches only when explicitly authorised and no refs depend on them.
 

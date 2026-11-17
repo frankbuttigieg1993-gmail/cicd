@@ -33,7 +33,7 @@ This 16-step process describes the standard engineering lifecycle for a central 
 
 13. **Execute Final Application Validation:** Validate the application against the released CICD version. Inspect workflow, job and step statuses, retrieve actual execution logs, verify functionality and confirm no temporary feature-branch references remain. Document the final evidence in the application PR.
 
-14. **Promote Application PR to Ready for Review:** Once applicable validation and governance requirements are satisfied, transition the application PR from Draft to Ready for Review and request review from the designated reviewer (`frankbuttigieg-93`).
+14. **Promote Application PR to Ready for Review:** Once applicable validation and governance requirements are satisfied, transition the application PR from Draft to Ready for Review and request review from the designated reviewer (`frankbuttigieg93-png`).
 
 15. **Final Human Review and Merge:** The human reviewer evaluates the application changes, CICD release version, execution evidence and outstanding findings. Once approved, merge the application PR through the established GitHub process.
 
