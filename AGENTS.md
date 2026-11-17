@@ -67,6 +67,61 @@ For tasks integrating into an existing pipeline, require explicit selection in t
 - Promote both to **Ready for Review** only when the latest relevant commits pass mandatory checks **and** actual functional behaviour is verified. Do not promote just because a workflow is green.
 - Then request review from `frankbuttigieg-93`. If GitHub refuses (e.g. author cannot review own PR), report the limitation; do not impersonate, self-approve, substitute a reviewer without direction or merge.
 
+### GitHub Actions Reference Management and Production Readiness
+
+The agent MUST ensure that all new or modified GitHub Actions workflows have a safe, maintainable reference strategy before being considered ready for production.
+
+Temporary feature-branch references MAY be used for cross-repository integration testing and PR validation.
+
+However, the agent MUST NOT leave a workflow intended for merging into `main` dependent on a temporary feature branch that may subsequently be deleted.
+
+Before promoting a Draft PR to Ready for Review, the agent MUST:
+
+1. Identify all new or modified references to reusable workflows and composite actions.
+2. Distinguish temporary validation references from intended production references.
+3. Establish a safe final reference strategy using an appropriate stable reference, immutable commit SHA or local action reference.
+4. Ensure that the proposed merged workflow will not depend on temporary feature branches.
+5. Document any cross-repository merge dependencies and required reference transitions.
+6. Verify that the final reference strategy is technically valid and compatible with the repository's engineering conventions.
+7. Revalidate any implementation changes made to establish the final reference strategy.
+
+### PR Promotion Requirements
+
+A Draft PR MUST NOT be promoted to Ready for Review unless:
+
+- Required CI/CD checks have passed.
+- The requested functionality has been verified using actual execution evidence.
+- The final reference strategy has been established and documented.
+- No temporary feature-branch dependency will remain in the intended merged workflow.
+- Any required post-merge reference transitions are clearly documented and assigned to the appropriate human release or merge process.
+
+The agent MUST NOT merge pull requests or modify protected branches to resolve reference dependencies.
+
+### Ready for Review vs Ready to Merge
+
+Ready for Review and Ready to Merge are distinct states.
+
+A PR may be marked Ready for Review when:
+
+- Required CI/CD checks have passed.
+- Functional verification has succeeded.
+- The final reference strategy is established and documented.
+- Temporary validation references and required transitions are
+  explicitly identified.
+- No unresolved implementation or validation failures remain.
+
+A PR MUST NOT be considered Ready to Merge while its proposed
+merged contents depend on temporary feature-branch references.
+
+Before merging, all temporary references must be replaced with
+approved stable references, and the resulting changes must be
+revalidated.
+
+The agent MUST document any required merge order or post-merge
+reference transition.
+
+The agent MUST NOT merge pull requests.
+
 ## 6. Mandatory execution and functional verification
 
 A green workflow/job/step **does not by itself prove functionality**. For each new or modified feature:
