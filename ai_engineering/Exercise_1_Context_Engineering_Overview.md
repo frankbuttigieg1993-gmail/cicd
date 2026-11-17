@@ -6,17 +6,34 @@ Your Exercise 1 solution demonstrates how **context engineering can transform a 
 
 Rather than providing GitHub Copilot with detailed implementation instructions every time, you've separated engineering knowledge into reusable sources of context.
 
-Your solution uses:
+Your current versioned-release solution uses:
 
 - **User prompts** to define the engineering task.
-- **`AGENTS.md`** to define engineering policies, standards, restrictions and completion requirements.
-- **`SKILL.md`** to define the reusable engineering procedure.
+- **Two repository-specific `AGENTS.md` files** to define shared CICD and application-specific policies.
+- **One central `cicd/.github/skills/github-actions-development/SKILL.md`** to define the cross-repository execution procedure.
+- **`.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`** as the authoritative human-readable 16-step process reference.
+- **GitHub Actions release automation** to create immutable semantic-version tags on merged CICD commits; application repositories adopt releases independently.
 - **Existing repository code** to provide established implementation conventions.
 - **GitHub tools and execution results** to provide evidence during implementation and validation.
 - **GitHub Copilot's agent harness** to coordinate the agent loop and tool execution.
 - **GitHub permissions and branch protection** to enforce technical governance.
 
 This allows GitHub Copilot to undertake different engineering tasks while following a consistent process.
+
+### Current source-of-truth layout
+
+```text
+cicd/
+  AGENTS.md                                      # shared CICD policy
+  .github/Standard CICD Engineering, Release & Application Promotion Workflow.md
+  .github/skills/github-actions-development/SKILL.md  # one central procedure
+  .github/workflows/semantic-release.yml         # release automation (workflow name illustrative)
+java_application/
+  AGENTS.md                                      # application-specific policy
+```
+
+There is **no duplicate Java application Skill**. Both `AGENTS.md` files remain relevant; the central Skill references the shared process document. This separation reduces conflicting instructions and repeated maintenance.
+
 
 ---
 
@@ -47,7 +64,7 @@ Suppose your prompt says:
 
 > Create a composite action named `ai-generated-list-files` that lists files in a directory and executes after Build in the PR Pipeline.
 
-Your `AGENTS.md` establishes that:
+The applicable `cicd/AGENTS.md` and `java_application/AGENTS.md` establish that:
 
 - The PR Pipeline has been explicitly selected.
 - This authorises task-scoped modifications to `.github/workflows/java-build-pr.yml`.
@@ -56,7 +73,7 @@ Your `AGENTS.md` establishes that:
 - The implementation must follow repository conventions.
 - Draft PRs must be created.
 - The implementation must be functionally verified.
-- The agent must never merge the PRs.
+- The agent must not bypass governance or perform an unauthorised merge. CICD merges may be carried out by an authorised human or an explicitly permitted GitHub auto-merge mechanism; application merge remains under human review.
 
 The prompt doesn't need to repeat those instructions.
 
@@ -74,15 +91,15 @@ It is also a form of constraint engineering because it establishes boundaries ar
 
 Think of it as your team's engineering runbook or Standard Operating Procedure (SOP). It defines **HOW TO EXECUTE THE ENGINEERING PROCESS**.
 
-Your refactored Skill uses five operational phases.
+Your central Skill coordinates the complete 16-step development, release and application-adoption lifecycle. Its detailed procedures should refer to the authoritative process document rather than duplicate it.
 
-| Phase | Responsibility |
+| Lifecycle segment | Responsibility |
 |---|---|
-| **1. Select, discover and plan** | Confirm pipeline selection, analyse requirements, inspect repository conventions and establish the implementation plan |
-| **2. Branch, implement and validate locally** | Create feature branches, implement minimal changes and execute local validation |
-| **3. Publish Draft PRs** | Push changes and create cross-referenced Draft PRs |
-| **4. Execute CI, inspect logs and verify functionality** | Run pipelines, inspect execution evidence, validate behaviour and remediate failures |
-| **5. Promote PRs, request review and report** | Mark successful PRs Ready for Review, request review and report results |
+| Discovery and implementation | Confirm pipeline authorisation, inspect conventions, create branches, implement and validate locally |
+| Draft PRs and feature testing | Create both Draft PRs, apply exactly one release label, test the application against the CICD feature branch, inspect logs |
+| CICD promotion and release | Prepare CICD PR for review; after authorised merge, verify immutable semantic-version release on the actual merged commit |
+| Application adoption | Replace temporary caller reference with the newly published CICD version; rerun application CI and verify functionality |
+| Final review and reporting | Promote application PR when requirements are met, request review, document evidence and clean up safely |
 
 ### Example: Functional verification
 
@@ -145,30 +162,44 @@ For example, instead of simply saying *“Validate the implementation,”* your 
 
 ---
 
-## 5. Your Standard Engineering Lifecycle
+## 5. Your Standard Engineering Lifecycle — Current 16-Step Model
 
-Your refactored documents establish the following standard process.
+The original 10-step model has evolved into **16 steps** covering development, CICD release and application adoption. The detailed authoritative process is `cicd/.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`; the table below is a quick reference.
 
 | Step | Activity | Expected outcome |
 |---|---|---|
-| **1** | Pipeline selection | User explicitly selects PR or Build Pipeline |
-| **2** | Requirements and convention discovery | Agent understands requirements and existing engineering patterns |
-| **3** | Planning | Identify implementation approach and affected files |
-| **4** | Branch creation | Create task-specific feature branches |
-| **5** | Implementation | Make minimal changes following repository conventions |
-| **6** | Local validation | Validate syntax and execute relevant tests |
-| **7** | Draft PR creation | Create cross-referenced Draft PRs |
-| **8** | CI/CD and functional verification | Inspect workflow, job and step status, actual logs and expected output |
-| **9** | PR promotion | Mark both PRs Ready for Review after successful validation |
-| **10** | Human review | Request review from `frankbuttigieg-93`; never merge |
+| 1 | Requirements analysis and pipeline selection | Confirm task, acceptance criteria, selected PR/Build pipeline and authorised scope; read applicable instructions. |
+| 2 | Repository convention discovery and planning | Inspect comparable actions, reusable and caller workflows; plan minimal change. |
+| 3 | Create CICD feature branch | Implement action/workflow changes; use approved self-repository references for internal actions. |
+| 4 | Create application feature branch | Temporarily point affected caller workflow to CICD feature branch. |
+| 5 | Local validation | Check YAML, metadata, job dependencies, refs, commands and scope. |
+| 6 | Create both Draft PRs | Cross-link CICD and application PRs; document acceptance criteria and temporary references. |
+| 7 | Apply semantic-release label | Apply exactly one of release:patch, release:minor or release:major to CICD PR and explain selection. |
+| 8 | Feature-branch integration validation | Run application PR against CICD feature branch; inspect step logs and compare actual output with criteria. |
+| 9 | Promote CICD PR | Record evidence and move to Ready for Review when applicable gates are met. |
+| 10 | Review and merge CICD PR | Obtain required approval; authorised human/GitHub auto-merge performs merge. |
+| 11 | Publish immutable CICD release | After merge, release automation tags actual merged commit and publishes one repository-wide semantic version. |
+| 12 | Update application Draft PR | Change caller to newly released CICD tag; push to trigger fresh validation. |
+| 13 | Final application validation | Verify released workflow, step logs, functionality and removal of temporary refs. |
+| 14 | Promote application PR | Update evidence; mark Ready for Review when eligible and request designated reviewer. |
+| 15 | Final human review and merge | Human approves and merges application PR under repository rules. |
+| 16 | Final reporting and cleanup | Record PRs, release tag/SHA, logs and results; safely delete unused branches without altering immutable tags. |
 
-**Failure investigation and remediation occur during validation whenever required.**
+**Remediation is iterative:** Investigate task-related failures and retest within authorised scope. Known accepted findings remain documented; mandatory GitHub checks and rulesets cannot be bypassed by a chat instruction.
 
-### Complete lifecycle
+### Lifecycle in one line
 
-**Prompt → Pipeline Selection → Convention Discovery → Plan → Branch → Implement → Local Validation → Draft PRs → Execute CI → Inspect Logs → Verify Functionality → Remediate (if required) → Ready for Review → Human Review.**
+**Prompt → Discover → Plan → Branches → Implement → Local checks → Both Draft PRs → Release label → Feature-branch CI and logs → CICD review/merge → Immutable semantic release → Application version update → Released-version CI and logs → Application review/merge → Report.**
 
-This lifecycle is reusable regardless of whether the task involves creating a composite action, modifying a reusable workflow or troubleshooting a failed build.
+### Validated architecture and release assumptions
+
+- The CICD repository has **one semantic version for the entire repository**, covering all workflows and composite actions.
+- Internal CICD actions use the tested self-repository reference form, for example `uses: $/.github/actions/ai-generated-list-files`, so the reusable workflow and action resolve from the corresponding CICD revision.
+- During development, an application caller references the CICD feature branch; after CICD release, it references an **immutable release tag** such as `@v2.1.0`.
+- Tags are created **after** merging and point to the actual merged commit. This design is independent of merge-commit, squash and rebase merge strategies; the other strategies have not all been separately tested.
+- `release:patch`, `release:minor`, and `release:major` classify CICD PRs. Exactly one label is required; release automation should reject missing or conflicting labels.
+- Multiple application repositories may independently adopt different CICD versions. A CICD release does not automatically upgrade every consumer.
+- In the completed architecture test, the user reported that the `release:minor` label advanced `v2.0.0` to `v2.1.0`, and that the application PR using `@v2.1.0` produced the same functional result as feature-branch validation. This is reported test evidence, not an independently re-run verification in this document.
 
 ---
 
@@ -196,14 +227,14 @@ The prompt establishes the objective, functionality, target pipeline and accepta
 
 **Source: AGENTS.md**
 
-Your `AGENTS.md` provides reusable instructions governing the agent's behaviour. Examples include:
+The two repository-specific `AGENTS.md` files provide reusable instructions governing the agent's behaviour. Examples include:
 
 - Pipeline selection constitutes authorisation for the selected workflow.
 - Existing repository conventions must be followed.
 - Simple operations should use inline commands.
 - Unrelated workflows must remain unchanged.
 - PRs must initially be Draft.
-- The agent must never merge PRs.
+- The agent must follow the defined merge-authorisation policy; it must never bypass approvals or merge the application PR on its own.
 
 **Purpose:** Establish consistent engineering standards, expectations and behavioural boundaries.
 
@@ -211,34 +242,14 @@ Your `AGENTS.md` provides reusable instructions governing the agent's behaviour.
 
 **Source: SKILL.md**
 
-Your Skill defines the operational sequence the agent follows:
+The single central Skill instructs the agent to consult the authoritative 16-step process and execute the relevant operations:
 
 ```text
-Requirements Analysis
-        |
-        v
-Convention Discovery
-        |
-        v
-Implementation Planning
-        |
-        v
-Branch Creation
-        |
-        v
-Implementation
-        |
-        v
-Draft PR Creation
-        |
-        v
-CI/CD Validation
-        |
-        v
-Functional Verification
-        |
-        v
-Ready for Review
+Task and policy discovery -> convention discovery -> implementation
+    -> both Draft PRs + release label -> feature-branch validation
+    -> CICD review and merge -> immutable semantic release
+    -> application adoption -> released-version validation
+    -> application review and final report
 ```
 
 **Purpose:** Provide a reusable engineering procedure without embedding every implementation step into the prompt.
@@ -361,12 +372,13 @@ Unlike the first five forms, runtime context management is primarily controlled 
 | **Repository-derived context** | Existing repository code | Supplies examples of established engineering conventions |
 | **Tool and evidence context** | GitHub Actions, Git and tool responses | Supplies execution evidence for validation and troubleshooting |
 | **Runtime context management** | GitHub Copilot harness | Coordinates tool execution and working context |
+| **Release and dependency context** | PR labels, tags, release events, version references | Grounds promotion and application adoption in the published CICD revision |
 
-The first three are the forms of context you design directly. The fourth and fifth are forms of context you deliberately instruct the agent to retrieve. The sixth is primarily managed by the agent platform.
+The first three are the forms of context you design directly (including the human-readable process reference). The fourth and fifth are forms of context you deliberately instruct the agent to retrieve. The sixth is primarily managed by the agent platform.
 
 ---
 
-## 8. What Changed After Your Refactor?
+## 8. What Changed After Your Refactor and Versioned Release Redesign?
 
 Before the refactor, your files contained overlapping instructions. For example, the PR lifecycle appeared in several sections across both files. That created a maintenance risk because changing one requirement could require updates in several places.
 
@@ -379,6 +391,10 @@ Before the refactor, your files contained overlapping instructions. For example,
 | Risk of contradictory instructions | Reduced duplication |
 | Task examples mixed with general rules | Task-agnostic engineering conventions |
 | General validation requirements | Explicit execution-log inspection and functional verification |
+| Separate procedural Skill per application | One central Skill for the entire cross-repository lifecycle |
+| Temporary action refs needing cleanup | Tested self-repository references for internal CICD actions |
+| Application caller tracking `@main` | Controlled adoption of immutable semantic-version tags |
+| CICD changes deployed without a release boundary | Post-merge tag and GitHub Release created from actual merged commit |
 
 The refactor primarily improved the **organisation, consistency, discoverability and maintainability of the context supplied to the LLM**. It didn't fundamentally change your agent architecture.
 
@@ -408,9 +424,9 @@ GitHub branch protection and repository permissions can independently restrict u
 >
 > The user prompt provides task-specific context by defining the requested functionality, acceptance criteria and target CI/CD pipeline.
 >
-> `AGENTS.md` provides persistent instructional and policy context by defining engineering standards, repository conventions, authorisation boundaries, governance requirements and completion criteria.
+> `cicd/AGENTS.md` and `java_application/AGENTS.md` provide persistent instructional and policy context by defining engineering standards, repository conventions, authorisation boundaries, governance requirements and completion criteria.
 >
-> `SKILL.md` provides reusable procedural context by defining how the agent performs convention discovery, implementation, validation, troubleshooting and pull-request management.
+> The single central `SKILL.md` provides reusable procedural context by defining how the agent performs convention discovery, implementation, validation, troubleshooting and pull-request management.
 >
 > Both files are designed for human and agent consumption. A concise quick reference explains the engineering lifecycle, while the detailed instructions provide actionable requirements for GitHub Copilot.
 >
@@ -422,7 +438,7 @@ GitHub branch protection and repository permissions can independently restrict u
 >
 > The standard engineering lifecycle is:
 >
-> **Prompt → Pipeline Selection → Convention Discovery → Plan → Branch → Implement → Local Validation → Draft PRs → Execute CI → Inspect Logs → Verify Functionality → Remediate (if required) → Ready for Review → Human Review.**
+> **Prompt → Pipeline Selection → Convention Discovery → Plan → Branches → Implement → Local Validation → Both Draft PRs → Semantic Release Label → Feature-Branch CI and Log Verification → CICD Review/Merge → Immutable Semantic Release → Application Adoption → Released-Version CI and Log Verification → Application Review/Merge → Report.**
 >
 > The result is a task-agnostic engineering process in which simple user prompts can delegate complex engineering activities while maintaining consistent standards, evidence-based validation and appropriate governance.
 
@@ -430,13 +446,16 @@ GitHub branch protection and repository permissions can independently restrict u
 
 ## 11. Key Takeaway
 
-Your refactored architecture establishes the following separation:
+Your current central-Skill, versioned-release architecture establishes the following separation:
 
 | Component | Responsibility |
 |---|---|
 | **User Prompt** | WHAT and WHERE |
 | **AGENTS.md** | RULES, STANDARDS and EXPECTATIONS |
-| **SKILL.md** | HOW and WHEN |
+| **Central SKILL.md** | HOW and WHEN across repositories |
+| **Standard Workflow.md** | Authoritative human-readable 16-step process reference |
+| **Release automation** | Immutable semantic-version tagging after CICD merge |
+| **Application AGENTS.md** | Application-specific change boundaries and CICD release-consumption policy |
 | **Existing Repository Code** | ESTABLISHED CONVENTIONS |
 | **Tool Responses** | EXECUTION EVIDENCE |
 | **LLM** | REASONING, DECISIONS and REPORTING |
@@ -445,7 +464,7 @@ Your refactored architecture establishes the following separation:
 
 ### Final assessment
 
-Your approach has evolved from simply instructing an AI agent to create a GitHub Actions component into a **reusable, governed agentic engineering framework**.
+Your approach has evolved from simply instructing an AI agent to create a GitHub Actions component into a **reusable, governed agentic engineering and versioned-release framework**.
 
 The most significant context-engineering improvement is that you've moved recurring engineering knowledge out of individual prompts and into structured, reusable instructions.
 

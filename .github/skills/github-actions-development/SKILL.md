@@ -1,137 +1,71 @@
 ---
 name: github-actions-development
-description: Develop, integrate, troubleshoot, validate and deliver GitHub Actions composite actions and reusable workflows across a central cicd repository and consuming Java application repository. Use for new CI/CD functionality, PR or build pipeline integration, cross-repository changes, failed builds, test remediation and evidence-backed Draft-to-Ready pull requests.
+description: Develop and validate GitHub Actions composite actions and reusable workflows across cicd and consuming application repositories; manage cross-repository Draft PRs, semantic-version release labels, immutable CICD releases, post-release application adoption, functional log verification, and review handoff.
 ---
 
-# GitHub Actions development — execution runbook
+# GitHub Actions development - versioned release runbook
 
-## Human quick reference — execution sequence
+## Human quick reference
 
-This is the **procedure**, not an independent policy. Follow the applicable repository `AGENTS.md` for authorisation, boundaries and completion gates.
+Read `cicd/.github/Standard CICD Engineering, Release & Application Promotion Workflow.md` at the start of every relevant task. Its 16-step sequence is the canonical workflow; this Skill describes **how** to execute it. This is the only shared CI/CD execution Skill; consuming application repositories use their own `AGENTS.md` policies rather than duplicate Skills. The applicable `AGENTS.md` files define **policy** and take precedence for repository-specific authorisation and safety. Do not substitute a previous conversation summary for the actual file.
 
-| Step | Agent action | Observable result |
+| Stage | Steps | Result |
 |---|---|---|
-| 1 | Confirm explicit **PR Pipeline** or **Build Pipeline** selection when integrating with an existing workflow; otherwise stop. | Selected workflow or **BLOCKED - AWAITING USER INPUT** |
-| 2 | Understand requirements; inspect comparable composite actions, reusable and caller workflows; discover conventions. | Acceptance criteria and convention summary |
-| 3 | Plan the minimal authorised diff and cross-repository execution path. | Proposed files, integration point and validation plan |
-| 4 | Create feature branches from `main` in both repositories where justified. | Branch names |
-| 5 | Implement minimal changes using established inline-command patterns. | Scoped implementation |
-| 6 | Run syntax and local tests, then push and open cross-linked **Draft PRs**. | Test evidence and Draft PR URLs |
-| 7 | Run required CI and inspect **workflow, job and step status AND actual logs**. | Run URLs/IDs, SHAs and log excerpts |
-| 8 | Verify expected functional output; diagnose, correct and retest failures. | Expected vs observed evidence |
-| 9 | Promote both applicable PRs to **Ready for Review** only after required checks and functional verification pass. | Ready states |
-| 10 | Request review from `frankbuttigieg-93`, report evidence and hand off without merging. | Reviewer request and final report |
+| Select, discover, plan | 1-2 | Scope, acceptance criteria, conventions |
+| Implement and locally test | 3-5 | Branches, minimal changes, local checks |
+| Draft PRs and label | 6-7 | Cross-linked Draft PRs; exactly one release label |
+| Validate unreleased CICD | 8 | Workflow/job/step logs and functional evidence |
+| CICD review, merge, release | 9-11 | Human-reviewed CICD merge; immutable tag on merged SHA |
+| Application adoption and final test | 12-13 | Application caller pinned to new tag; fresh logs |
+| Application review and handoff | 14-16 | Review request, human merge, final report |
 
-**Human reader:** This table answers what happens and in what order. For rules, read `AGENTS.md`; for precise agent operations, use the phases below.
+## Phase A - Steps 1-2: selection, discovery and plan
 
-## Phase 1 — Select, discover and plan
+1. For existing-pipeline integration, require explicit PR Pipeline or Build Pipeline selection **before repository/tool operations**. If absent, report `BLOCKED - AWAITING USER INPUT` and stop. Treat selection as authorisation for the selected CICD workflow; PR Pipeline selection also covers narrowly necessary `java_application/.github/workflows/pr.yml` caller edits. Other existing workflow edits require file-specific approval.
+2. Read the latest applicable `AGENTS.md` files, this Skill, and the canonical workflow document at its exact path. Check for conflicts and missing files.
+3. Identify testable acceptance criteria, target pipeline, expected directory or other inputs, cross-repository caller, dependencies and release consumers. Do not invent requirements.
+4. Inspect at least two comparable composite actions where available and relevant workflows. Summarise conventions for `action.yml`, `shell`, inline `run`, Gradle wrapper, checkout paths, job ordering and error handling. Explain deviations.
+5. Plan minimal authorised changes and tests. Preserve unrelated work; check branch divergence before branching. Never manufacture a dummy second PR.
 
-1. **Before any repository/tool operations**, if integration into an existing pipeline is requested, check the current request for explicit **PR Pipeline** (`cicd/.github/workflows/java-build-pr.yml`) or **Build Pipeline** (`cicd/.github/workflows/java-build-all.yml`). Selection authorises minimal task-scoped edits to that workflow; PR Pipeline selection additionally authorises necessary, narrowly scoped integration changes to `java_application/.github/workflows/pr.yml` (including its reusable-workflow feature-branch reference). If absent/ambiguous, report **BLOCKED - AWAITING USER INPUT**, ask and stop all execution. If both are explicitly requested, clarify both are intended.
-2. Read the applicable `AGENTS.md` files in both repositories. Confirm access to the relevant repositories and Skill; do not assume instructions cross repository boundaries.
-3. Translate the request into testable acceptance criteria; identify the event, job order, expected output and target directory or other inputs without inventing requirements.
-4. Inspect `cicd/.github/actions/` and at least two comparable actions if available. Inspect relevant reusable workflows, `java_application` caller workflows and Gradle/test conventions. Summarise common naming, `run`/shell, inputs, scripts and dependencies; justify deviations.
-5. Trace caller trigger -> reusable workflow -> job dependencies -> composite action -> checkout path. Identify exact files to create/edit in each repository and required tests.
-6. For PR Pipeline tasks, automatically update `java_application/.github/workflows/pr.yml` only if needed to integrate or validate the selected `cicd` feature branch; do not request separate approval. Preserve unrelated caller configuration. Record the temporary ref, intended stable ref and merge-order dependency in both PRs. For **any other existing workflow**, report **BLOCKED - AWAITING USER APPROVAL**, describe the file and changes, and stop until explicitly authorised. The selected `cicd` workflow needs no second approval. If a second repository needs no meaningful change, request direction rather than creating a dummy PR.
-7. Present a concise plan and proposed change list before edits; this is informational, not a new approval gate for already-authorised work.
+## Phase B - Steps 3-5: branches, implementation and local validation
 
-## Phase 2 — Branch, implement and check locally
+1. Create task branches from verified `main` baselines in each meaningfully affected repository; use isolated worktrees to preserve unrelated local changes where needed. Never push directly to `main`.
+2. Implement the smallest change. Prefer inline Bash commands and `./gradlew` conventions. For <=10 executable shell lines, a separate helper script requires explicit approval unless the governing policy explicitly permits an exception.
+3. For internal composite actions referenced from a CICD reusable workflow, prefer verified self-repository syntax `uses: $/.github/actions/<action-path>` so actions track the workflow's CICD revision. Do not add permanent checkout or `cicd-ref` inputs solely for testing. Verify correct resolution in the actual execution environment.
+4. For PR Pipeline integration, temporarily point the authorised application caller to the matching CICD feature branch; preserve unrelated workflow configuration. Do not alter the unselected Build Pipeline.
+5. Validate YAML, composite metadata, dependencies, workflow-call compatibility, permissions, action references, Gradle/tests as appropriate, and `git diff --check`. Record results.
 
-1. Confirm clean working trees and current `main` in both repositories; create related task-specific feature branches where meaningful changes are required. Never push directly to `main`.
-2. Implement the smallest authorised change. Use `.github/actions/<action-name>/action.yml`, `runs.using: composite`, explicit `shell`, minimal inputs and outputs. Prefer simple inline commands and the Gradle wrapper; for 10 or fewer executable lines, separate scripts require explicit approval. Do not modify unrelated workflows, tests, permissions or security checks.
-3. Ensure reusable workflows use `workflow_call`, appropriate `needs`, least-privilege permissions and correct checkout of action code. Ensure PR-only requirements do not leak into push/release paths.
-4. Validate YAML, action metadata, trigger/ref resolution, job ordering and cross-repository references. Run appropriate local checks. Confirm the implementation follows observed repository conventions.
+## Phase C - Steps 6-8: Draft PRs, release label, feature validation
 
-## Phase 3 — Publish Draft PRs
+1. Commit and push only task changes. Create cross-linked **Draft** PRs in CICD and affected application repository/repositories before final integration validation. Target `main`; record temporary refs, acceptance criteria and planned evidence.
+2. Classify CICD change: `release:patch` (backward-compatible fix), `release:minor` (backward-compatible feature), or `release:major` (breaking change). Apply **exactly one** label to the CICD PR and verify via GitHub that it is present. Explain rationale; if ambiguous, request clarification. Do not assume the release workflow will infer the label.
+3. Execute the application PR pipeline against the CICD feature branch. Identify run URL/ID, latest application SHA, workflow, jobs and executing steps. Inspect **actual logs**, not just success status. Compare output to acceptance criteria and known expected contents/artifacts, including hidden entries for listing tasks.
+4. Classify failures and remediate only authorised, task-related causes. Never weaken scans, bypass checks, or call skipped/absent checks successful. Document accepted pre-existing findings separately from new regressions. Update evidence in both Draft PRs.
 
-1. Push task branches and create Draft PRs targeting `main` in each repository where justified. Cross-link the PRs and document temporary feature-branch refs and planned stable refs.
-2. Include acceptance criteria, scoped file changes, local validation and pending CI evidence. Keep PRs Draft until all promotion conditions pass.
-3. If required CI does not run for Draft PRs, do not weaken triggers or work around restrictions; report the blocker.
+## Phase D - Steps 9-11: CICD review, merge and release
 
-## Phase 4 — CI execution, log inspection and functional verification
+1. Verify feature-branch evidence, CICD required checks, exactly one release label, and that internal action references will remain valid after branch deletion. Confirm CICD PR has no temporary internal action references; promote **CICD PR only** to Ready for Review when applicable conditions are met.
+2. Request review from `frankbuttigieg-93` if GitHub permits. The agent MUST NOT directly approve or merge. Wait for a human-authorised merge or separately authorised GitHub auto-merge; do not claim that the agent can wait indefinitely in the background.
+3. Once the merge is observed, confirm the actual CICD merged SHA and the release workflow result. Verify the published immutable semantic-version tag points to that SHA, represents the whole CICD repository, and is protected against moving or deletion. Do not create/move tags or install automation unless authorised for the task. If release automation fails, report the blocker rather than inventing a tag.
 
-1. Identify mandatory checks and the specific workflow, job and step that execute the new functionality. Capture run URL/ID and latest relevant head SHA.
-2. Trigger/observe the authorised PR validation path; wait for completion. Record workflow, job **and step** status; distinguish success, failure, skipped, cancelled, pending and missing.
-3. **Retrieve and inspect actual logs for the relevant executing step** even when all status indicators are green. Confirm the intended operation ran and check warnings/errors.
-4. Compare **observed behaviour** with acceptance criteria. For a directory-listing action, confirm the intended directory, expected filenames and hidden files against a known baseline or suitable test artifact. A successful `ls` exit code or plausible listing alone is insufficient.
-5. Capture expected-vs-observed results and relevant log excerpts/artifacts in the Draft PRs. If logs cannot prove correctness, use an additional authorised test; if still insufficient, mark **UNVERIFIED** and leave Draft.
-6. On failure, classify the cause, inspect relevant logs, make the smallest authorised correction, push to the existing feature branch and repeat required tests. Do not modify additional existing workflows without file-specific approval, except for the narrowly authorised `java_application/.github/workflows/pr.yml` integration when PR Pipeline was selected.
-7. Recheck mandatory checks and functional evidence on the **latest relevant commit SHAs** in both repositories; do not treat skipped or absent required checks as passes.
+## Phase E - Steps 12-13: application adoption and final verification
 
-## Phase 5 — Promotion, review request and final report
+1. Once the new tag is published, update only the affected application Draft PR caller from the temporary CICD feature ref to the new immutable release tag (e.g. `@v2.3.0`). Use configured cross-repository automation where available; otherwise perform an authorised change or report that automation is not configured. Do not silently change unrelated applications.
+2. Push the application feature branch and confirm a fresh PR validation run actually starts (token identity and event rules can affect triggers). Confirm the released reusable workflow and its self-repository actions resolve.
+3. Inspect workflow/job/step conclusions and actual executing logs. Compare expected vs observed functional results on the latest application SHA. Confirm no temporary feature refs remain in the intended merged application workflow. Record links, tag and CICD merged SHA, application SHA, relevant logs and accepted limitations in the application PR.
 
-Before executing any PR promotion or reviewer-request operation, the agent MUST complete the Final GitHub Actions Reference 
-Verification procedure defined below.
+## Phase F - Steps 14-16: review, merge handoff and report
 
-This verification is a mandatory prerequisite for promotion, not a post-promotion activity.
+1. Only after applicable application checks and release-based functional verification pass, promote the application PR to Ready for Review and request `frankbuttigieg-93` where permitted. A reviewer request is not an approval.
+2. Human reviewers approve and merge through GitHub governance; the agent never directly merges or bypasses rulesets. Do not claim merge completion without observing it.
+3. Report both PR URLs, branch names, changed files, release label and rationale, immutable release tag and merged SHA, latest application SHA, workflow runs, job/step statuses, inspected logs, expected-vs-observed outcomes, reviewer status, known findings and remaining blockers. Delete temporary branches only when explicitly authorised and no refs depend on them.
 
-1. Confirm both applicable PRs contain final changes, meet acceptance criteria, have passing required checks and verified functional results on the latest relevant commits. Confirm cross-repository refs remain valid for review and eventual merge.
-2. Only then mark both Draft PRs **Ready for Review**. If either is incomplete, leave both Draft and report the limitation.
-3. Request review from `frankbuttigieg-93` on both. If GitHub refuses the request (including self-review restrictions), report the refusal without claiming approval.
-4. Report PR URLs, branches, SHAs, changed files, test commands, workflow run URLs/IDs, job and step conclusions, relevant log excerpts, expected-vs-observed verification, reviewer-request status and outstanding risks.
-5. **Never approve or merge PRs, change repository rulesets, bypass required checks or claim success without evidence.**
+## State and safety rules
 
-
-### Final GitHub Actions Reference Verification
-
-Before promoting any Draft PR to Ready for Review, perform the following procedure.
-
-#### Step 1 — Identify References
-
-Inspect all new and modified GitHub Actions workflows.
-
-Identify references to:
-
-- Reusable workflows.
-- Composite actions.
-- Local actions.
-- External GitHub Actions.
-
-Record the repository, workflow file, referenced resource and Git reference.
-
-#### Step 2 — Classify References
-
-Classify each reference as:
-
-- **Temporary validation reference:** A feature-branch reference used to test changes before merging.
-- **Stable reference:** An approved branch, tag or immutable commit SHA intended for ongoing use.
-- **Local reference:** A path to an action available in the runner's checked-out workspace.
-
-#### Step 3 — Establish the Final Reference Strategy
-
-Determine how each temporary reference will transition to its intended final reference.
-
-Prefer existing repository conventions and approved immutable references where appropriate.
-
-For composite actions located in the same repository as the reusable workflow, consider whether a local action reference with an explicit checkout is more maintainable than a remote feature-branch reference.
-
-Verify that the proposed reference resolves correctly in the intended execution context.
-
-#### Step 4 — Validate the Final State
-
-Before recommending PR promotion:
-
-1. Confirm that the intended merged workflow does not depend on temporary feature branches.
-2. Confirm that all required reusable workflows and composite actions will be available at their intended references.
-3. Verify that cross-repository merge dependencies are documented.
-4. Validate any changes made to establish the final reference strategy.
-5. Inspect the relevant CI/CD execution evidence.
-6. Confirm that the requested functionality remains operational.
-
-#### Step 5 — Document the Reference Strategy
-
-Include the following information in the associated PRs:
-
-- Temporary validation references.
-- Intended final references.
-- Required reference changes.
-- Cross-repository merge order.
-- Any post-merge actions required.
-- Validation evidence and outstanding risks.
-
-#### Step 6 — Apply the Promotion Gate
-
-Do not promote a Draft PR to Ready for Review unless the final reference strategy is established, validated to the extent possible before merge, and documented.
-
-If the final reference strategy cannot be established safely, keep the PR in Draft and report the blocker.
-
-Never merge PRs or modify protected branches.
+- `BLOCKED - AWAITING USER INPUT`: missing/ambiguous pipeline or release classification.
+- `BLOCKED - AWAITING USER APPROVAL`: out-of-scope existing workflow change.
+- `IN DEVELOPMENT`: Draft PR or validation/release transition pending.
+- `UNVERIFIED`: required functional evidence unavailable; do not promote.
+- `READY FOR HUMAN REVIEW`: the applicable PR's own promotion gate passed.
+- A green workflow does not establish functional correctness. A CICD release does not establish that an application adopted it. Keep these gates separate.
+- A request for a supervised execution may add task-specific checkpoints; do not treat those as permanent requirements of the standard process.
