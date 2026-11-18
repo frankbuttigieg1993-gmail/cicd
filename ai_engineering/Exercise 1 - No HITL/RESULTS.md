@@ -1,126 +1,77 @@
-# Exercise 1 --- No Exercise-Specific HITL Results
+# Exercise 1 — No Exercise-Specific HITL Results
 
-**Status: NOT STARTED / RESULTS PENDING.** This document is a recording
-template, not a prediction of success.
+**Final status: COMPLETE — ENGINEERING LIFECYCLE VERIFIED.** This document records the observed No-HITL exercise, not a planned run. The outcome is supported by the final Copilot completion report and GitHub evidence; outstanding application test/security findings remain separate.
 
-## Preliminary context verification
+## Objective and execution mode
 
-Before beginning implementation, locate and read the applicable AGENTS.md, SKILL.md and supporting engineering documentation across the CICD and Java Application repositories.
-Using only the instructions discovered in those files, provide a concise summary of:
-	1. The responsibilities of each repository.
-	2. The applicable engineering standards and implementation conventions.
-	3. The authorisation requirements and change restrictions.
-	4. The standard end-to-end engineering lifecycle.
-	5. The validation, release-management and completion requirements.
-	6. Any conflicting, ambiguous or missing instructions.
-Identify the files you accessed and explain how they relate to one another.
-Do not assume that instructions from another repository have been automatically loaded.
-This is a read-only verification task. Do not create branches, modify files, execute implementation commands, create PRs or trigger pipelines.
-If the required context is available and consistent, report:
-STATUS: CONTEXT VERIFIED — READY FOR EXERCISE 1
-Otherwise, report:
-STATUS: BLOCKED — AWAITING USER INPUT
-Stop after providing your findings.
+Create `ai-generated-list-files`, a reusable non-recursive directory-listing composite action that includes hidden entries, and run it in a separate Java PR Pipeline job after successful Build. Remove the seven **exercise-specific** HITL checkpoints, while preserving mandatory human review, approval and merge boundaries.
 
-| Field | Result |
-|---|---|
-| Stage | Preliminary context verification |
-| Mode | Read-only |
-| Result | PASS |
-| Files discovered | CICD AGENTS.md, central Skill, canonical workflow, Java AGENTS.md, Java README |
-| Instruction conflicts | None reported |
-| Repository changes | None reported |
-| Human approval checkpoint | Not applicable |
-| Duration | 48 seconds |
-| Copilot steps | 6 |
-| Status | CONTEXT VERIFIED — READY FOR EXERCISE 1 |
-
-
-
-## Objective and mode
-
-Repeat the file-listing composite-action requirement from `objective.md`
-and `Prompt.md`. Remove the seven *exercise-specific* checkpoints while
-retaining mandatory human PR review, merge and release governance. Do
-not pre-specify implementation choices that the framework should
-determine.
+The exercise began with a separate read-only context verification; execution proceeded in two autonomous phases separated by required human CICD review/merge, followed by a read-only completion verification.
 
 ## Starting baseline
 
-  --------------------------------------------------------------------------------------------------------
-  Item                    Recorded state                               Verification
-  ----------------------- -------------------------------------------- -----------------------------------
-  CICD `main`             `2144004d0e206fd3b8325809aa987c7e9569a03b`   `git rev-parse origin/main`
+| Item | Recorded baseline |
+|---|---|
+| CICD `main` | `2144004d0e206fd3b8325809aa987c7e9569a03b` |
+| CICD release | Published immutable `v3.0.0` |
+| Java `main` | `80dd761` (abbreviated; full starting SHA not established here) |
+| Java CICD caller | `@v2.2.0` |
+| Open task PRs | None reported at start; historical PRs retained |
 
-  CICD release            `v3.0.0`                                     GitHub Release published;
-                                                                       screenshot showed Immutable
+## Observed execution chronology
 
-  CICD release tag        Resolves to CICD `main` SHA                  Previously compared with
-                                                                       `git rev-parse 'v3.0.0^{commit}'`
+| Phase | Copilot steps | Reported duration | Outcome |
+|---|---:|---:|---|
+| Read-only context verification | 7 | 48s | Context verified; no blocking instruction conflict reported |
+| Initial engineering execution | 39 | 9m 14s | Action and workflows implemented; cross-repository Draft PRs; functional validation; CICD PR ready for human review |
+| Release adoption and application validation | 24 | 10m 7s | Independently discovered `v3.1.0`; updated existing Java PR; fresh released-version validation; Java PR ready for human review |
+| Read-only completion verification | 7 | 1m 18s | Reported `COMPLETE — ENGINEERING LIFECYCLE VERIFIED` |
+| **Total reported Copilot activity** | **77** | **21m 27s** | Excludes human waiting/review and elapsed time between phases |
 
-  Java `main`             `80dd761` (abbreviated)                      Capture full SHA before run
+*Evidence note:* An earlier preliminary verification record listed 6 steps; the later screenshot-based execution assessment recorded 7. This table uses the latter figure and flags the discrepancy rather than asserting an independently reconciled count.
 
-  Java caller             `@v2.2.0`                                    Verified from caller
+## Final engineering state
 
-  File-listing feature    Removed during cleanup                       Recheck on `main`
+| Item | Verified/reported outcome |
+|---|---|
+| CICD PR | [#8](https://github.com/frankbuttigieg1993-gmail/cicd/pull/8) — merged |
+| CICD release | [`v3.1.0`](https://github.com/frankbuttigieg1993-gmail/cicd/releases/tag/v3.1.0) — published, GitHub **Immutable** indicator observed |
+| CICD `main` and release tag SHA | `e7ecad9de8694095e2ea99d1f3ce77d23fc4b5b7` |
+| Java Application PR | [#58](https://github.com/frankbuttigieg1993-gmail/java_application/pull/58) — merged |
+| Java `main` SHA | `864bf2e8152be77ec596dcce1a9dafc77a1ad86d` |
+| Final Java caller | `frankbuttigieg1993-gmail/cicd/.github/workflows/java-build-pr.yml@v3.1.0` |
+| Temporary feature reference | Absent from affected production caller at final verification |
+| Exercise-specific HITL checkpoints | **0** |
+| Mandatory human governance | CICD and Java reviews/merges retained |
 
-  Open task PRs           None reported                                Recheck GitHub
+## Validation evidence
 
-  Historical PRs          Retained                                     Do not delete
+| Evidence | Reference | Observation |
+|---|---|---|
+| Feature-branch Java validation | [Run 44210309429](https://github.com/frankbuttigieg1993-gmail/java_application/actions/runs/44210309429) | Build and `List_Files` passed; root listing observed |
+| Published-release Java validation | [Run 44217333120](https://github.com/frankbuttigieg1993-gmail/java_application/actions/runs/44217333120) | Fresh run after changing from feature branch to `@v3.1.0`; Build and listing passed |
+| Post-merge CICD validation | [Run 44216639087](https://github.com/frankbuttigieg1993-gmail/cicd/actions/runs/44216639087) | Reported successful in final verification |
+| Listing operation | `ls -la -- "$DIRECTORY"`, `DIRECTORY=.` | Hidden `.github` and `.gitignore` observed; listing non-recursive |
 
-  Engineering             Updated and committed                        Capture exact commit SHAs
-  instructions                                                         
+The final Java PR diff shows `@v2.2.0` → `@v3.1.0` because GitHub compares the PR against its base; the intervening feature-branch reference existed in the earlier PR commit and was removed before merge.
 
-  Expected next version   `v3.1.0` **conditional on `release:minor`**  Do not record as actual until
-                                                                       published
-  --------------------------------------------------------------------------------------------------------
+## Known findings and limitations
 
-## Execution record --- fill as events occur
+- Java Unit Tests check appeared green although Gradle logs reported **3 failures among 5 tests**. This was intentional/pre-existing in the exercise setup; it is not evidence that all tests passed.
+- Java CodeQL reported **2 findings** and policy-enforcement failure. Findings were documented, not remediated or waived by the exercise.
+- Temporary feature branches and local worktree synchronisation were left for separately authorised cleanup.
+- Screenshot-based Copilot reporting supports the outcomes above; consult original runs and PR metadata for independent audit.
+- Neither this result nor the comparison establishes that the removal of HITL checkpoints alone caused improvements: framework instructions and repository release protections changed between exercises.
 
-  Stage                                     State     PR / run / SHA / evidence   Human action or blocker
-  ----------------------------------------- --------- --------------------------- -------------------------
-  Instruction and convention discovery      Pending                               
-  CICD and Java implementation branches     Pending                               
-  Draft PRs and historical reconciliation   Pending                               
-  Semantic release classification           Pending                               
-  Feature-branch functional validation      Pending                               
-  CICD Ready for Review                     Pending                               
-  Human CICD approval and merge             Pending                               
-  Published immutable CICD release          Pending                               
-  Java caller release adoption              Pending                               
-  Released-version functional validation    Pending                               
-  Java Ready for Review                     Pending                               
-  Human Java approval and merge             Pending                               
-  Final reporting                           Pending                               
+## Evidence and related documents
 
-## Measures
+- [Read-only context prompt](Exercise_1_Read_Only_Context_Verification_Prompt.md)
+- [Execution prompt](Exercise_1_No_HITL_Execution_Prompt.md)
+- [Resume prompt](Exercise1_No_HITL_PromptforResume.md)
+- [Steps 1–7 review](Exercise_1_No_HITL_Steps_1_to_7_Full_Verbatim_Review.md)
+- [Step 8 onward review](Exercise_1_No_HITL_Step_8_Onwards_Verbatim.md)
+- [Final completion review](Exercise_1_No_HITL_Final_Completion_Review_Verbatim.md)
+- [Cross-exercise comparison](../Exercise_1_Comparison.md)
+- [Evidence index](../EVIDENCE_INDEX.md)
 
-  Measure                                      Value
-  -------------------------------------------- -----------
-  Exercise-specific approval checkpoints       Target: 0
-  Mandatory human review/merge interventions   Pending
-  Clarification requests                       Pending
-  Avoidable stops                              Pending
-  Manual remediations                          Pending
-  Implementation correction cycles             Pending
-  Workflow validation attempts                 Pending
-  Actual functional acceptance                 Pending
-  Governance violations                        Pending
-  Elapsed time                                 Pending
-  Evidence completeness                        Pending
-
-## Recording rules
-
-Record PR links, release tags and actual merged commit SHAs; preserve
-workflow/job/step logs and expected-versus-observed results. Separate
-intentional existing test failures and known security findings from new
-regressions. Do not infer functional correctness from a green status. Do
-not equate a reviewer request with approval or Ready for Review with
-merged. Do not bypass mandatory controls.
-
-## Final outcome
-
-**Pending execution.** After completion, update
-`../Exercise_1_Comparison.md` using verified observations, including any
-deviations caused by different instruction versions and release
-baselines.
+**Final classification: PASS — ENGINEERING LIFECYCLE VERIFIED**, with the known application findings documented separately.
