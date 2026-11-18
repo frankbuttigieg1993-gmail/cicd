@@ -1,5 +1,26 @@
 # Engineering Agent Instructions — CI/CD and Java Application
 
+### Preliminary Read-Only Context Verification
+
+When explicitly requested by the user, the agent MAY perform preliminary read-only context verification before pipeline selection.
+
+This exception permits only:
+
+- Locating and reading applicable `AGENTS.md`, `SKILL.md`, canonical workflow and supporting engineering documentation.
+- Identifying repository responsibilities, engineering standards, authorisation requirements and lifecycle procedures.
+- Reporting conflicting, ambiguous or missing instructions.
+- Summarising the discovered engineering context.
+
+This exception does not authorise implementation planning that requires repository inspection, source-code analysis, branch creation, file modification, testing, commits, pushes, pull requests, pipeline execution or changes to GitHub settings.
+
+For tasks integrating functionality into an existing pipeline, the user MUST explicitly select **PR Pipeline** or **Build Pipeline** before any implementation-related repository or tool operations.
+
+Pipeline selection authorises only the existing workflows and narrowly scoped changes defined in this section.
+
+If pipeline selection is missing or ambiguous when implementation is requested, report **BLOCKED - AWAITING USER INPUT** and stop engineering execution.
+
+Do not infer pipeline selection from previous unrelated tasks.
+
 ## Human quick reference — standard 16-step process
 
 The detailed canonical process is `cicd/.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`. This table is a quick reference; repository policy below governs authorisation and completion.
@@ -31,7 +52,7 @@ The detailed canonical process is `cicd/.github/Standard CICD Engineering, Relea
 
 ## 2. Mandatory pipeline selection and authorisation
 
-For tasks integrating into an existing pipeline, require explicit selection in the **current task or an explicit follow-up** before **any repository reads or other tool operations**:
+For tasks integrating into an existing pipeline, require explicit **PR Pipeline** or **Build Pipeline** selection in the **current task or an explicit follow-up** before implementation-related repository inspection or engineering operations. The explicitly requested preliminary read-only context-verification exception defined above remains permitted before pipeline selection:
 
 | Selection | Authorised existing workflow in `cicd` |
 |---|---|
@@ -39,7 +60,7 @@ For tasks integrating into an existing pipeline, require explicit selection in t
 | **Build Pipeline** | `.github/workflows/java-build-all.yml` |
 
 - Selection **is authorisation** for minimal changes directly necessary for the requested functionality in the selected workflow. **Do not ask for redundant approval.**
-- If missing or ambiguous, report **BLOCKED - AWAITING USER INPUT**, ask which pipeline to use and stop **all** execution (including reads, branching, edits, tests, commits, pushes and PRs). Never infer a default from prior tasks.
+- If pipeline selection is missing or ambiguous when engineering execution is requested, report **BLOCKED - AWAITING USER INPUT**, ask which pipeline to use, and stop all implementation-related operations (including source inspection, planning requiring repository inspection, branching, edits, tests, commits, pushes and PRs). Only explicitly requested preliminary read-only engineering-instruction verification remains permitted. Never infer a default from prior tasks.
 - If the user explicitly requests both pipelines, clarify that both are intended before modifying both.
 - **PR Pipeline** selection also authorises narrowly scoped changes to `java_application/.github/workflows/pr.yml` **only when necessary** for cross-repository integration or validation of the requested feature. This includes temporarily changing the reusable-workflow reference from `@main` to the matching `cicd` feature branch. No second approval is required for that specific change.
 - Preserve all unrelated caller workflow jobs, triggers, permissions, checks and behaviour. Record the temporary feature-branch reference, dependency, intended stable reference and required merge order in both PRs. Do not replace the temporary CICD feature ref with a release tag until the release exists; do not merge automatically.
@@ -51,7 +72,7 @@ For tasks integrating into an existing pipeline, require explicit selection in t
 - Before implementation, inspect at least two comparable existing actions where available. Identify naming, `action.yml` structure, `shell`, inline `run`, Gradle wrapper commands, inputs/outputs, error handling and dependencies. Summarise observed patterns and intended approach in the plan.
 - Prefer existing **safe, correct** conventions and the simplest solution. Explain necessary deviations.
 - Use `.github/actions/<name>/action.yml`, `runs.using: composite` and an explicit `shell` for each `run` step.
-- Prefer one-line inline commands (`ls -alrt`, `./gradlew build`, `./gradlew test`) where appropriate; use the repository's Gradle wrapper. Do not create a helper script for a trivial command.
+- Prefer one-line inline commands where appropriate, following existing repository conventions. Use the repository's Gradle wrapper for Java build and test tasks. Do not create a helper script for a trivial command.
 - For **10 or fewer executable shell-command lines**, keep logic inline; a separate script requires explicit approval. Above 10 lines, a script is optional, not automatic. Correctness, security and maintainability take precedence; never pad commands to exceed the threshold.
 - Use `workflow_call` for reusable workflows, least-privilege permissions and correct failure propagation. Verify `needs` ordering, event triggers and checkout paths: `./.github/actions/...` resolves in the checked-out workspace, not automatically in `cicd`.
 - Track temporary cross-repository feature-branch refs and document the intended reviewed stable ref. Do not invent immutable SHAs.
@@ -114,7 +135,7 @@ A green workflow/job/step **does not by itself prove functionality**. For each n
 1. Identify the workflow, run ID/URL, head SHA, job and specific executing step.
 2. Confirm workflow, job and step ran (not skipped) and record their conclusions.
 3. **Retrieve and inspect the actual step/job execution logs**, not just statuses.
-4. Confirm the expected command executed; compare observed output with acceptance criteria. For a file-listing action, verify the target directory and expected entries, including hidden files, using a known baseline or appropriate test artifact—not merely plausible-looking output.
+4. Confirm the expected command or workflow operation executed; compare observed output with acceptance criteria, and validate relevant edge cases and failure conditions where applicable. Use an appropriate known baseline or test artifact where needed—not merely plausible-looking output.
 5. Capture relevant log excerpts or artifacts and expected-versus-observed results in both relevant PRs and the final report.
 6. If logs are insufficient, obtain another appropriate authorised test artifact. Mark **UNVERIFIED** if evidence remains inadequate; leave PRs Draft.
 
@@ -133,7 +154,7 @@ A green workflow/job/step **does not by itself prove functionality**. For each n
 - **Release classification:** Every CICD PR governed by semantic-release automation MUST have **exactly one** of `release:patch`, `release:minor`, `release:major` before promotion to Ready for Review. The agent MUST inspect the diff, select the appropriate classification, apply and verify the label, and record the rationale. If ambiguous, report **BLOCKED - AWAITING USER INPUT**; do not guess. Do not apply these labels to application PRs unless their own policy separately requires it.
 - **Separate promotion gates:** CICD PR may become Ready for Review after feature-branch validation, evidence, label verification and applicable required checks. A human or GitHub's separately authorised auto-merge mechanism merges CICD; the agent MUST NOT directly merge or bypass protections. The application PR remains Draft pending CICD release and subsequent validation.
 - **Immutable release:** Release automation MUST create the next semver tag **after merge**, pointing to the actual merged CICD `main` commit, independent of merge strategy. Published version tags must never be moved, overwritten, reused or deleted. Tag immutability and permissions must be technically enforced by GitHub rulesets or equivalent controls. Require exactly one release label and report release failure rather than inventing a version.
-- **Application adoption:** After the release is confirmed published, authorised automation or the agent updates each affected application's existing Draft PR from the temporary CICD branch ref to the new immutable tag (for example `@v2.3.0`). Verify that the update triggered fresh PR validation; inspect actual logs and functional results against the released revision. Do not claim that this cross-repository handoff is automatic unless suitable credentials, triggers and automation are actually configured.
+- **Development and release references:** Temporary feature-branch references MAY be used only for authorised cross-repository integration testing. They must not remain in workflows intended for merging to `main`. After the CICD release is confirmed published, authorised automation or the agent updates each affected application's existing Draft PR from the temporary feature-branch ref to the published immutable CICD release tag. Verify that the update triggered fresh PR validation; inspect actual logs and functional results against the released revision. Do not claim that this cross-repository handoff is automatic unless suitable credentials, triggers and automation are actually configured.
 - **Independent consumers:** Do not update unrelated application repositories merely because CICD released a version. Each application opts into the release via its own reviewed PR.
 - **Final review and evidence:** Promote each application PR only after final release-based validation and applicable checks; request `frankbuttigieg93-png` where permitted. Human reviewers perform final approval and merge. The agent records PR links, release tag and commit, workflow run links, latest application SHA, step logs, expected-vs-observed results, accepted findings and blockers.
 - **Known findings:** Document known security findings separately from task-related regressions. Acknowledgement does not waive GitHub required checks; never disable scans or bypass protections.

@@ -6,9 +6,9 @@ This 16-step process describes the standard engineering lifecycle for a central 
 
 2. **Repository Convention Discovery and Planning:** Inspect existing composite actions, reusable workflows and application caller workflows. Identify established engineering conventions, define acceptance criteria and prepare the implementation and validation plan.
 
-3. **Create CICD Feature Branch:** Create a feature branch from `main` in the CICD repository. Implement the composite action and reusable workflow changes, following existing conventions and using self-repository action references (`$/.github/actions/...`).
+3. **Create CICD Feature Branch:** Create a task feature branch from `main` in the CICD repository. Implement the authorised CICD change using established repository conventions and appropriate development and release reference strategies.
 
-4. **Create Application Feature Branch:** Create a corresponding feature branch from `main` in the affected application repository. Temporarily update its caller workflow to reference the CICD feature branch.
+4. **Create Application Feature Branch:** Create a corresponding feature branch from `main` in the affected application repository. Temporarily update its caller workflow to reference the authorised CICD feature branch only for cross-repository development and integration validation.
 
 5. **Perform Local Validation:** Validate YAML syntax, composite-action metadata, workflow dependencies, repository references and relevant functionality. Confirm that changes follow existing conventions and do not affect unrelated workflows.
 
@@ -21,7 +21,7 @@ This 16-step process describes the standard engineering lifecycle for a central 
 
    Copilot must document the reason for its classification. If the appropriate classification is ambiguous, it must request clarification rather than guessing.
 
-8. **Execute End-to-End Feature-Branch Validation:** Run the application PR Pipeline against the CICD feature branch. Inspect workflow, job and step statuses, retrieve actual execution logs and verify the functionality against acceptance criteria. Investigate failures, remediate authorised issues and record evidence in both PRs.
+8. **Execute End-to-End Feature-Branch Validation:** Run the application PR Pipeline against the CICD feature branch. Inspect workflow, job and step statuses, retrieve actual execution logs and verify the functionality against acceptance criteria. Validate relevant edge cases and failure conditions where applicable. Investigate failures, remediate authorised issues and record evidence in both PRs.
 
 9. **Promote CICD PR to Ready for Review:** Once the required validation and governance conditions are satisfied, update the CICD PR with supporting evidence, confirm the final reference strategy and transition it from Draft to Ready for Review. Request the required human review.
 
@@ -29,9 +29,9 @@ This 16-step process describes the standard engineering lifecycle for a central 
 
 11. **Automatically Create the Semantic-Version Release:** After the CICD PR merges, the release pipeline reads the PR's release label, determines the next semantic version, creates an **immutable tag on the actual merged commit** representing the entire CICD repository, and publishes the GitHub Release.
 
-12. **Update the Application Draft PR:** Automatically update the application caller workflow to reference the newly published CICD version (e.g., `@v2.3.0`) instead of the temporary feature branch. Commit and push the change to trigger the application PR Pipeline again.
+12. **Update the Application Draft PR:** Replace the temporary development/integration feature-branch reference with the newly published immutable CICD release reference. Commit and push the change to trigger the application PR Pipeline again. Final application references must not remain dependent on temporary feature branches.
 
-13. **Execute Final Application Validation:** Validate the application against the released CICD version. Inspect workflow, job and step statuses, retrieve actual execution logs, verify functionality and confirm no temporary feature-branch references remain. Document the final evidence in the application PR.
+13. **Execute Final Application Validation:** Validate the application against the released immutable CICD version. Inspect workflow, job and step statuses, retrieve actual execution logs, verify functionality including relevant edge cases and failure conditions where applicable, and confirm no temporary feature-branch references remain. Document the final evidence in the application PR.
 
 14. **Promote Application PR to Ready for Review:** Once applicable validation and governance requirements are satisfied, transition the application PR from Draft to Ready for Review and request review from the designated reviewer (`frankbuttigieg93-png`).
 
@@ -45,7 +45,13 @@ Every CICD PR that triggers semantic-version release automation **MUST have exac
 
 The `cicd/AGENTS.md` file should establish this policy. The `github-actions-development/SKILL.md` file should describe how the agent analyses the change, selects the label, applies it to the PR and verifies that GitHub recorded it.
 
-For the `ai-generated-list-files` exercise, `release:minor` is the appropriate classification when the change adds backward-compatible functionality.
+Determine the appropriate semantic-version classification by evaluating the nature and compatibility impact of the proposed CICD changes.
+
+Apply exactly one release classification label:
+- release:patch for backward-compatible fixes.
+- release:minor for backward-compatible functionality.
+- release:major for breaking changes.
+The classification must be justified using the actual changes and their compatibility impact. Do not infer the classification from examples, branch names or previous executions.
 
 ## Key architectural principle
 
