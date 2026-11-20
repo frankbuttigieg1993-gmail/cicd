@@ -24,8 +24,9 @@ runs:
         name: build
         path: .
     - name: Configure Build Cache
-      uses: frankbuttigieg1993-gmail/cicd/.github/actions/common/configure-build-cache@main
+      uses: $/.github/actions/common/configure-build-cache
     - name: Run Unit Tests
+      id: run_tests
       run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification -PignoreFailures=true -info --stacktrace --continue
       continue-on-error: true
       shell: bash
@@ -49,4 +50,29 @@ runs:
           build/reports/jacoco/
         retention-days: 1
         if-no-files-found: warn
-    - uses: tiacsys/clean-after-action@v4
+    - name: Read JUnit Test Results
+      id: junit_results
+      run: python "${{ github.action_path }}/resources/check-test-results.py"
+      shell: bash
+    - name: Enforce Test and Coverage Results
+      env:
+        GRADLE_OUTCOME: ${{ steps.run_tests.outcome }}
+        TEST_COUNT: ${{ steps.junit_results.outputs.tests }}
+        FAILED_TEST_COUNT: ${{ steps.junit_results.outputs['failed-tests'] }}
+      run: |
+        if [[ "$GRADLE_OUTCOME" != "success" ]]; then
+          echo "::error::Gradle test or coverage tasks failed (outcome: $GRADLE_OUTCOME)."
+          exit 1
+        fi
+        if [[ -z "$TEST_COUNT" || "$TEST_COUNT" -eq 0 ]]; then
+          echo "::error::No JUnit test results were produced."
+          exit 1
+        fi
+        if [[ -z "$FAILED_TEST_COUNT" || "$FAILED_TEST_COUNT" -ne 0 ]]; then
+          echo "::error::$FAILED_TEST_COUNT JUnit tests failed or errored."
+          exit 1
+        fi
+      shell: bash
+    - name: Cleanup runner
+      if: always()
+      uses: tiacsys/clean-after-action@v4
