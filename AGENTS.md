@@ -23,7 +23,7 @@ Do not infer pipeline selection from previous unrelated tasks.
 
 ## Human quick reference — standard 16-step process
 
-The detailed canonical process is `cicd/.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`. This table is a quick reference; repository policy below governs authorisation and completion.
+The detailed canonical process is `cicd/.github/Canoncial Engineering Lifecycle.md`. This table is a quick reference; repository policy below governs authorisation and completion.
 
 | Step | Activity |
 |---|---|
@@ -148,7 +148,7 @@ A green workflow/job/step **does not by itself prove functionality**. For each n
 
 ## 8. Versioned CICD release and application adoption policy
 
-- **Canonical process:** Before planning or implementation, read `.github/Standard CICD Engineering, Release & Application Promotion Workflow.md` in this repository. It is the authoritative *sequence* of 16 steps. This `AGENTS.md` remains authoritative for policy; the Skill supplies operational instructions. Report contradictions instead of silently choosing one.
+- **Canonical process:** Before planning or implementation, read `.github/Canoncial Engineering Lifecycle.md` in this repository. It is the authoritative *sequence* of 16 steps. This `AGENTS.md` remains authoritative for policy; the Skill supplies operational instructions. Report contradictions instead of silently choosing one.
 - **Single version:** Release the entire `cicd` repository as one semantic version, not individual actions or workflows. For internal composite actions in CICD reusable workflows, prefer the verified self-repository syntax `uses: $/.github/actions/<path>` where supported. Do not add permanent checkout steps or `cicd-ref` inputs merely to support pre-merge testing.
 - **Draft PRs first:** Create cross-referenced Draft PRs in `cicd` and each meaningfully affected application before final feature-branch integration testing. Application callers temporarily reference the matching CICD feature branch. Preserve existing stable version references in unaffected application repositories.
 - **Release classification:** Every CICD PR governed by semantic-release automation MUST have **exactly one** of `release:patch`, `release:minor`, `release:major` before promotion to Ready for Review. The agent MUST inspect the diff, select the appropriate classification, apply and verify the label, and record the rationale. If ambiguous, report **BLOCKED - AWAITING USER INPUT**; do not guess. Do not apply these labels to application PRs unless their own policy separately requires it.

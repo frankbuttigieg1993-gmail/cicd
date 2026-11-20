@@ -11,7 +11,7 @@ The current versioned-release framework uses:
 - **User prompts** to define the engineering task.
 - **Two repository-specific `AGENTS.md` files** to define shared CICD and application-specific policies.
 - **One central `cicd/.github/skills/github-actions-development/SKILL.md`** to define the cross-repository execution procedure.
-- **`.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`** as the authoritative human-readable 16-step process reference.
+- **`.github/Canoncial Engineering Lifecycle.md`** as the authoritative human-readable 16-step process reference.
 - **GitHub Actions release automation** to create immutable semantic-version tags on merged CICD commits; application repositories adopt releases independently.
 - **Existing repository code** to provide established implementation conventions.
 - **GitHub tools and execution results** to provide evidence during implementation and validation.
@@ -25,7 +25,7 @@ This allows GitHub Copilot to undertake different engineering tasks while follow
 ```text
 cicd/
   AGENTS.md                                      # shared CICD policy
-  .github/Standard CICD Engineering, Release & Application Promotion Workflow.md
+  .github/Canoncial Engineering Lifecycle.md
   .github/skills/github-actions-development/SKILL.md  # one central procedure
   .github/workflows/promotion-auto-tag.yml      # semantic release automation
 java_application/
@@ -164,7 +164,7 @@ For example, instead of simply saying *“Validate the implementation,”* your 
 
 ## 5. Your Standard Engineering Lifecycle — Current 16-Step Model
 
-The earlier lifecycle model has evolved into **16 steps** covering development, CICD release and application adoption. The detailed authoritative process is `cicd/.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`; the table below is a quick reference.
+The earlier lifecycle model has evolved into **16 steps** covering development, CICD release and application adoption. The detailed authoritative process is `cicd/.github/Canoncial Engineering Lifecycle.md`; the table below is a quick reference.
 
 | Step | Activity | Expected outcome |
 |---|---|---|
@@ -371,7 +371,7 @@ The original description grouped lifecycle context with procedural context. The 
 |---|---|---|---|
 | Governance | `cicd/AGENTS.md` and `java_application/AGENTS.md` | **What is permitted, required, or prohibited?** | Repository-specific policy and authorisation |
 | Execution | Central `github-actions-development/SKILL.md` | **How should each engineering operation be carried out and verified?** | Shared technical runbook |
-| Orchestration | `Standard CICD Engineering, Release & Application Promotion Workflow.md` | **When, in what order, and with which handoffs?** | Canonical 16-step lifecycle |
+| Orchestration | `Canoncial Engineering Lifecycle.md` | **When, in what order, and with which handoffs?** | Canonical 16-step lifecycle |
 
 The three layers are complementary, not mutually exclusive. For example, policy requires technically protected release tags, the Skill directs the agent to verify them, and the canonical workflow places that verification after CICD merge and before application adoption. If the documents disagree, the agent should surface the conflict rather than silently selecting a convenient instruction.
 

@@ -42,7 +42,7 @@ The CICD repository publishes **one semantic version for the repository as a who
 - CICD governance: `cicd/AGENTS.md`
 - Application governance: `java_application/AGENTS.md`
 - Central runbook: `cicd/.github/skills/github-actions-development/SKILL.md`
-- Canonical lifecycle: `cicd/.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`
+- Canonical lifecycle: `cicd/.github/Canoncial Engineering Lifecycle.md`
 
 These are paths described by the supplied explanatory documents; check the current repository before treating a path or rule as operationally current.
 
@@ -80,7 +80,7 @@ This shared Skill is intended to be reused across multiple application repositor
 
 The authoritative sequence is:
 
-`.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`
+`.github/Canoncial Engineering Lifecycle.md`
 
 It defines the **16-step** delivery lifecycle, CICD-first merge/release dependencies, application adoption and revalidation, human review gates, and reporting. It is a sequence document, not a replacement for repository policy or the detailed Skill.
 

@@ -10,7 +10,7 @@ This repository hosts reusable GitHub Actions workflows and composite actions co
 | `.github/actions/` | Composite actions and supporting resources |
 | `.github/skills/github-actions-development/SKILL.md` | Reusable implementation, validation and release procedures |
 | `AGENTS.md` | Repository governance, authorisation, restrictions and human review boundaries. |
-| `.github/Standard CICD Engineering, Release & Application Promotion Workflow.md` | Canonical 16-step lifecycle |
+| `.github/Canoncial Engineering Lifecycle.md` | Canonical 16-step lifecycle |
 | `ai_engineering/` | Framework explanations, experiments, results and evidence |
 
 ## Integration and releases
@@ -25,7 +25,7 @@ Treat the version above as an **observed Exercise 1 release**, not a permanent r
 
 ## Engineering governance and onboarding
 
-Start with [`AGENTS.md`](AGENTS.md), the [central Skill](.github/skills/github-actions-development/SKILL.md), and the [canonical lifecycle](.github/Standard%20CICD%20Engineering%2C%20Release%20%26%20Application%20Promotion%20Workflow.md). These files govern different concerns: **what** is permitted, **how** to execute and **when** to hand off. Repository settings, required checks, reviewers and release protections remain authoritative enforcement mechanisms.
+Start with [`AGENTS.md`](AGENTS.md), the [central Skill](.github/skills/github-actions-development/SKILL.md), and the [canonical lifecycle](.github/Canoncial%20Engineering%20Lifecycle.md). These files govern different concerns: **what** is permitted, **how** to execute and **when** to hand off. Repository settings, required checks, reviewers and release protections remain authoritative enforcement mechanisms.
 
 For the architecture and completed HITL/No-HITL experiment evidence, see [`ai_engineering/README.md`](ai_engineering/README.md).
 

@@ -16,7 +16,7 @@ The design was exercised with a new file-listing composite action integrated int
 
 | Repository | Responsibilities | Key engineering artifacts |
 |---|---|---|
-| [`frankbuttigieg1993-gmail/cicd`](https://github.com/frankbuttigieg1993-gmail/cicd) | Shared GitHub Actions reusable workflows, composite actions, release automation, and central engineering procedure | `AGENTS.md`, `.github/skills/github-actions-development/SKILL.md`, `.github/Standard CICD Engineering, Release & Application Promotion Workflow.md` |
+| [`frankbuttigieg1993-gmail/cicd`](https://github.com/frankbuttigieg1993-gmail/cicd) | Shared GitHub Actions reusable workflows, composite actions, release automation, and central engineering procedure | `AGENTS.md`, `.github/skills/github-actions-development/SKILL.md`, `.github/Canoncial Engineering Lifecycle.md` |
 | [`frankbuttigieg1993-gmail/java_application`](https://github.com/frankbuttigieg1993-gmail/java_application) | Application source, Gradle, tests, and application-side caller workflows | `AGENTS.md`, `.github/workflows/pr.yml` |
 
 Application repositories have their **own** `AGENTS.md` policies. Instructions from another repository are **not automatically inherited**. The shared CICD Skill is used when available in the agent's workspace; do not assume it is accessible from an isolated application workspace.
@@ -57,7 +57,7 @@ This shared Skill is intended to be reused across multiple application repositor
 
 The authoritative sequence is:
 
-`.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`
+`.github/Canoncial Engineering Lifecycle.md`
 
 It defines the **16-step** delivery lifecycle, CICD-first merge/release dependencies, application adoption and revalidation, human review gates, and reporting. It is a sequence document, not a replacement for repository policy or the detailed Skill.
 
@@ -232,7 +232,7 @@ Review the four documents together when changing cross-cutting behaviour, but av
 - **CICD policy:** `cicd/AGENTS.md`
 - **Application policy:** `java_application/AGENTS.md`
 - **Central execution runbook:** `cicd/.github/skills/github-actions-development/SKILL.md`
-- **Canonical lifecycle:** `cicd/.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`
+- **Canonical lifecycle:** `cicd/.github/Canoncial Engineering Lifecycle.md`
 - **CICD PR:** https://github.com/frankbuttigieg1993-gmail/cicd/pull/7
 - **Application PR:** https://github.com/frankbuttigieg1993-gmail/java_application/pull/52
 - **Release:** https://github.com/frankbuttigieg1993-gmail/cicd/releases/tag/v2.2.0

@@ -7,7 +7,7 @@ description: Develop and validate GitHub Actions composite actions and reusable 
 
 ## Human quick reference
 
-Read `cicd/.github/Standard CICD Engineering, Release & Application Promotion Workflow.md` at the start of every relevant task. Its 16-step sequence is the canonical workflow; this Skill describes **how** to execute it. This is the only shared CI/CD execution Skill; consuming application repositories use their own `AGENTS.md` policies rather than duplicate Skills. The applicable `AGENTS.md` files define **policy** and take precedence for repository-specific authorisation and safety. Do not substitute a previous conversation summary for the actual file.
+Read `cicd/.github/Canoncial Engineering Lifecycle.md` at the start of every relevant task. Its 16-step sequence is the canonical workflow; this Skill describes **how** to execute it. This is the only shared CI/CD execution Skill; consuming application repositories use their own `AGENTS.md` policies rather than duplicate Skills. The applicable `AGENTS.md` files define **policy** and take precedence for repository-specific authorisation and safety. Do not substitute a previous conversation summary for the actual file.
 
 | Stage | Steps | Result |
 |---|---|---|
