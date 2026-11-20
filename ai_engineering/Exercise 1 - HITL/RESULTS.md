@@ -1,83 +1,94 @@
-# Exercise 1 --- HITL Results
+# Exercise 1 — Scenario 1A (HITL): Results
 
-**Status:** Seven supervised checkpoints completed; Java PR promoted to Ready for Review. Final Java merge not confirmed.
+**Final status: PASS — SEVEN HITL CHECKPOINTS COMPLETED; APPLICATION READY FOR HUMAN REVIEW.**
 
-## Objective and execution mode
+## Executive Summary
 
-Create `ai-generated-list-files`, a non-recursive composite action listing the Java repository root including hidden entries, in a separate PR Pipeline job after successful Build. Follow the central engineering framework with seven **additional** human approval checkpoints. See `objective_HITL.md` (reconstruction) and `Exercise1_prompt.md` (stored prompt).
+Scenario 1A — HITL successfully implemented and validated the same engineering scenario and functional requirements later used in Scenario 1B — No-HITL. GitHub Copilot created the reusable `ai-generated-list-files` composite action, integrated it into the Java Application PR Pipeline, coordinated changes across the CICD and Java Application repositories, inspected actual execution logs, and adopted a published CICD release.
 
-## Checkpoint outcomes
+For this supervised experiment, Copilot was deliberately required to stop at **seven additional experimental checkpoints** for human review and authorisation. These checkpoints were separate from mandatory human PR reviews, approvals and merges, which remained in force under both execution models.
 
-  -----------------------------------------------------------------------
-Checkpoint                          Result ----------------------------------- ----------------------------------- 1 --- Planning                      Completed; requirements,
-                                      conventions, scope and validation
-                                      plan reviewed
+The CICD PR was merged and release `v2.2.0` was published. Java Application PR #52 adopted that release and reached **Ready for Review**. Its final merge was **not confirmed** in the historical record.
 
-2 --- Implementation                Completed; scoped implementation
-                                      and local checks
+The later No-HITL experiment demonstrated the same required functionality with no additional experimental checkpoints and reached a later recorded lifecycle milestone. This does not establish superior code quality or isolate the effect of checkpoint removal, because the engineering framework and repository protections evolved between executions.
 
-3 --- Draft PRs and Integration     Completed; cross-repository Validation                          feature-branch validation and
-                                      evidence
+## Objective and Execution Model
 
-4 --- CICD PR Promotion             CICD PR #7 promoted, reviewer
-                                      requested
+Implement `ai-generated-list-files`, a reusable composite action that lists entries in the Java Application repository root (`.`), including hidden files and directories, **non-recursively**. Integrate it into a separate PR Pipeline job that runs only after successful Build.
 
-5 --- CICD Release Verification     CICD PR #7 merged; `v2.2.0`
-                                      published; governance blocker
-                                      resolved with tag ruleset
+**Scenario 1A — HITL:** Require human review and explicit authorisation to proceed at seven predefined experimental checkpoints. These additional stops were part of the test design, not permanent requirements of the engineering framework.
 
-6 --- Application Release Adoption  Java PR #52 updated to `@v2.2.0`; and Validation                      fresh logs verified functionality
+**Mandatory governance retained:** Human CICD and Java PR reviews, approvals and merges; repository rulesets and required checks; release classification and protection; and applicable engineering authorisation and change restrictions. An experimental checkpoint approval did not substitute for a required GitHub PR approval.
 
-7 --- Final Application Promotion   Java PR #52 promoted to Ready for
-                                      Review; final human review/merge
-                                      outstanding
-  -----------------------------------------------------------------------
+## Starting Baseline
 
-## Engineering evidence
+The exact initial instruction SHAs, repository starting commits and elapsed time have not been reconstructed from the historical record. They are intentionally not estimated here.
 
-  ---------------------------------------------------------------------------------------------------------------------------
-Item                                Observed value ----------------------------------- --------------------------------------------------------------------------------------- CICD PR                             https://github.com/frankbuttigieg1993-gmail/cicd/pull/7
+## Checkpoint Outcomes
 
-Java PR                             https://github.com/frankbuttigieg1993-gmail/java_application/pull/52
+| Checkpoint | Observed result | Status |
+|---|---|---|
+| 1 — Planning | Requirements, conventions, authorised scope and validation plan reviewed. | Completed |
+| 2 — Implementation | Scoped implementation and local checks completed. | Completed |
+| 3 — Draft PRs and Integration Validation | Coordinated Draft PRs and cross-repository feature-branch validation completed; execution evidence reviewed. | Completed |
+| 4 — CICD PR Promotion | CICD PR #7 promoted to Ready for Review; designated reviewer requested. | Completed |
+| 5 — CICD Release Verification | CICD PR #7 merged; `v2.2.0` published; tag protection remediation addressed. | Completed |
+| 6 — Application Release Adoption and Validation | Java PR #52 updated to `@v2.2.0`; fresh released-version logs verified functionality. | Completed |
+| 7 — Final Application Promotion | Java PR #52 promoted to Ready for Review; final human review/merge not confirmed. | Completed to review boundary |
 
-CICD release                        `v2.2.0`
+## Engineering Evidence
 
-CICD merge commit                   `1c0e8e3021c35de606b0df685d5fdd6374c66b78`
+| Item | Observed value |
+|---|---|
+| CICD PR | [#7](https://github.com/frankbuttigieg1993-gmail/cicd/pull/7) — merged |
+| Java Application PR | [#52](https://github.com/frankbuttigieg1993-gmail/java_application/pull/52) — Ready for Review at last recorded checkpoint |
+| CICD release | [`v2.2.0`](https://github.com/frankbuttigieg1993-gmail/cicd/releases/tag/v2.2.0) |
+| CICD merge commit | `1c0e8e3021c35de606b0df685d5fdd6374c66b78` |
+| CICD release workflow | [Run 44014320065](https://github.com/frankbuttigieg1993-gmail/cicd/actions/runs/44014320065) |
+| Java released-version validation | [Run 44016664579](https://github.com/frankbuttigieg1993-gmail/java_application/actions/runs/44016664579) |
+| Application release reference | `@v2.2.0` |
+| Functional validation | Listing ran after Build; `.github` and `.gitignore` observed; 37 tracked root entries compared. |
+| Internal action reference | `uses: $/.github/actions/ai-generated-list-files` worked in the tested reusable workflow. |
+| Reviewer requested | `frankbuttigieg93-png` |
+| Final observed Java PR state | Ready for Review; merge not confirmed |
 
-CICD release run                    https://github.com/frankbuttigieg1993-gmail/cicd/actions/runs/44014320065
+## Important Findings and Responses
 
-Java released-version validation    https://github.com/frankbuttigieg1993-gmail/java_application/actions/runs/44016664579 run
+**Historical PR confusion:** Earlier closed or merged PRs and reused branch names were initially misinterpreted. Subsequent policy and Skill revisions introduced explicit branch/PR identity reconciliation. This later improvement does not change the historical HITL outcome.
 
-Application release reference       `@v2.2.0`
+**Reviewer correction:** An outdated reviewer reference was corrected in the instructions. Copilot re-evaluated and requested the intended reviewer.
 
-Functional evidence                 Listing executed after Build; expected root entries including `.github` and
-                                      `.gitignore` observed; 37 tracked entries compared
+**Release immutability:** Copilot identified missing technical protection for the already-published `v2.2.0`. A tag ruleset was added to restrict updates and deletion, and native release immutability was enabled for future releases. Existing release API immutability and tag-reference protection are distinct controls.
 
-Reviewer requested                  `frankbuttigieg93-png`
+**Tests and security:** The Unit Tests check appeared green despite intentionally tolerated underlying test failures. Known CodeQL findings remained. Copilot documented these discrepancies rather than treating all underlying checks as clean. The final GitHub aggregate merge state was reported `UNSTABLE`; any merge decision remained subject to human review and repository rules.
 
-Final observed application PR state Ready for Review, not confirmed merged
-  ---------------------------------------------------------------------------------------------------------------------------
+## Concise Comparison with Scenario 1B
 
-## Important findings and responses
+| Dimension | Scenario 1A — HITL | Scenario 1B — No-HITL |
+|---|---|---|
+| Engineering scenario and functional requirements | Same | Same |
+| Additional experimental approval checkpoints | **7** | **0** |
+| Required functionality implemented and validated | Yes | Yes |
+| Mandatory human PR governance | Preserved | Preserved |
+| CICD release | `v2.2.0` | `v3.1.0` |
+| Final recorded Java PR milestone | Ready for Review | Merged |
+| Final read-only lifecycle verification | Not recorded | Completed |
 
-**Historical PR confusion:** Earlier closed/merged PRs and reused branch names were initially misinterpreted. Later policy and Skill revisions added explicit branch/PR identity reconciliation. A later No-HITL run demonstrated successful reconciliation in that scenario; this does not change the historical HITL finding.
+**Interpretation:** Both scenarios achieved the same demonstrated functional engineering outcome. Scenario 1B showed greater operational autonomy and reached a later documented lifecycle milestone, but neither experiment established a code-quality advantage. Because `AGENTS.md`, `SKILL.md`, the canonical workflow and repository protections were refined between runs, this was **not a controlled A/B comparison**; differences cannot be attributed solely to removing the additional HITL checkpoints.
 
-**Reviewer correction:** An outdated reviewer reference was corrected across instructions; Copilot re-evaluated and requested the intended reviewer.
+## What This Experiment Demonstrated — and Did Not Demonstrate
 
-**Release immutability:** Copilot identified missing technical protection for the already-published `v2.2.0`. A tag ruleset was added to restrict updates and deletion, and native release immutability was enabled for future releases. Existing release API immutability and tag protection are distinct.
+The supervised execution demonstrated that Copilot could coordinate two repositories, validate unreleased functionality, publish and protect a CICD release, adopt that release in the application, and inspect actual job and step logs while stopping for seven additional human checkpoints.
 
-**Test and security findings:** Unit Tests reported green despite intentionally tolerated underlying test failures; known CodeQL findings remained. Copilot documented these rather than claiming all underlying tests passed. Final GitHub merge state was reported `UNSTABLE`; the human merge decision remained subject to repository rules.
+It did **not** demonstrate unattended autonomous execution, a confirmed final Java PR merge, general reliability across other tasks, or scalability to multiple consuming applications.
 
-## What the experiment demonstrated
+## Evidence and Provenance
 
-The supervised process coordinated two repositories, verified an unreleased feature, published and protected a CICD version, adopted it in an application, and inspected actual step logs. The self-repository action reference `uses: $/.github/actions/ai-generated-list-files` worked in the tested reusable workflow.
+The original GitHub Copilot transcript (`Exercise 1 - HITL.md` / `.json`), checkpoint screenshots, detailed historical assessments and supporting evidence are preserved separately in the Exercise 1 evidence archive. The linked PRs, release and GitHub Actions runs provide additional verifiable records. Exact starting commits, total elapsed time and intervention counts beyond the seven designed checkpoints have not been independently reconstructed and are not estimated.
 
-It **did not** prove unattended autonomous execution, a completed Java merge, or scaling across multiple application repositories.
+## Supporting Documentation
 
-## Evidence and provenance
+- [HITL Experiment Overview](README.md)
+- [Exercise 1 — HITL vs No-HITL Comparison](../Exercise_1_Comparison.md)
 
-The authoritative raw record is `Exercise 1 - HITL.md` / `.json`, plus the linked GitHub PRs and workflow runs. This summary reflects the recorded checkpoint assessments; independently verify any disputed detail against those records. Exact initial instruction SHAs, starting commits, elapsed time and intervention counts are **not yet reconstructed** and should not be guessed.
-
-## Follow-up
-
-Use this as the completed comparison baseline; preserve historical PRs, tags, runs and exports. The later No-HITL exercise completed its full lifecycle; see the [comparison](../Exercise_1_Comparison.md), [experiment index](../EXPERIMENT_INDEX.md) and [historical report](Exercise_1_HITL_Full_Historical_Report.md).
+**Final classification: PASS — SEVEN SUPERVISED CHECKPOINTS COMPLETED; APPLICATION READY FOR HUMAN REVIEW.**

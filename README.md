@@ -8,8 +8,8 @@ This repository hosts reusable GitHub Actions workflows and composite actions co
 |---|---|
 | `.github/workflows/` | Reusable workflows and CICD automation |
 | `.github/actions/` | Composite actions and supporting resources |
-| `.github/skills/github-actions-development/SKILL.md` | Reusable engineering execution procedure |
-| `AGENTS.md` | Repository-specific engineering governance |
+| `.github/skills/github-actions-development/SKILL.md` | Reusable implementation, validation and release procedures |
+| `AGENTS.md` | Repository governance, authorisation, restrictions and human review boundaries. |
 | `.github/Standard CICD Engineering, Release & Application Promotion Workflow.md` | Canonical 16-step lifecycle |
 | `ai_engineering/` | Framework explanations, experiments, results and evidence |
 

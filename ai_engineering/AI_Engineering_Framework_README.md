@@ -1,12 +1,8 @@
 # AI-Assisted CICD Engineering Framework
 
-> **Handover guide** \| Central CICD repository and consuming
-> application repositories\
-> **Status:** Exercise 1 HITL execution completed through application
-> Ready for Review; final application merge is a separate human
-> activity.\
-> **Scope:** GitHub Copilot, GitHub Actions, reusable workflows,
-> composite actions, semantic releases, and cross-repository promotion.
+> **Handover guide** | Central CICD repository and consuming application repositories
+> **Status:** Exercise 1 HITL execution completed through application Ready for Review; final application merge is a separate human activity.
+> **Scope:** GitHub Copilot, GitHub Actions, reusable workflows, composite actions, semantic releases, and cross-repository promotion.
 
 ## 1. Executive summary
 
@@ -18,19 +14,10 @@ The design was exercised with a new file-listing composite action integrated int
 
 ## 2. Repository architecture and ownership
 
-  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Repository                                                                                                    Responsibilities        Key engineering artifacts ------------------------------------------------------------------------------------------------------------- ----------------------- ---------------------------------------------------------------------------------- [`frankbuttigieg1993-gmail/cicd`](https://github.com/frankbuttigieg1993-gmail/cicd)                           Shared GitHub Actions   `AGENTS.md`, `.github/skills/github-actions-development/SKILL.md`,
-                                                                                                                reusable workflows,     `.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`
-                                                                                                                composite actions,      
-                                                                                                                release automation, and 
-                                                                                                                central engineering     
-                                                                                                                procedure               
-
-[`frankbuttigieg1993-gmail/java_application`](https://github.com/frankbuttigieg1993-gmail/java_application)   Application source,     `AGENTS.md`, `.github/workflows/pr.yml`
-                                                                                                                Gradle, tests, and      
-                                                                                                                application-side caller 
-                                                                                                                workflows               
-  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Repository | Responsibilities | Key engineering artifacts |
+|---|---|---|
+| [`frankbuttigieg1993-gmail/cicd`](https://github.com/frankbuttigieg1993-gmail/cicd) | Shared GitHub Actions reusable workflows, composite actions, release automation, and central engineering procedure | `AGENTS.md`, `.github/skills/github-actions-development/SKILL.md`, `.github/Standard CICD Engineering, Release & Application Promotion Workflow.md` |
+| [`frankbuttigieg1993-gmail/java_application`](https://github.com/frankbuttigieg1993-gmail/java_application) | Application source, Gradle, tests, and application-side caller workflows | `AGENTS.md`, `.github/workflows/pr.yml` |
 
 Application repositories have their **own** `AGENTS.md` policies. Instructions from another repository are **not automatically inherited**. The shared CICD Skill is used when available in the agent's workspace; do not assume it is accessible from an isolated application workspace.
 
@@ -38,7 +25,7 @@ The central CICD repository uses **one semantic version for the entire repositor
 
 ## 3. The three-layer instruction architecture
 
-### Layer 1 --- `AGENTS.md`: governance and policy
+### Layer 1 — `AGENTS.md`: governance and policy
 
 **Question answered: What is permitted and required?**
 
@@ -46,22 +33,15 @@ The CICD and application `AGENTS.md` files establish repository responsibilities
 
 Examples:
 
--   Explicitly select **PR Pipeline** or **Build Pipeline** before work
-    integrating into an existing pipeline. PR Pipeline selection
-    authorises the selected CICD PR workflow and only narrowly necessary
-    Java PR caller edits.
--   Preserve unrelated code, workflows, checks, permissions, and
-    uncommitted work.
--   Require evidence from actual workflow, job, step, and log
-    execution---not only green checkmarks.
--   Do not directly merge PRs, bypass required checks, or alter GitHub
-    settings without specific authorisation.
--   Historical merged/closed PRs are evidence, not automatic blockers to
-    a new execution.
+- Explicitly select **PR Pipeline** or **Build Pipeline** before work integrating into an existing pipeline. PR Pipeline selection authorises the selected CICD PR workflow and only narrowly necessary Java PR caller edits.
+- Preserve unrelated code, workflows, checks, permissions, and uncommitted work.
+- Require evidence from actual workflow, job, step, and log execution—not only green checkmarks.
+- Do not directly merge PRs, bypass required checks, or alter GitHub settings without specific authorisation.
+- Historical merged/closed PRs are evidence, not automatic blockers to a new execution.
 
 **Precedence:** Repository-specific `AGENTS.md` governs its own change boundaries. Contradictions with the Skill or lifecycle must be reported rather than silently resolved.
 
-### Layer 2 --- `SKILL.md`: reusable execution procedure
+### Layer 2 — `SKILL.md`: reusable execution procedure
 
 **Question answered: How should the work be performed?**
 
@@ -71,7 +51,7 @@ It includes the **Historical PR and Feature-Branch Reconciliation** procedure: c
 
 This shared Skill is intended to be reused across multiple application repositories; a duplicate Java-specific Skill is not required.
 
-### Layer 3 --- canonical workflow: lifecycle orchestration
+### Layer 3 — canonical workflow: lifecycle orchestration
 
 **Question answered: When and in what order?**
 
@@ -83,69 +63,31 @@ It defines the **16-step** delivery lifecycle, CICD-first merge/release dependen
 
 ### How the layers cooperate
 
-  -----------------------------------------------------------------------
-Situation         `AGENTS.md`       `SKILL.md`        Canonical
-                                                        workflow
------------------ ----------------- ----------------- ----------------- Historical PR     Says a matching   Compares refs,    Performs shares a branch   name is not proof SHAs, PR          reconciliation name              of current        metadata; safely  before Draft PR
-                    execution         handles failures  creation (Step 6)
-
-New CICD          Authorises scoped Specifies         Schedules composite action  work and          metadata, shell,  implementation
-                    prohibits         checkout,         and local
-                    unrelated changes action-ref and    validation (Steps
-                                      validation        3--5)
-                                      practices         
-
-CICD release      Requires proper   Verifies merge    Releases only
-                    label,            SHA, tag, release after CICD merge
-                    merged-commit tag workflow and      (Steps 10--11)
-                    and technical     protections       
-                    protection                          
-
-Application       Requires          Inspects new PR   Adopts release, promotion         release-based     run and step logs validates, then
-                    functional                          requests review
-                    evidence and                        (Steps 12--15)
-                    human review                        
-  -----------------------------------------------------------------------
+| Situation | `AGENTS.md` | `SKILL.md` | Canonical workflow |
+|---|---|---|---|
+| Historical PR shares a branch name | Says a matching name is not proof of current execution | Compares refs, SHAs, PR metadata; safely handles failures | Performs reconciliation before Draft PR creation (Step 6) |
+| New CICD composite action | Authorises scoped work and prohibits unrelated changes | Specifies metadata, shell, checkout, action-ref and validation practices | Schedules implementation and local validation (Steps 3–5) |
+| CICD release | Requires proper label, merged-commit tag and technical protection | Verifies merge SHA, tag, release workflow and protections | Releases only after CICD merge (Steps 10–11) |
+| Application promotion | Requires release-based functional evidence and human review | Inspects new PR run and step logs | Adopts release, validates, then requests review (Steps 12–15) |
 
 ## 4. Standard 16-step engineering lifecycle
 
-1.  **Requirements Analysis and Pipeline Selection** --- Confirm PR or
-    Build Pipeline and authorised scope.
-2.  **Repository Convention Discovery and Planning** --- Inspect
-    comparable implementations, requirements and acceptance criteria.
-3.  **Create CICD Feature Branch** --- Branch from verified `main`;
-    implement CICD changes using established conventions.
-4.  **Create Application Feature Branch** --- Branch from verified
-    `main`; temporarily point the authorised caller to the CICD feature
-    branch.
-5.  **Perform Local Validation** --- Check YAML, action metadata,
-    references, dependencies and functionality.
-6.  **Create Both Draft PRs** --- Reconcile historical/current branches
-    and PRs; create cross-linked Draft PRs with evidence and
-    dependencies.
-7.  **Classify the CICD Release and Apply the PR Label** --- Apply
-    **exactly one** `release:patch`, `release:minor`, or `release:major`
-    label.
-8.  **Execute End-to-End Feature-Branch Validation** --- Run the
-    application PR pipeline and inspect actual logs.
-9.  **Promote CICD PR to Ready for Review** --- Check evidence, stable
-    internal references, label and applicable gates; request review.
-10. **Review and Merge CICD PR** --- Human approval and authorised
-    GitHub merge.
-11. **Automatically Create the Semantic-Version Release** --- Tag the
-    **actual merged CICD commit**, publish and verify the release.
-12. **Update the Application Draft PR** --- Using configured automation
-    or an authorised agent operation, replace the temporary CICD ref
-    with the published version.
-13. **Execute Final Application Validation** --- Trigger a fresh PR run
-    against the released CICD revision and inspect logs.
-14. **Promote Application PR to Ready for Review** --- Verify gates and
-    request designated review.
-15. **Final Human Review and Merge** --- Human reviewer evaluates and
-    merges through GitHub governance.
-16. **Final Reporting and Cleanup** --- Preserve PRs, SHAs, logs and
-    release evidence; clean up branches only when authorised and no
-    longer referenced.
+1. **Requirements Analysis and Pipeline Selection** — Confirm PR or Build Pipeline and authorised scope.
+2. **Repository Convention Discovery and Planning** — Inspect comparable implementations, requirements and acceptance criteria.
+3. **Create CICD Feature Branch** — Branch from verified `main`; implement CICD changes using established conventions.
+4. **Create Application Feature Branch** — Branch from verified `main`; temporarily point the authorised caller to the CICD feature branch.
+5. **Perform Local Validation** — Check YAML, action metadata, references, dependencies and functionality.
+6. **Create Both Draft PRs** — Reconcile historical/current branches and PRs; create cross-linked Draft PRs with evidence and dependencies.
+7. **Classify the CICD Release and Apply the PR Label** — Apply **exactly one** `release:patch`, `release:minor`, or `release:major` label.
+8. **Execute End-to-End Feature-Branch Validation** — Run the application PR pipeline and inspect actual logs.
+9. **Promote CICD PR to Ready for Review** — Check evidence, stable internal references, label and applicable gates; request review.
+10. **Review and Merge CICD PR** — Human approval and authorised GitHub merge.
+11. **Automatically Create the Semantic-Version Release** — Tag the **actual merged CICD commit**, publish and verify the release.
+12. **Update the Application Draft PR** — Using configured automation or an authorised agent operation, replace the temporary CICD ref with the published version.
+13. **Execute Final Application Validation** — Trigger a fresh PR run against the released CICD revision and inspect logs.
+14. **Promote Application PR to Ready for Review** — Verify gates and request designated review.
+15. **Final Human Review and Merge** — Human reviewer evaluates and merges through GitHub governance.
+16. **Final Reporting and Cleanup** — Preserve PRs, SHAs, logs and release evidence; clean up branches only when authorised and no longer referenced.
 
 **Note:** The 16 steps are the standard lifecycle. Exercise 1 grouped activities into **seven HITL checkpoints** for supervised testing. Those checkpoints are not automatically permanent requirements for every execution.
 
@@ -193,33 +135,21 @@ uses: frankbuttigieg1993-gmail/cicd/.github/workflows/java-build-pr.yml@v2.2.0
 
 **Handover owner actions:** Ensure the next operator has access to both repositories, the correct GitHub account and reviewer, the shared Skill, the canonical lifecycle, the release workflow, and the relevant GitHub rulesets. Confirm which operations require explicit approval before beginning.
 
-## 7. Exercise 1 --- supervised validation case study
+## 7. Exercise 1 — supervised validation case study
 
 **Objective:** Add a composite action to list direct entries in the Java repository root, including hidden files, as a PR-only job after successful Build.
 
-  -----------------------------------------------------------------------------------------------------------------------------------------
-Milestone                           Observed outcome ----------------------------------- ----------------------------------------------------------------------------------------------------- CICD implementation                 New `ai-generated-list-files` composite action and `List_Files` job
-
-Application integration             Java caller temporarily used CICD feature branch
-
-Initial integration                 Build and listing executed; actual logs were inspected
-
-CICD PR                             [PR #7](https://github.com/frankbuttigieg1993-gmail/cicd/pull/7) merged
-
-CICD release                        `v2.2.0` created on merge SHA `1c0e8e3021c35de606b0df685d5fdd6374c66b78`
-
-Release governance                  Tag ruleset enabled to block updates/deletions; native immutability enabled for future releases
-
-Application PR                      [PR #52](https://github.com/frankbuttigieg1993-gmail/java_application/pull/52) adopted `@v2.2.0`,
-                                      reached Ready for Review
-
-Released-version validation         [Java PR run
-                                      44016664579](https://github.com/frankbuttigieg1993-gmail/java_application/actions/runs/44016664579)
-                                      verified listing after Build
-
-Final state observed                All seven supervised checkpoints completed; application PR remained open/unmerged at last recorded
-                                      checkpoint
-  -----------------------------------------------------------------------------------------------------------------------------------------
+| Milestone | Observed outcome |
+|---|---|
+| CICD implementation | New `ai-generated-list-files` composite action and `List_Files` job |
+| Application integration | Java caller temporarily used CICD feature branch |
+| Initial integration | Build and listing executed; actual logs were inspected |
+| CICD PR | [PR #7](https://github.com/frankbuttigieg1993-gmail/cicd/pull/7) merged |
+| CICD release | `v2.2.0` created on merge SHA `1c0e8e3021c35de606b0df685d5fdd6374c66b78` |
+| Release governance | Tag ruleset enabled to block updates/deletions; native immutability enabled for future releases |
+| Application PR | [PR #52](https://github.com/frankbuttigieg1993-gmail/java_application/pull/52) adopted `@v2.2.0`, reached Ready for Review |
+| Released-version validation | [Java PR run 44016664579](https://github.com/frankbuttigieg1993-gmail/java_application/actions/runs/44016664579) verified listing after Build |
+| Final state observed | All seven supervised checkpoints completed; application PR remained open/unmerged at last recorded checkpoint |
 
 The listing logs contained all **37 tracked root entries**, including hidden `.github` and `.gitignore`. Some runtime/checkout entries also appeared.
 
@@ -227,20 +157,11 @@ The listing logs contained all **37 tracked root entries**, including hidden `.g
 
 ### Lessons incorporated into the framework
 
--   **Historical PR ambiguity:** Earlier PRs with the same task/branch
-    name caused confusion. The updated Skill and policies require
-    current branch/PR identity reconciliation rather than relying on
-    names.
--   **Reviewer typo:** Correcting the configured reviewer and
-    re-evaluating allowed the review request to be recorded.
--   **Release protection:** Copilot detected that a published tag was
-    not technically protected; the team added tag ruleset protection and
-    re-ran verification.
--   **Status versus evidence:** Logs exposed test failures beneath a
-    green check, demonstrating why log-level verification is mandatory.
--   **Reference strategy:** Self-repository composite action references
-    plus CICD semantic releases eliminated permanent temporary
-    feature-branch dependencies.
+- **Historical PR ambiguity:** Earlier PRs with the same task/branch name caused confusion. The updated Skill and policies require current branch/PR identity reconciliation rather than relying on names.
+- **Reviewer typo:** Correcting the configured reviewer and re-evaluating allowed the review request to be recorded.
+- **Release protection:** Copilot detected that a published tag was not technically protected; the team added tag ruleset protection and re-ran verification.
+- **Status versus evidence:** Logs exposed test failures beneath a green check, demonstrating why log-level verification is mandatory.
+- **Reference strategy:** Self-repository composite action references plus CICD semantic releases eliminated permanent temporary feature-branch dependencies.
 
 **What this proves:** The supervised two-repository lifecycle was exercised through application review handoff. It does **not** yet establish fully autonomous execution or reliable operation across five or ten application repositories; those require further testing.
 
@@ -268,26 +189,16 @@ The No-HITL repetition used the same functional requirement with **zero addition
 
 Before a new task, the operator should:
 
-1.  Open the appropriate multi-root workspace and verify access to both
-    repositories.
-2.  Read the **latest** CICD `AGENTS.md`, application `AGENTS.md`,
-    shared `SKILL.md`, and canonical workflow; do not rely only on chat
-    summaries.
-3.  Confirm the selected pipeline (**PR** or **Build**) and the exact
-    requested change.
-4.  Check branch/worktree status and preserve unrelated modifications.
-5.  Confirm existing release baseline, semantic release workflow, tag
-    ruleset and release immutability settings.
-6.  Confirm the reviewer identity and the applicable GitHub
-    rulesets/required checks.
-7.  Check current branches and open/closed/merged PRs using refs and
-    SHAs---not branch names alone.
-8.  Agree on HITL checkpoints or other task-specific approvals; do not
-    assume the previous exercise's checkpoint structure applies.
-9.  Require actual logs and expected-versus-observed evidence at
-    validation gates.
-10. Retain PR links, commit SHAs, release tag, workflow runs, exceptions
-    and final handoff notes.
+1. Open the appropriate multi-root workspace and verify access to both repositories.
+2. Read the **latest** CICD `AGENTS.md`, application `AGENTS.md`, shared `SKILL.md`, and canonical workflow; do not rely only on chat summaries.
+3. Confirm the selected pipeline (**PR** or **Build**) and the exact requested change.
+4. Check branch/worktree status and preserve unrelated modifications.
+5. Confirm existing release baseline, semantic release workflow, tag ruleset and release immutability settings.
+6. Confirm the reviewer identity and the applicable GitHub rulesets/required checks.
+7. Check current branches and open/closed/merged PRs using refs and SHAs—not branch names alone.
+8. Agree on HITL checkpoints or other task-specific approvals; do not assume the previous exercise's checkpoint structure applies.
+9. Require actual logs and expected-versus-observed evidence at validation gates.
+10. Retain PR links, commit SHAs, release tag, workflow runs, exceptions and final handoff notes.
 
 ### Minimum information for a new engineering request
 
@@ -295,62 +206,38 @@ Provide the **target application repository**, **PR or Build Pipeline selection*
 
 ## 9. Change management and ownership
 
-  -----------------------------------------------------------------------
-Artifact                Change when...          Review emphasis ----------------------- ----------------------- ----------------------- CICD `AGENTS.md`        Shared governance or    Safety, permissions,
-                          authorisation policy    release/PR rules
-                          changes                 
-
-Application `AGENTS.md` Application-specific    Local ownership and
-                          policy or caller        standalone clarity
-                          boundaries change       
-
-Shared `SKILL.md`       Reusable operational    Accuracy,
-                          technique or            reproducibility, no
-                          troubleshooting         duplicated policy
-                          procedure improves      
-
-Canonical workflow      Lifecycle ordering,     Sequencing, approval
-                          dependencies or         gates, consistency
-                          handoffs change         
-
-GitHub rulesets /       Technical enforcement   Explicit approval, release automation      or release mechanics    tested controls and
-                          change                  rollback
-  -----------------------------------------------------------------------
+| Artifact | Change when... | Review emphasis |
+|---|---|---|
+| CICD `AGENTS.md` | Shared governance or authorisation policy changes | Safety, permissions, release/PR rules |
+| Application `AGENTS.md` | Application-specific policy or caller boundaries change | Local ownership and standalone clarity |
+| Shared `SKILL.md` | Reusable operational technique or troubleshooting procedure improves | Accuracy, reproducibility, no duplicated policy |
+| Canonical workflow | Lifecycle ordering, dependencies or handoffs change | Sequencing, approval gates, consistency |
+| GitHub rulesets / release automation | Technical enforcement or release mechanics change | Explicit approval, tested controls and rollback |
 
 Review the four documents together when changing cross-cutting behaviour, but avoid duplicating detailed procedures. Update the **single authoritative location** and use concise references elsewhere. Treat documentation changes as version-controlled engineering changes, not as an implicit grant to modify repository settings or protected branches.
 
 ## 10. Open questions and future validation
 
--   Extend historical-PR reconciliation testing beyond the successfully observed No-HITL scenario.
--   Repeat autonomous execution with other tasks and repositories while preserving explicit authorisation and merge governance.
--   Validate the architecture with additional application repositories
-    and independent release adoption.
--   Continue verifying release immutability on future CICD releases; `v3.1.0` was published and observed immutable.
--   Decide whether the intentionally green Unit Tests check and known
-    security findings need separate governance remediation; they were
-    explicitly outside Exercise 1's feature scope.
--   Establish long-term owners for the Skill, policy documents, release
-    workflow and evidence retention.
+- Extend historical-PR reconciliation testing beyond the successfully observed No-HITL scenario.
+- Repeat autonomous execution with other tasks and repositories while preserving explicit authorisation and merge governance.
+- Validate the architecture with additional application repositories and independent release adoption.
+- Continue verifying release immutability on future CICD releases; `v3.1.0` was published and observed immutable.
+- Decide whether the intentionally green Unit Tests check and known security findings need separate governance remediation; they were explicitly outside Exercise 1's feature scope.
+- Establish long-term owners for the Skill, policy documents, release workflow and evidence retention.
 
 ## 11. Source-of-truth and useful links
 
 **Read the actual files before acting.** This README is a handover guide, not the authoritative instruction source.
 
--   **CICD policy:** `cicd/AGENTS.md`
--   **Application policy:** `java_application/AGENTS.md`
--   **Central execution runbook:**
-    `cicd/.github/skills/github-actions-development/SKILL.md`
--   **Canonical lifecycle:**
-    `cicd/.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`
--   **CICD PR:** https://github.com/frankbuttigieg1993-gmail/cicd/pull/7
--   **Application PR:**
-    https://github.com/frankbuttigieg1993-gmail/java_application/pull/52
--   **Release:**
-    https://github.com/frankbuttigieg1993-gmail/cicd/releases/tag/v2.2.0
--   **CICD release workflow run:**
-    https://github.com/frankbuttigieg1993-gmail/cicd/actions/runs/44014320065
--   **Application release-validation run:**
-    https://github.com/frankbuttigieg1993-gmail/java_application/actions/runs/44016664579
+- **CICD policy:** `cicd/AGENTS.md`
+- **Application policy:** `java_application/AGENTS.md`
+- **Central execution runbook:** `cicd/.github/skills/github-actions-development/SKILL.md`
+- **Canonical lifecycle:** `cicd/.github/Standard CICD Engineering, Release & Application Promotion Workflow.md`
+- **CICD PR:** https://github.com/frankbuttigieg1993-gmail/cicd/pull/7
+- **Application PR:** https://github.com/frankbuttigieg1993-gmail/java_application/pull/52
+- **Release:** https://github.com/frankbuttigieg1993-gmail/cicd/releases/tag/v2.2.0
+- **CICD release workflow run:** https://github.com/frankbuttigieg1993-gmail/cicd/actions/runs/44014320065
+- **Application release-validation run:** https://github.com/frankbuttigieg1993-gmail/java_application/actions/runs/44016664579
 
 ------------------------------------------------------------------------
 

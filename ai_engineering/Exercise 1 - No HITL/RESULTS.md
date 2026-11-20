@@ -1,12 +1,18 @@
 # Exercise 1 — No Exercise-Specific HITL Results
 
-**Final status: COMPLETE — ENGINEERING LIFECYCLE VERIFIED.** This document records the observed No-HITL exercise, not a planned run. The outcome is supported by the final Copilot completion report and GitHub evidence; outstanding application test/security findings remain separate.
+**Final status: COMPLETE — ENGINEERING LIFECYCLE VERIFIED.**
+
+## Executive summary
+
+Scenario 1B — No-HITL successfully implemented and validated the same engineering scenario and functional requirements as Scenario 1A — HITL, without the seven additional experimental human approval checkpoints. GitHub Copilot implemented the reusable composite action, integrated it into the Java Application PR Pipeline, coordinated cross-repository pull requests, inspected actual execution logs, independently discovered and adopted the published immutable CICD release, and completed the engineering lifecycle.
+
+Mandatory human review, approval and merge remained in place for both the CICD and Java Application PRs. **No-HITL did not mean unrestricted autonomy:** only the additional experiment-specific checkpoints were removed. The result demonstrated greater operational autonomy with the same observed functional outcome, not superior code quality. Because the engineering instructions and release protections evolved between scenarios, the improvement cannot be attributed solely to checkpoint removal.
 
 ## Objective and execution mode
 
 Create `ai-generated-list-files`, a reusable non-recursive directory-listing composite action that includes hidden entries, and run it in a separate Java PR Pipeline job after successful Build. Remove the seven **exercise-specific** HITL checkpoints, while preserving mandatory human review, approval and merge boundaries.
 
-The exercise began with a separate read-only context verification; execution proceeded in two autonomous phases separated by required human CICD review/merge, followed by a read-only completion verification.
+The exercise began with a separate read-only context verification; execution proceeded in two autonomous phases separated by required human CICD review/merge, followed by a read-only completion verification. Mandatory human PR review, approval and merge, repository rulesets, required checks, release immutability, semantic-version governance and scope restrictions remained applicable throughout.
 
 ## Starting baseline
 
@@ -55,6 +61,20 @@ The exercise began with a separate read-only context verification; execution pro
 
 The final Java PR diff shows `@v2.2.0` → `@v3.1.0` because GitHub compares the PR against its base; the intervening feature-branch reference existed in the earlier PR commit and was removed before merge.
 
+## Concise comparison with Scenario 1A — HITL
+
+| Dimension | Scenario 1A — HITL | Scenario 1B — No-HITL |
+|---|---|---|
+| Engineering scenario and functional requirements | Same | Same |
+| Additional experimental approval checkpoints | 7 | **0** |
+| Functional implementation and validation | Successful | Successful |
+| Mandatory human PR governance | Preserved | Preserved |
+| CICD release | `v2.2.0` | `v3.1.0` |
+| Final recorded Java PR milestone | Ready for Review | Merged |
+| Final lifecycle verification | Not recorded | Completed |
+
+Both scenarios achieved the required functional outcome. Scenario 1B demonstrated greater operational autonomy and reached a later documented lifecycle milestone, but this does not establish that Scenario 1A could not have done the same. The framework and repository configuration changed between executions, so this was not a controlled test of HITL removal alone. See the [full comparison](../Exercise_1_Comparison.md) for interpretation and limitations.
+
 ## Known findings and limitations
 
 - Java Unit Tests check appeared green although Gradle logs reported **3 failures among 5 tests**. This was intentional/pre-existing in the exercise setup; it is not evidence that all tests passed.
@@ -63,15 +83,11 @@ The final Java PR diff shows `@v2.2.0` → `@v3.1.0` because GitHub compares the
 - Screenshot-based Copilot reporting supports the outcomes above; consult original runs and PR metadata for independent audit.
 - Neither this result nor the comparison establishes that the removal of HITL checkpoints alone caused improvements: framework instructions and repository release protections changed between exercises.
 
-## Evidence and related documents
+## Supporting documentation
 
-- [Read-only context prompt](Exercise_1_Read_Only_Context_Verification_Prompt.md)
-- [Execution prompt](Exercise_1_No_HITL_Execution_Prompt.md)
-- [Resume prompt](Exercise1_No_HITL_PromptforResume.md)
-- [Steps 1–7 review](Exercise_1_No_HITL_Steps_1_to_7_Full_Verbatim_Review.md)
-- [Step 8 onward review](Exercise_1_No_HITL_Step_8_Onwards_Verbatim.md)
-- [Final completion review](Exercise_1_No_HITL_Final_Completion_Review_Verbatim.md)
-- [Cross-exercise comparison](../Exercise_1_Comparison.md)
-- [Evidence index](../EVIDENCE_INDEX.md)
+- [No-HITL experiment overview](README.md)
+- [Exercise 1 — HITL versus No-HITL comparison](../Exercise_1_Comparison.md)
 
-**Final classification: PASS — ENGINEERING LIFECYCLE VERIFIED**, with the known application findings documented separately.
+Original Copilot transcripts, execution screenshots, detailed historical assessments and supporting evidence are preserved separately in the Exercise 1 evidence archive. GitHub PR, release and Actions links above remain the primary navigable evidence references in this results document.
+
+**Final classification: PASS — ENGINEERING LIFECYCLE VERIFIED**, with known application findings documented separately.
